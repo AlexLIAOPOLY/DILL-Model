@@ -1,0 +1,703 @@
+/* CAR模型样式 */
+.car-params {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.car-model-section {
+    margin-bottom: 30px;
+}
+
+.car-model-title {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.car-model-description {
+    color: #34495e;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+/* CAR模型参数说明样式 */
+.car-parameter-explanation {
+    background-color: #f1f8ff;
+    border-left: 4px solid #0078d7;
+    padding: 15px;
+    margin-bottom: 25px;
+    border-radius: 0 6px 6px 0;
+}
+
+.car-parameter-explanation h4 {
+    color: #0078d7;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.car-parameter-explanation p {
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.car-parameter-explanation ul {
+    margin-top: 10px;
+    padding-left: 20px;
+}
+
+/* CAR结果图表容器 */
+.car-results-container {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 992px) {
+    .car-results-container {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.car-result-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    transition: transform 0.3s ease;
+}
+
+.car-result-card:hover {
+    transform: translateY(-5px);
+}
+
+.car-result-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.car-result-image {
+    width: 100%;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* CAR模型颜色方案 */
+.car-primary {
+    color: #2185d0;
+}
+
+.car-secondary {
+    color: #21ba45;
+}
+
+.car-accent {
+    color: #db2828;
+}
+
+/* 过程示意图 */
+.car-process-diagram {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px;
+    margin: 20px 0;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.car-process-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px;
+    text-align: center;
+}
+
+.car-step-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #2185d0;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.car-step-description {
+    font-size: 14px;
+    max-width: 120px;
+}
+
+.car-process-arrow {
+    display: flex;
+    align-items: center;
+    margin: 0 10px;
+    color: #777;
+    font-size: 20px;
+}
+
+/* Plotly图表容器 */
+.car-plot-container {
+    width: 100%;
+    height: 400px;
+    margin: 20px 0;
+}
+
+/* 移动端适配：max-width 768px */
+@media (max-width: 768px) {
+    .car-params {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 8px;
+    }
+    .car-results-container {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .car-result-card {
+        padding: 10px;
+        font-size: 0.98rem;
+    }
+    .car-plot-container {
+        height: 260px;
+        min-width: 220px;
+        margin: 10px 0;
+    }
+    .car-process-diagram {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 8px;
+        gap: 8px;
+    }
+    .car-process-step {
+        min-width: 80px;
+        font-size: 13px;
+    }
+    .car-step-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+}
+/* 超小屏适配：max-width 480px */
+@media (max-width: 480px) {
+    .car-params {
+        padding: 2px;
+        gap: 6px;
+    }
+    .car-result-card {
+        padding: 5px;
+        font-size: 0.92rem;
+    }
+    .car-plot-container {
+        height: 180px;
+        min-width: 120px;
+    }
+    .car-process-step {
+        min-width: 60px;
+        font-size: 12px;
+    }
+    .car-step-description {
+        max-width: 80px;
+    }
+}
+
+/* CAR模型2D热力图样式 */
+.car-matrix-visualization {
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+
+.car-matrix-panel {
+    transition: all 0.3s ease;
+}
+
+.car-matrix-panel:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.car-matrix-panel .car-result-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.car-matrix-panel .export-image-btn {
+    display: block;
+    margin: 10px auto;
+    padding: 8px 15px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.car-matrix-panel .export-image-btn:hover {
+    background-color: #2980b9;
+}
+
+/* CAR模型1D图表样式 */
+.car-1d-visualization {
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+
+.car-plot-panel {
+    transition: all 0.3s ease;
+}
+
+.car-plot-panel:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.car-plot-panel .car-result-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.car-plot-panel .export-image-btn {
+    display: block;
+    margin: 10px auto;
+    padding: 8px 15px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.car-plot-panel .export-image-btn:hover {
+    background-color: #2980b9;
+}
+
+/* 响应式适配 */
+@media (max-width: 992px) {
+    .car-matrix-visualization {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .car-1d-visualization {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .car-matrix-visualization {
+        grid-template-columns: 1fr;
+    }
+    
+    .car-1d-visualization {
+        grid-template-columns: 1fr;
+    }
+    
+    .car-matrix-panel .car-result-title,
+    .car-plot-panel .car-result-title {
+        font-size: 15px;
+    }
+    
+    .car-plot-panel .export-image-btn,
+    .car-matrix-panel .export-image-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .car-matrix-panel {
+        padding: 10px;
+    }
+    
+    .car-plot-panel {
+        padding: 10px;
+    }
+    
+    .car-matrix-panel .car-result-title,
+    .car-plot-panel .car-result-title {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    
+    .car-plot-panel .export-image-btn,
+    .car-matrix-panel .export-image-btn {
+        padding: 5px 10px;
+        font-size: 12px;
+        margin-top: 5px;
+    }
+}
+
+/* CAR模型4D动画样式 */
+.car-4d-animation-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #fff8f0 0%, #fff 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(230, 126, 34, 0.1);
+    border: 1px solid rgba(230, 126, 34, 0.2);
+}
+
+.car-4d-animation-section .section-title {
+    color: #e67e22;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* 动画控制面板 */
+.animation-controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 25px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.animation-control-panel {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.animation-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 100px;
+    justify-content: center;
+}
+
+.animation-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.play-btn {
+    background-color: #27ae60;
+    color: white;
+}
+
+.play-btn:hover {
+    background-color: #229954;
+}
+
+.pause-btn {
+    background-color: #f39c12;
+    color: white;
+}
+
+.pause-btn:hover {
+    background-color: #e67e22;
+}
+
+.stop-btn {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.stop-btn:hover {
+    background-color: #c0392b;
+}
+
+.reset-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+.reset-btn:hover {
+    background-color: #2980b9;
+}
+
+.loop-btn {
+    background-color: #8e44ad;
+    color: white;
+}
+
+.loop-btn:hover {
+    background-color: #732d91;
+}
+
+.loop-btn.loop-off {
+    background-color: #7f8c8d;
+}
+
+.loop-btn.loop-off:hover {
+    background-color: #6c7a7d;
+}
+
+/* 4D动画图表网格 */
+.car-4d-plots-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 25px;
+    margin-top: 20px;
+    padding: 10px;
+}
+
+.car-4d-plot-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(230, 126, 34, 0.1);
+}
+
+.car-4d-plot-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    border-color: rgba(230, 126, 34, 0.3);
+}
+
+.car-4d-plot-container h3 {
+    color: #e67e22;
+    margin-bottom: 18px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    border-bottom: 2px solid #f39c12;
+    padding-bottom: 10px;
+}
+
+.car-4d-plot {
+    width: 100%;
+    height: 380px;
+    border-radius: 6px;
+}
+
+/* 动画状态指示器 */
+.animation-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.status-playing {
+    background-color: #27ae60;
+}
+
+.status-paused {
+    background-color: #f39c12;
+}
+
+.status-stopped {
+    background-color: #95a5a6;
+}
+
+/* 响应式设计 */
+@media (max-width: 992px) {
+    .car-4d-plots-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, 1fr);
+        gap: 15px;
+    }
+    
+    .animation-control-panel {
+        gap: 8px;
+    }
+    
+    .animation-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+        min-width: 90px;
+    }
+}
+
+@media (max-width: 768px) {
+    .car-4d-animation-section {
+        padding: 15px;
+        margin-top: 20px;
+    }
+    
+    .car-4d-animation-section .section-title {
+        font-size: 1.5rem;
+    }
+    
+    .animation-controls {
+        padding: 12px;
+    }
+    
+    .car-4d-plots-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, 1fr);
+        gap: 15px;
+        padding: 5px;
+    }
+    
+    .car-4d-plot-container {
+        padding: 15px;
+    }
+    
+    .car-4d-plot {
+        height: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .animation-control-panel {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .animation-btn {
+        width: 100%;
+        max-width: 200px;
+    }
+    
+    .car-4d-plots-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, 1fr);
+        gap: 10px;
+        padding: 0;
+    }
+    
+    .car-4d-plot-container {
+        padding: 10px;
+        border-radius: 8px;
+    }
+    
+    .car-4d-plot-container h3 {
+        font-size: 1rem;
+        margin-bottom: 12px;
+    }
+    
+    .car-4d-plot {
+        height: 250px;
+    }
+}
+
+/* 动画进度面板 */
+.animation-progress-panel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+}
+
+/* DILL和Enhanced DILL模型的4D动画主题色覆盖 */
+#dill-4d-animation-section.car-4d-animation-section {
+    background: linear-gradient(135deg, #f0f8ff 0%, #fff 100%);
+    border: 1px solid rgba(52, 152, 219, 0.2);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.1);
+}
+
+#dill-4d-animation-section .section-title {
+    color: #3498db;
+}
+
+#dill-4d-animation-section .car-4d-plot-container {
+    border: 1px solid rgba(52, 152, 219, 0.1);
+}
+
+#dill-4d-animation-section .car-4d-plot-container:hover {
+    border-color: rgba(52, 152, 219, 0.3);
+}
+
+#dill-4d-animation-section .car-4d-plot-container h3 {
+    color: #3498db;
+    border-bottom: 2px solid #3498db;
+}
+
+#enhanced-dill-4d-animation-section.car-4d-animation-section {
+    background: linear-gradient(135deg, #f8f4ff 0%, #fff 100%);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    box-shadow: 0 4px 12px rgba(155, 89, 182, 0.1);
+}
+
+#enhanced-dill-4d-animation-section .section-title {
+    color: #9b59b6;
+}
+
+#enhanced-dill-4d-animation-section .car-4d-plot-container {
+    border: 1px solid rgba(155, 89, 182, 0.1);
+}
+
+#enhanced-dill-4d-animation-section .car-4d-plot-container:hover {
+    border-color: rgba(155, 89, 182, 0.3);
+}
+
+#enhanced-dill-4d-animation-section .car-4d-plot-container h3 {
+    color: #9b59b6;
+    border-bottom: 2px solid #9b59b6;
+}
+
+/* 暗色主题支持 */
+@media (prefers-color-scheme: dark) {
+    #dill-4d-animation-section.car-4d-animation-section {
+        background: linear-gradient(135deg, #1a2332 0%, #2c3e50 100%);
+        border-color: #34495e;
+    }
+    
+    #enhanced-dill-4d-animation-section.car-4d-animation-section {
+        background: linear-gradient(135deg, #2d1b38 0%, #2c3e50 100%);
+        border-color: #34495e;
+    }
+    
+    #dill-4d-animation-section .car-4d-plot-container,
+    #enhanced-dill-4d-animation-section .car-4d-plot-container {
+        background: #2c3e50;
+        border-color: #34495e;
+    }
+}
+
+/* 初始隐藏DILL和Enhanced DILL模型的4D动画参数容器 */
+#dill-params [data-title="4D动画参数"],
+#enhanced-dill-params [data-title="4D动画参数"] {
+    display: none;
+}
+
+/* 只有在3D模式下才显示4D动画参数 */
+#dill-params.show-4d [data-title="4D动画参数"],
+#enhanced-dill-params.show-4d [data-title="4D动画参数"] {
+    display: block;
+} 

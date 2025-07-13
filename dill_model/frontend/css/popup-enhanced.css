@@ -1,0 +1,477 @@
+/* 增强的弹窗样式 */
+
+/* 弹窗动画 */
+@keyframes popupFadeIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes popupFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+    }
+}
+
+/* 点详细信息弹窗样式增强 */
+.point-details-popup {
+    position: fixed !important;
+    z-index: 10000 !important;
+    font-family: 'Roboto', Arial, sans-serif !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25) !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    backdrop-filter: blur(20px) !important;
+    min-width: 350px !important;
+    max-width: 90vw !important;
+    max-height: 80vh !important;
+    animation: popupFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.point-details-content {
+    background: rgba(255, 255, 255, 0.98) !important;
+    border: 2px solid transparent !important;
+    background-clip: padding-box !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+}
+
+.point-details-content::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(135deg, #3498db, #2980b9, #8e44ad, #9b59b6) !important;
+    z-index: -1 !important;
+    border-radius: 16px !important;
+}
+
+.point-details-header {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 50%, #8e44ad 100%) !important;
+    color: white !important;
+    padding: 20px 28px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-weight: 600 !important;
+    position: relative !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+}
+
+.point-details-header::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
+    animation: headerShine 3s ease-in-out infinite !important;
+}
+
+.point-details-title {
+    font-size: 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+.point-details-title i {
+    font-size: 20px !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.point-details-close {
+    background: none !important;
+    border: none !important;
+    color: white !important;
+    font-size: 22px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+.point-details-close:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+.point-details-body {
+    padding: 28px !important;
+    overflow-y: auto !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    flex: 1 !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #3498db #f1f1f1 !important;
+}
+
+/* 自定义滚动条样式 */
+.point-details-body::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.point-details-body::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 4px !important;
+}
+
+.point-details-body::-webkit-scrollbar-thumb {
+    background: #3498db !important;
+    border-radius: 4px !important;
+}
+
+.point-details-body::-webkit-scrollbar-thumb:hover {
+    background: #2980b9 !important;
+}
+
+.point-details-footer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    padding: 16px 28px !important;
+    border-top: 1px solid #e9ecef !important;
+    text-align: center !important;
+    flex-shrink: 0 !important;
+}
+
+.point-details-footer small {
+    color: #6c757d !important;
+    font-size: 13px !important;
+    font-style: italic !important;
+}
+
+/* 弹窗内容区域样式增强 */
+.point-info-section {
+    margin-bottom: 20px !important;
+    padding-bottom: 16px !important;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.point-info-section:last-child {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+}
+
+.point-info-section h4 {
+    margin: 0 0 12px 0 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.info-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+}
+
+/* 响应式网格 */
+@media (max-width: 480px) {
+    .info-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.info-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    border: 1px solid #e9ecef !important;
+    transition: all 0.3s ease !important;
+}
+
+.info-item:hover {
+    background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%) !important;
+    border-color: #3498db !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.1) !important;
+}
+
+.info-label {
+    font-weight: 500 !important;
+    color: #495057 !important;
+}
+
+.info-value {
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    font-family: 'Courier New', monospace !important;
+}
+
+.analysis-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+}
+
+.analysis-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 10px 14px !important;
+    background: linear-gradient(135deg, #e8f4fd, #f0f8ff) !important;
+    border-radius: 8px !important;
+    border-left: 4px solid #3498db !important;
+    font-size: 14px !important;
+    transition: all 0.3s ease !important;
+}
+
+.analysis-item:hover {
+    background: linear-gradient(135deg, #d4edda, #e8f5e8) !important;
+    border-left-color: #28a745 !important;
+    transform: translateX(4px) !important;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.1) !important;
+}
+
+.analysis-label {
+    font-weight: 500 !important;
+    color: #2c3e50 !important;
+}
+
+.analysis-value {
+    font-weight: 600 !important;
+    color: #2980b9 !important;
+    font-family: 'Courier New', monospace !important;
+}
+
+/* 公式容器样式增强 */
+.formula-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    border-left: 4px solid #3498db !important;
+    border: 1px solid #e9ecef !important;
+    margin: 16px 0 !important;
+}
+
+.formula-title {
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    margin-bottom: 12px !important;
+    font-size: 15px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.formula-title::before {
+    content: '📐' !important;
+    font-size: 16px !important;
+}
+
+.formula-math {
+    background: white !important;
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 14px !important;
+    color: #2c3e50 !important;
+    border: 1px solid #dee2e6 !important;
+    margin-bottom: 12px !important;
+    text-align: left !important;
+    font-weight: 500 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    line-height: 1.6 !important;
+}
+
+.formula-explanation {
+    font-size: 13px !important;
+    color: #6c757d !important;
+    line-height: 1.4 !important;
+    font-style: italic !important;
+}
+
+.formula-explanation div {
+    margin-bottom: 4px !important;
+}
+
+.formula-math div {
+    margin-bottom: 4px !important;
+}
+
+.formula-separator {
+    height: 1px !important;
+    background: linear-gradient(90deg, transparent, #3498db, transparent) !important;
+    margin: 12px 0 !important;
+    border: none !important;
+    display: block !important;
+}
+
+/* 阈值详细信息覆盖层样式增强 */
+.threshold-details-overlay {
+    position: absolute !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    border: 2px solid var(--primary-color) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
+    z-index: 1000 !important;
+    backdrop-filter: blur(20px) !important;
+    animation: fadeInScale 0.3s ease-out !important;
+    min-width: 380px !important;
+    max-width: 550px !important;
+}
+
+.threshold-details-content {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+}
+
+.threshold-details-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 16px 20px !important;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+    color: white !important;
+    border-radius: 10px 10px 0 0 !important;
+    font-weight: 600 !important;
+    font-size: 15px !important;
+}
+
+.threshold-details-close {
+    background: none !important;
+    border: none !important;
+    color: white !important;
+    font-size: 20px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    transition: all 0.3s ease !important;
+}
+
+.threshold-details-close:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    transform: scale(1.1) !important;
+}
+
+.threshold-details-body {
+    padding: 20px !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex: 1 !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+}
+
+.threshold-details-body pre {
+    margin: 0 !important;
+    font-family: 'Courier New', Consolas, monospace !important;
+    font-size: 12px !important;
+    line-height: 1.6 !important;
+    color: var(--dark-color) !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+}
+
+/* 响应式设计增强 */
+@media (max-width: 768px) {
+    .point-details-popup {
+        min-width: 320px !important;
+        max-width: calc(100vw - 40px) !important;
+        left: 20px !important;
+        right: 20px !important;
+    }
+    
+    .point-details-header {
+        padding: 16px 20px !important;
+    }
+    
+    .point-details-title {
+        font-size: 16px !important;
+    }
+    
+    .point-details-body {
+        padding: 20px !important;
+        max-height: 400px !important;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .formula-math {
+        font-size: 12px !important;
+        padding: 10px 12px !important;
+    }
+    
+    .threshold-details-overlay {
+        min-width: 300px !important;
+        max-width: calc(100vw - 40px) !important;
+    }
+}
+
+/* 阈值控制器范围显示 */
+.threshold-range-info {
+    font-size: 10px !important;
+    color: #666 !important;
+    margin-top: 2px !important;
+    font-family: monospace !important;
+    line-height: 1.2 !important;
+}
+
+.threshold-control.active-threshold .threshold-range-info {
+    color: #2980b9 !important;
+    font-weight: bold !important;
+}
+
+/* 增强阈值控制器的整体样式 */
+.threshold-control {
+    transition: all 0.3s ease !important;
+    border-radius: 8px !important;
+    padding: 8px !important;
+}
+
+.threshold-control.active-threshold {
+    background: rgba(52, 152, 219, 0.1) !important;
+    border: 1px solid rgba(52, 152, 219, 0.3) !important;
+}
+
+.threshold-control:hover {
+    background: rgba(0, 0, 0, 0.02) !important;
+} 

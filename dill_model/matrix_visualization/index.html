@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">光刻胶模型矩阵可视化</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="../frontend/css/theme-colors.css?v=1.0">
+    <!-- Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 自定义公式样式 -->
+    <style>
+        .formula {
+            padding: 15px 0;
+            margin: 10px 0;
+            background-color: rgba(245, 245, 245, 0.5);
+            border-radius: 5px;
+            overflow-x: auto;
+            text-align: center;
+            font-size: 18px;
+            font-family: "Times New Roman", serif;
+            line-height: 1.5;
+            letter-spacing: 0.5px;
+        }
+        
+        .formula-section {
+            margin-bottom: 15px;
+        }
+        
+        .formula-section h4 {
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        /* 分数样式 */
+        .fraction {
+            display: inline-block;
+            vertical-align: middle;
+            text-align: center;
+            margin: 0 4px;
+            font-size: 1.1em;
+        }
+        
+        .numerator, .denominator {
+            display: block;
+            padding: 0 4px;
+        }
+        
+        .numerator {
+            border-bottom: 2px solid black;
+            margin-bottom: 2px;
+            padding-bottom: 1px;
+        }
+        
+        /* 特殊公式样式 */
+        .special-formula {
+            padding: 20px 0;
+            background-color: rgba(240, 240, 240, 0.7);
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        /* 确保数学符号与文本间距适宜 */
+        sub, sup {
+            font-size: 75%;
+            line-height: 0;
+            position: relative;
+        }
+        
+        sup {
+            top: -0.5em;
+        }
+        
+        sub {
+            bottom: -0.25em;
+        }
+    </style>
+    <!-- MathJax 数学公式渲染 -->
+    <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [['$','$'], ['\\(','\\)']],
+            processEscapes: true
+        },
+        "HTML-CSS": { 
+            scale: 115,
+            linebreaks: { automatic: true },
+            preferredFont: "STIX",
+            availableFonts: ["STIX","TeX"],
+            mtextFontInherit: true,
+            matchFontHeight: true,
+            styles: {
+                ".MathJax_Display": {
+                    "text-align": "center",
+                    margin: "1em 0",
+                    "font-size": "120%"
+                },
+                ".MathJax": {
+                    color: "inherit"
+                }
+            }
+        },
+        displayAlign: "center",
+        displayIndent: "0em",
+        messageStyle: "none",
+        CommonHTML: {
+            linebreaks: { automatic: true },
+            scale: 115,
+            styles: {
+                ".mjx-chtml": {
+                    padding: "6px 0",
+                    "font-size": "120%"
+                },
+                ".mjx-mfrac": {
+                    "margin-top": ".2em",
+                    "margin-bottom": ".2em"
+                },
+                ".mjx-frac": {
+                    "font-size": "120%"
+                },
+                ".mjx-line": {
+                    "border-top-width": "2px !important",
+                    "border-color": "currentColor !important"
+                }
+            }
+        }
+    });
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- 引入Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+</head>
+<body>
+    <div class="container">
+        <header class="header animate__animated animate__fadeInDown">
+            <h1 data-i18n="page_title">光刻胶模型矩阵可视化</h1>
+            <p class="subtitle" data-i18n="subtitle">探索三种光刻胶模型在不同维度下的实现方式</p>
+            <div class="header-controls">
+                <button id="view-mode-toggle"><i class="fas fa-th-large"></i> <span data-i18n="view_mode_toggle">切换视图</span></button>
+                <button id="theme-toggle"><i class="fas fa-moon"></i> <span data-i18n="theme_toggle_dark">切换主题</span></button>
+                <button id="language-toggle"><i class="fas fa-language"></i> <span data-i18n="language_toggle">切换语言 (English)</span></button>
+            </div>
+        </header>
+
+        <div class="matrix-container">
+            <div class="dimension-labels">
+                <div class="label" data-i18n="dim_1d">1D 模型</div>
+                <div class="label" data-i18n="dim_2d">2D 模型</div>
+                <div class="label" data-i18n="dim_3d">3D 模型</div>
+            </div>
+            
+            <div class="model-labels">
+                <div class="label" data-i18n="model_dill">Dill 模型</div>
+                <div class="label" data-i18n="model_enhanced_dill">增强 Dill 模型</div>
+                <div class="label" data-i18n="model_car">CAR 模型</div>
+            </div>
+            
+            <div class="matrix">
+                <!-- 第一行：Dill 模型 -->
+                <div class="matrix-cell" data-model="dill" data-dimension="1d">
+                    <div class="cell-header">
+                        <h3 data-i18n="dill_1d">Dill 模型 - 1D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="light_intensity">光强分布:</h4>
+                            <div class="formula">
+                                I(x) = I<sub>avg</sub> · (1 + V · cos(K · x))
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="exposure_dose">曝光剂量:</h4>
+                            <div class="formula">
+                                D(x) = I(x) · t<sub>exp</sub>
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="thickness_dist">厚度分布:</h4>
+                            <div class="formula">
+                                M(x) = e<sup>-C · D(x)</sup>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="matrix-cell" data-model="dill" data-dimension="2d">
+                    <div class="cell-header">
+                        <h3 data-i18n="dill_2d">Dill 模型 - 2D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="light_intensity">光强分布:</h4>
+                            <div class="formula">
+                                I(x,y) = I<sub>avg</sub> · (1 + V · cos(K<sub>x</sub> · x + K<sub>y</sub> · y + φ))
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="exposure_dose">曝光剂量:</h4>
+                            <div class="formula">
+                                D(x,y) = I(x,y) · t<sub>exp</sub>
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="thickness_dist">厚度分布:</h4>
+                            <div class="formula">
+                                M(x,y) = e<sup>-C · D(x,y)</sup>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="matrix-cell" data-model="dill" data-dimension="3d">
+                    <div class="cell-header">
+                        <h3 data-i18n="dill_3d">Dill 模型 - 3D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="light_intensity">光强分布:</h4>
+                            <div class="formula">
+                                I(x,y,z) = I<sub>avg</sub> · (1 + V · cos(K<sub>x</sub> · x + K<sub>y</sub> · y + K<sub>z</sub> · z + φ))
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="exposure_dose">曝光剂量:</h4>
+                            <div class="formula">
+                                D(x,y,z) = I(x,y,z) · t<sub>exp</sub>
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="thickness_dist">厚度分布:</h4>
+                            <div class="formula">
+                                M(x,y,z) = e<sup>-C · D(x,y,z)</sup>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 第二行：增强 Dill 模型 -->
+                <div class="matrix-cell" data-model="enhanced-dill" data-dimension="1d">
+                    <div class="cell-header">
+                        <h3 data-i18n="enhanced_dill_1d">增强 Dill 模型 - 1D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="light_attenuation">光强衰减方程:</h4>
+                            <div class="formula special-formula">
+                                <div class="fraction">
+                                    <span class="numerator">∂I(z)</span>
+                                    <span class="denominator">∂z</span>
+                                </div>
+                                = -I(z) · [A(z<sub>h</sub>,T,t<sub>B</sub>) · M(z) + B(z<sub>h</sub>,T,t<sub>B</sub>)]
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="photosensitizer_concentration">感光剂浓度方程:</h4>
+                            <div class="formula">
+                                <div class="fraction">
+                                    <span class="numerator">∂M(z)</span>
+                                    <span class="denominator">∂t</span>
+                                </div>
+                                = -I(z) · M(z) · C(z<sub>h</sub>,T,t<sub>B</sub>)
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="parameter_fitting">参数拟合:</h4>
+                            <div class="formula">
+                                A(z<sub>h</sub>,T,t<sub>B</sub>) = a<sub>0</sub> + a<sub>1</sub> · z<sub>h</sub> + a<sub>2</sub> · T + a<sub>3</sub> · z<sub>h</sub><sup>2</sup> + a<sub>4</sub> · z<sub>h</sub> · T + a<sub>5</sub> · T<sup>2</sup> + a<sub>6</sub> · t<sub>B</sub>
+                            </div>
+                            <div class="formula">
+                                B(z<sub>h</sub>,T,t<sub>B</sub>) = b<sub>0</sub> + b<sub>1</sub> · z<sub>h</sub> + b<sub>2</sub> · T + b<sub>3</sub> · t<sub>B</sub>
+                            </div>
+                            <div class="formula">
+                                C(z<sub>h</sub>,T,t<sub>B</sub>) = c<sub>0</sub> + c<sub>1</sub> · z<sub>h</sub> + c<sub>2</sub> · T + c<sub>3</sub> · z<sub>h</sub><sup>2</sup> + c<sub>4</sub> · t<sub>B</sub>
+                            </div>
+                            <p class="note">z<sub>h</sub>表示光刻胶厚度，T为温度，t<sub>B</sub>为烘烤时间，a<sub>i</sub>、b<sub>i</sub>、c<sub>i</sub>为拟合系数</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="matrix-cell" data-model="enhanced-dill" data-dimension="2d">
+                    <div class="cell-header">
+                        <h3 data-i18n="enhanced_dill_2d">增强 Dill 模型 - 2D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="initial_light_intensity">初始光强分布:</h4>
+                            <div class="formula">
+                                I(x,y) = I<sub>0</sub> · (1 + V · cos(K<sub>x</sub> · x + K<sub>y</sub> · y + φ))
+                            </div>
+                            <p class="note">其中I<sub>0</sub>为入射光强，V为对比度</p>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="horizontal_light_attenuation">水平方向光强衰减:</h4>
+                            <div class="formula">
+                                <div class="fraction">
+                                    <span class="numerator">∂I(x,y)</span>
+                                    <span class="denominator">∂y</span>
+                                </div>
+                                = -I(x,y) · [A(z<sub>h</sub>,T,t<sub>B</sub>) · M(x,y) + B(z<sub>h</sub>,T,t<sub>B</sub>)]
+                            </div>
+                            <p class="note">z<sub>h</sub>表示光刻胶厚度，T为温度，t<sub>B</sub>为烘烤时间</p>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="photosensitizer_concentration">感光剂浓度方程:</h4>
+                            <div class="formula">
+                                <div class="fraction">
+                                    <span class="numerator">∂M(x,y)</span>
+                                    <span class="denominator">∂t</span>
+                                </div>
+                                = -I(x,y) · M(x,y) · C(z<sub>h</sub>,T,t<sub>B</sub>)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="matrix-cell" data-model="enhanced-dill" data-dimension="3d">
+                    <div class="cell-header">
+                        <h3 data-i18n="enhanced_dill_3d">增强 Dill 模型 - 3D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="three_dim_initial_intensity">三维光强分布:</h4>
+                            <div class="formula">
+                                I(x,y,z) = I<sub>0</sub> · (1 + V · cos(K<sub>x</sub> · x + K<sub>y</sub> · y + K<sub>z</sub> · z + φ))
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="three_dim_light_propagation">三维光强传播方程:</h4>
+                            <div class="formula">
+                                <div class="fraction">
+                                    <span class="numerator">∂I(x,y,z)</span>
+                                    <span class="denominator">∂z</span>
+                                </div>
+                                = -I(x,y,z) · [A(z<sub>h</sub>,T,t<sub>B</sub>) · M(x,y,z) + B(z<sub>h</sub>,T,t<sub>B</sub>)]
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="three_dim_photosensitizer">三维感光剂演化方程:</h4>
+                            <div class="formula">
+                                <div class="fraction">
+                                    <span class="numerator">∂M(x,y,z)</span>
+                                    <span class="denominator">∂t</span>
+                                </div>
+                                = -I(x,y,z) · M(x,y,z) · C(z<sub>h</sub>,T,t<sub>B</sub>)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 第三行：CAR 模型 -->
+                <div class="matrix-cell" data-model="car" data-dimension="1d">
+                    <div class="cell-header">
+                        <h3 data-i18n="car_1d">CAR 模型 - 1D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="acid_generation">光酸生成:</h4>
+                            <div class="formula">
+                                [H<sup>+</sup>](x) = η · I<sub>avg</sub> · (1 + V · cos(K · x)) · t<sub>exp</sub>
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="acid_diffusion">光酸扩散:</h4>
+                            <div class="formula">
+                                [H<sup>+</sup>]<sub>diff</sub>(x) = G([H<sup>+</sup>](x), l<sub>diff</sub>) = 
+                                <div class="fraction">
+                                    <span class="numerator">1</span>
+                                    <span class="denominator">√2π · l<sub>diff</sub></span>
+                                </div>
+                                ∫ [H<sup>+</sup>](x') · e<sup>-(x-x')²/(2·l<sub>diff</sub>²)</sup> dx'
+                            </div>
+                            <p class="note" data-i18n="note_diffusion">其中G表示高斯扩散函数，l<sub>diff</sub>为扩散长度（表征光酸在光刻胶中的扩散能力）</p>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="deprotection_reaction">脱保护反应:</h4>
+                            <div class="formula">
+                                Deprotection(x) = 1 - e<sup>-k · [H<sup>+</sup>]<sub>diff</sub>(x) · A</sup>
+                            </div>
+                            <p class="note">k为脱保护反应速率常数，A为化学放大因子（表示每个光酸分子能催化脱保护的高分子单体数量）</p>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="development_thickness">显影厚度:</h4>
+                            <div class="formula">
+                                Thickness(x) = 1 - Deprotection(x)<sup>contrast</sup>
+                            </div>
+                            <p class="note">contrast为显影对比度参数，决定脱保护区域与未脱保护区域之间的过渡陡峭程度</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="matrix-cell" data-model="car" data-dimension="2d">
+                    <div class="cell-header">
+                        <h3 data-i18n="car_2d">CAR 模型 - 2D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="acid_generation">光酸生成:</h4>
+                            <div class="formula">
+                                [H<sup>+</sup>](x,y) = η · I<sub>avg</sub> · (1 + V · cos(K<sub>x</sub> · x + K<sub>y</sub> · y + φ)) · t<sub>exp</sub>
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="two_dim_acid_diffusion">二维光酸扩散:</h4>
+                            <div class="formula">
+                                [H<sup>+</sup>]<sub>diff</sub>(x,y) = G<sub>2</sub>([H<sup>+</sup>](x,y), l<sub>diff</sub>) = 
+                                <div class="fraction">
+                                    <span class="numerator">1</span>
+                                    <span class="denominator">2π · l<sub>diff</sub>²</span>
+                                </div>
+                                ∬ [H<sup>+</sup>](x',y') · e<sup>-((x-x')²+(y-y')²)/(2·l<sub>diff</sub>²)</sup> dx'dy'
+                            </div>
+                            <p class="note" data-i18n="note_diffusion_2d">其中G<sub>2</sub>表示二维高斯扩散函数</p>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="deprotection_reaction">脱保护反应:</h4>
+                            <div class="formula">
+                                Deprotection(x,y) = 1 - e<sup>-k · [H<sup>+</sup>]<sub>diff</sub>(x,y) · A</sup>
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="development_thickness">显影厚度:</h4>
+                            <div class="formula">
+                                Thickness(x,y) = 1 - Deprotection(x,y)<sup>contrast</sup>
+                            </div>
+                            <p class="note">contrast为显影对比度参数，决定脱保护区域与未脱保护区域之间的过渡陡峭程度</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="matrix-cell" data-model="car" data-dimension="3d">
+                    <div class="cell-header">
+                        <h3 data-i18n="car_3d">CAR 模型 - 3D</h3>
+                        <div class="cell-controls">
+                            <button class="expand-button" title="展开详情" data-i18n-title="expand_details"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div class="cell-content">
+                        <div class="formula-section">
+                            <h4 data-i18n="acid_generation">光酸生成:</h4>
+                            <div class="formula">
+                                [H<sup>+</sup>](x,y,z) = η · I<sub>avg</sub> · (1 + V · cos(K<sub>x</sub> · x + K<sub>y</sub> · y + K<sub>z</sub> · z + φ)) · t<sub>exp</sub>
+                            </div>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="three_dim_acid_diffusion">三维光酸扩散:</h4>
+                            <div class="formula">
+                                [H<sup>+</sup>]<sub>diff</sub>(x,y,z) = G<sub>3</sub>([H<sup>+</sup>](x,y,z), l<sub>diff</sub>) = 
+                                <div class="fraction">
+                                    <span class="numerator">1</span>
+                                    <span class="denominator">(2π)<sup>3/2</sup> · l<sub>diff</sub>³</span>
+                                </div>
+                                ∭ [H<sup>+</sup>](x',y',z') · e<sup>-((x-x')²+(y-y')²+(z-z')²)/(2·l<sub>diff</sub>²)</sup> dx'dy'dz'
+                            </div>
+                            <p class="note" data-i18n="note_diffusion_3d">其中G<sub>3</sub>表示三维高斯扩散函数，l<sub>diff</sub>为三维空间中的扩散长度</p>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="deprotection_reaction">脱保护反应:</h4>
+                            <div class="formula">
+                                Deprotection(x,y,z) = 1 - e<sup>-k · [H<sup>+</sup>]<sub>diff</sub>(x,y,z) · A</sup>
+                            </div>
+                            <p class="note">k为脱保护反应速率常数，A为化学放大因子</p>
+                        </div>
+                        <div class="formula-section">
+                            <h4 data-i18n="development_thickness">显影厚度:</h4>
+                            <div class="formula">
+                                Thickness(x,y,z) = 1 - Deprotection(x,y,z)<sup>contrast</sup>
+                            </div>
+                            <p class="note">contrast为显影对比度参数，决定脱保护区域与未脱保护区域之间的过渡陡峭程度</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模态框容器 -->
+        <div id="modal-container" class="modal-container">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title" data-i18n="modal_title">详细信息</h2>
+                    <button id="modal-close" title="关闭" aria-label="关闭模态框"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="modal-body" class="modal-body">
+                    <!-- 内容将通过JavaScript动态填充 -->
+                </div>
+                <div class="modal-footer">
+                    <div class="model-navigation">
+                        <button id="prev-model"><i class="fas fa-arrow-left"></i> <span data-i18n="prev_model">上一个模型</span></button>
+                        <button id="next-model"><span data-i18n="next_model">下一个模型</span> <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>© 2025 <span data-i18n="page_title">光刻胶模型矩阵可视化</span> | <span data-i18n="copyright_holder">香港大学</span> | <a href="/" data-i18n="return_main">返回主应用</a></p>
+        </footer>
+    </div>
+
+    <script src="js/i18n.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html> 

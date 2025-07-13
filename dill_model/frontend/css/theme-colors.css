@@ -1,0 +1,315 @@
+/* 主题颜色定义 */
+:root {
+    /* 默认白色背景 */
+    --background-color: #ffffff;
+    --card-background-color: #ffffff;
+    --section-background-color: #ffffff;
+    --parameter-group-bg: #ffffff;
+}
+
+/* Dill模型主题 - 蓝色系 (更浅) - 原红色系改为蓝色系 */
+body.theme-dill {
+    --background-color: #f9fcff; /* 蓝色系背景 */
+    --card-background-color: #ffffff;
+    --section-background-color: #ffffff;
+    --parameter-group-bg: #ffffff;
+}
+
+/* Enhanced Dill模型主题 - 红色系 (更浅) - 原蓝色系改为红色系 */
+body.theme-enhanced-dill {
+    --background-color: #fff9f9; /* 红色系背景 */
+    --card-background-color: #ffffff;
+    --section-background-color: #ffffff;
+    --parameter-group-bg: #ffffff;
+}
+
+/* CAR模型主题 - 绿色系 (更浅) */
+body.theme-car {
+    --background-color: #f9fff9; /* 原来是 #f3fff5，调浅 */
+    --card-background-color: #ffffff;
+    --section-background-color: #ffffff;
+    --parameter-group-bg: #ffffff;
+}
+
+/* 应用主题色到相关元素 */
+body {
+    background-color: var(--background-color);
+    transition: background-color 0.3s ease;
+}
+
+.main-content {
+    background-color: var(--background-color);
+}
+
+.model-card {
+    background-color: var(--card-background-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03); /* 减少阴影深度 */
+    transition: all 0.3s ease;
+}
+
+.parameters-section, 
+.model-selection-section, 
+.results-section {
+    background-color: var(--card-background-color);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    padding: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02); /* 减少阴影深度 */
+    transition: background-color 0.3s ease;
+}
+
+/* 参数组容器样式 */
+.parameter-group-container {
+    background-color: var(--parameter-group-bg);
+    border-radius: 8px;
+    padding: 12px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* 修改卡片容器背景 */
+.model-description-container {
+    background-color: var(--card-background-color);
+    border-radius: 10px;
+    padding: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.container {
+    background-color: var(--background-color);
+    transition: background-color 0.3s ease;
+}
+
+/* 边框高亮色 (更浅) - 交换颜色 */
+body.theme-dill .model-card,
+body.theme-dill .parameter-group-container,
+body.theme-dill .plot-item {
+    border-color: rgba(150, 180, 255, 0.2); /* 蓝色系边框 */
+}
+
+body.theme-enhanced-dill .model-card,
+body.theme-enhanced-dill .parameter-group-container,
+body.theme-enhanced-dill .plot-item {
+    border-color: rgba(255, 150, 150, 0.2); /* 红色系边框 */
+}
+
+body.theme-car .model-card,
+body.theme-car .parameter-group-container,
+body.theme-car .plot-item {
+    border-color: rgba(150, 220, 150, 0.2); /* 原来是 rgba(100, 200, 100, 0.3)，调浅 */
+}
+
+/* 细微的边框高亮和阴影效果 (更浅) - 交换颜色 */
+body.theme-dill .section-title {
+    border-bottom: 2px solid rgba(150, 180, 255, 0.3); /* 蓝色系边框 */
+}
+
+body.theme-enhanced-dill .section-title {
+    border-bottom: 2px solid rgba(255, 150, 150, 0.3); /* 红色系边框 */
+}
+
+body.theme-car .section-title {
+    border-bottom: 2px solid rgba(150, 220, 150, 0.3); /* 原来是 rgba(100, 200, 100, 0.5)，调浅 */
+}
+
+/* 模型描述卡片边框和渐变效果 (更浅) - 交换颜色 */
+body.theme-dill #dill-desc {
+    border-left: 4px solid rgba(150, 180, 255, 0.5); /* 蓝色系边框 */
+    box-shadow: 0 2px 8px rgba(150, 180, 255, 0.08); /* 蓝色系阴影 */
+}
+
+body.theme-enhanced-dill #enhanced-dill-desc {
+    border-left: 4px solid rgba(255, 150, 150, 0.5); /* 红色系边框 */
+    box-shadow: 0 2px 8px rgba(255, 150, 150, 0.08); /* 红色系阴影 */
+}
+
+body.theme-car #car-desc {
+    border-left: 4px solid rgba(150, 220, 150, 0.5); /* 原来是 rgba(100, 200, 100, 0.7)，调浅 */
+    box-shadow: 0 2px 8px rgba(150, 220, 150, 0.08); /* 原来是 rgba(100, 200, 100, 0.15)，调浅 */
+}
+
+/* 结果图表外框样式 - 交换颜色 */
+.plot-item {
+    background-color: var(--card-background-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03); /* 减少阴影深度 */
+    transition: all 0.3s ease;
+}
+
+body.theme-dill .plot-item {
+    box-shadow: 0 2px 8px rgba(150, 180, 255, 0.05); /* 蓝色系阴影 */
+}
+
+body.theme-enhanced-dill .plot-item {
+    box-shadow: 0 2px 8px rgba(255, 150, 150, 0.05); /* 红色系阴影 */
+}
+
+body.theme-car .plot-item {
+    box-shadow: 0 2px 8px rgba(150, 220, 150, 0.05); /* 原来是 rgba(100, 200, 100, 0.1)，调浅 */
+}
+
+/* 按钮样式适配主题色 (更浅) - 交换颜色 */
+body.theme-dill .calculate-btn {
+    background-color: rgba(150, 180, 255, 0.6); /* 蓝色系按钮 */
+}
+
+body.theme-enhanced-dill .calculate-btn {
+    background-color: rgba(255, 150, 150, 0.6); /* 红色系按钮 */
+}
+
+body.theme-car .calculate-btn {
+    background-color: rgba(150, 220, 150, 0.6); /* 原来是 rgba(100, 200, 100, 0.8)，调浅 */
+}
+
+body.theme-dill .calculate-btn:hover {
+    background-color: rgba(150, 180, 255, 0.7); /* 蓝色系按钮悬停 */
+}
+
+body.theme-enhanced-dill .calculate-btn:hover {
+    background-color: rgba(255, 150, 150, 0.7); /* 红色系按钮悬停 */
+}
+
+body.theme-car .calculate-btn:hover {
+    background-color: rgba(150, 220, 150, 0.7); /* 原来是 rgba(100, 200, 100, 0.9)，调浅 */
+}
+
+/* 波形参数容器样式 - 交换颜色 */
+.sine-wave-params-container {
+    background-color: var(--card-background-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 15px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.sine-wave-type-container {
+    background-color: var(--card-background-color);
+    border-radius: 8px;
+    padding: 12px;
+    transition: background-color 0.3s ease;
+}
+
+body.theme-dill .sine-wave-params-container,
+body.theme-dill .sine-wave-type-container {
+    border: 1px solid rgba(150, 180, 255, 0.15); /* 蓝色系边框 */
+}
+
+body.theme-enhanced-dill .sine-wave-params-container,
+body.theme-enhanced-dill .sine-wave-type-container {
+    border: 1px solid rgba(255, 150, 150, 0.15); /* 红色系边框 */
+}
+
+body.theme-car .sine-wave-params-container,
+body.theme-car .sine-wave-type-container {
+    border: 1px solid rgba(150, 220, 150, 0.15); /* 原来是 rgba(100, 200, 100, 0.2)，调浅 */
+}
+
+/* 全局过渡效果 */
+* {
+    transition: background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* 主题颜色指示器 - 交换颜色 */
+.model-selection-section::before {
+    content: '';
+    display: block;
+    height: 4px;
+    width: 100%;
+    margin-bottom: 15px;
+    border-radius: 2px;
+    background-color: #eee; /* 原来是 #ddd，调浅 */
+    transition: background-color 0.5s ease;
+}
+
+body.theme-dill .model-selection-section::before {
+    background-color: rgba(150, 180, 255, 0.5); /* 蓝色系指示器 */
+}
+
+body.theme-enhanced-dill .model-selection-section::before {
+    background-color: rgba(255, 150, 150, 0.5); /* 红色系指示器 */
+}
+
+body.theme-car .model-selection-section::before {
+    background-color: rgba(150, 220, 150, 0.5); /* 原来是 rgba(100, 200, 100, 0.7)，调浅 */
+}
+
+/* 模型描述卡片标题样式 - 交换颜色 */
+.model-description-title {
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f2f2f2; /* 原来是 #eee，调浅 */
+    margin-bottom: 12px;
+    transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+body.theme-dill .model-description-title {
+    color: rgba(120, 160, 230, 0.8); /* 蓝色系标题 */
+    border-color: rgba(150, 180, 255, 0.2); /* 蓝色系边框 */
+}
+
+body.theme-enhanced-dill .model-description-title {
+    color: rgba(255, 120, 120, 0.8); /* 红色系标题 */
+    border-color: rgba(255, 150, 150, 0.2); /* 红色系边框 */
+}
+
+body.theme-car .model-description-title {
+    color: rgba(110, 200, 110, 0.8); /* 原来是 rgba(60, 180, 60, 0.9)，调浅 */
+    border-color: rgba(150, 220, 150, 0.2); /* 原来是 rgba(100, 200, 100, 0.3)，调浅 */
+}
+
+/* 模型核心公式背景 - 修改为白色背景 */
+.model-core-formula {
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    background-color: #ffffff;
+    transition: background-color 0.3s ease;
+}
+
+/* 删除模型公式的有色背景 - 交换颜色 */
+body.theme-dill .model-core-formula {
+    background-color: #ffffff;
+    border: 1px solid rgba(150, 180, 255, 0.1); /* 蓝色系边框 */
+}
+
+body.theme-enhanced-dill .model-core-formula {
+    background-color: #ffffff;
+    border: 1px solid rgba(255, 150, 150, 0.1); /* 红色系边框 */
+}
+
+body.theme-car .model-core-formula {
+    background-color: #ffffff;
+    border: 1px solid rgba(150, 220, 150, 0.1); /* 原来是 rgba(100, 200, 100, 0.15)，调浅 */
+}
+
+/* 模型卡片中的按钮样式 - 交换颜色 */
+.toggle-details-btn {
+    transition: background-color 0.3s ease;
+    color: #ffffff !important; /* 固定白色文字 */
+    font-weight: bold; /* 文字加粗 */
+}
+
+body.theme-dill .toggle-details-btn {
+    background-color: rgba(150, 180, 255, 0.7); /* 蓝色系按钮背景，增加不透明度 */
+}
+
+body.theme-dill .toggle-details-btn:hover {
+    background-color: rgba(150, 180, 255, 0.85); /* 蓝色系按钮背景悬停 */
+}
+
+body.theme-enhanced-dill .toggle-details-btn {
+    background-color: rgba(255, 150, 150, 0.7); /* 红色系按钮背景，增加不透明度 */
+}
+
+body.theme-enhanced-dill .toggle-details-btn:hover {
+    background-color: rgba(255, 150, 150, 0.85); /* 红色系按钮背景悬停 */
+}
+
+body.theme-car .toggle-details-btn {
+    background-color: rgba(150, 220, 150, 0.7); /* 绿色系按钮背景，增加不透明度 */
+}
+
+body.theme-car .toggle-details-btn:hover {
+    background-color: rgba(150, 220, 150, 0.85); /* 绿色系按钮背景悬停 */
+} 

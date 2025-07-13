@@ -1,0 +1,1983 @@
+/* ===========================================
+   专业页眉和页脚样式 - 企业级设计升级版 (优化版)
+   设计目标：简洁、现代、商务、专业、用户友好
+   =========================================== */
+
+/* 专业页眉样式 - 更新为官网蓝色背景 */
+.professional-header {
+    background: linear-gradient(135deg, #2c5aa0 0%, #3d71b8 25%, #4a7bc8 50%, #3d71b8 75%, #2c5aa0 100%);
+    color: white;
+    box-shadow: 0 4px 20px rgba(44, 90, 160, 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    border-bottom: 4px solid #ffd700;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+.professional-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 215, 0, 0.15) 50%, transparent 70%);
+    animation: headerShine 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes headerShine {
+    0%, 100% { transform: translateX(-100%); opacity: 0; }
+    50% { transform: translateX(100%); opacity: 1; }
+}
+
+/* 页眉主要区域 - 增加高度以适应更大的LOGO */
+.header-main {
+    padding: 1.5rem 0; /* 增加垂直间距 */
+    position: relative;
+}
+
+.header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    gap: 3rem; /* 增加各部分间距 */
+    min-height: 100px; /* 增加最小高度以适应更大的LOGO */
+}
+
+/* 品牌部分 - 优化间距 */
+.brand-section {
+    flex: 0 0 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center; /* 确保垂直居中 */
+    height: 100%; /* 确保充满父容器高度 */
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 2rem; /* 增加LOGO与文字间距 */
+    transition: all 0.3s ease;
+    height: 100%; /* 确保充满父容器高度 */
+}
+
+/* Logo images styling - 进一步放大校徽 */
+.logo-images {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+.university-logo,
+.department-logo {
+    height: 75px; /* 从60px进一步增加到75px */
+    width: auto;
+    transition: all 0.3s ease;
+    border-radius: 10px;
+    background: transparent;
+    padding: 5px; /* 增加padding */
+    /* 增强视觉效果 */
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)) brightness(1.2) contrast(1.2);
+}
+
+.university-logo:hover,
+.department-logo:hover {
+    transform: translateY(-4px) scale(1.1); /* 增强悬浮效果 */
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) brightness(1.3) contrast(1.3);
+}
+
+/* APP原子图标LOGO样式 - 适配页眉 */
+.app-logo {
+    font-size: 4rem; /* 大小适中，与原校徽高度相似 */
+    color: #ffd700; /* 金色主色 */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-shadow: 0 4px 8px rgba(255, 215, 0, 0.4), 0 0 20px rgba(255, 215, 0, 0.3);
+    position: relative;
+    cursor: pointer;
+    padding: 10px;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: atomGlow 3s ease-in-out infinite alternate, atomRotate 8s linear infinite;
+}
+
+/* 原子旋转动画 */
+@keyframes atomRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 原子发光动画 */
+@keyframes atomGlow {
+    0% { 
+        color: #ffd700;
+        text-shadow: 0 4px 8px rgba(255, 215, 0, 0.4), 0 0 20px rgba(255, 215, 0, 0.3);
+        filter: brightness(1);
+    }
+    100% { 
+        color: #fff200;
+        text-shadow: 0 6px 12px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 210, 0, 0.3);
+        filter: brightness(1.2) drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
+    }
+}
+
+/* 悬浮效果 */
+.app-logo:hover {
+    transform: translateY(-6px) scale(1.15) rotate(15deg);
+    color: #fff200;
+    text-shadow: 0 8px 16px rgba(255, 215, 0, 0.7), 0 0 40px rgba(255, 215, 0, 0.6), 0 0 60px rgba(255, 210, 0, 0.4);
+    filter: brightness(1.3) drop-shadow(0 0 25px rgba(255, 215, 0, 0.8));
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.25) 0%, transparent 70%);
+    animation-play-state: paused; /* 悬浮时暂停旋转 */
+}
+
+/* 原子脉冲效果 */
+.app-logo::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: atomPulse 2s ease-in-out infinite;
+    z-index: -1;
+}
+
+@keyframes atomPulse {
+    0%, 100% { 
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    50% { 
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* 原子轨道效果 */
+.app-logo::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120%;
+    height: 120%;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: atomOrbit 4s linear infinite reverse;
+    z-index: -1;
+}
+
+@keyframes atomOrbit {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 主题适配 - 不同模型主题下的原子图标颜色 */
+.theme-dill .app-logo {
+    color: #3498db;
+    text-shadow: 0 4px 8px rgba(52, 152, 219, 0.4), 0 0 20px rgba(52, 152, 219, 0.3);
+    background: radial-gradient(circle, rgba(52, 152, 219, 0.15) 0%, transparent 70%);
+}
+
+.theme-dill .app-logo:hover {
+    color: #5dade2;
+    text-shadow: 0 8px 16px rgba(52, 152, 219, 0.7), 0 0 40px rgba(52, 152, 219, 0.6), 0 0 60px rgba(52, 152, 219, 0.4);
+    background: radial-gradient(circle, rgba(52, 152, 219, 0.25) 0%, transparent 70%);
+}
+
+.theme-dill .app-logo::after {
+    border-color: rgba(52, 152, 219, 0.3);
+}
+
+.theme-enhanced-dill .app-logo {
+    color: #9b59b6;
+    text-shadow: 0 4px 8px rgba(155, 89, 182, 0.4), 0 0 20px rgba(155, 89, 182, 0.3);
+    background: radial-gradient(circle, rgba(155, 89, 182, 0.15) 0%, transparent 70%);
+}
+
+.theme-enhanced-dill .app-logo:hover {
+    color: #af7ac5;
+    text-shadow: 0 8px 16px rgba(155, 89, 182, 0.7), 0 0 40px rgba(155, 89, 182, 0.6), 0 0 60px rgba(155, 89, 182, 0.4);
+    background: radial-gradient(circle, rgba(155, 89, 182, 0.25) 0%, transparent 70%);
+}
+
+.theme-enhanced-dill .app-logo::after {
+    border-color: rgba(155, 89, 182, 0.3);
+}
+
+.theme-car .app-logo {
+    color: #e67e22;
+    text-shadow: 0 4px 8px rgba(230, 126, 34, 0.4), 0 0 20px rgba(230, 126, 34, 0.3);
+    background: radial-gradient(circle, rgba(230, 126, 34, 0.15) 0%, transparent 70%);
+}
+
+.theme-car .app-logo:hover {
+    color: #f39c12;
+    text-shadow: 0 8px 16px rgba(230, 126, 34, 0.7), 0 0 40px rgba(230, 126, 34, 0.6), 0 0 60px rgba(230, 126, 34, 0.4);
+    background: radial-gradient(circle, rgba(230, 126, 34, 0.25) 0%, transparent 70%);
+}
+
+.theme-car .app-logo::after {
+    border-color: rgba(230, 126, 34, 0.3);
+}
+
+/* 响应式适配 - 移动设备上调整原子图标大小 */
+@media (max-width: 768px) {
+    .app-logo {
+        font-size: 3rem;
+        padding: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-logo {
+        font-size: 2.5rem;
+        padding: 6px;
+    }
+}
+
+.logo-container:hover {
+    transform: translateX(6px); /* 增加悬浮移动距离 */
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* 垂直居中 */
+    min-width: 0;
+    margin-left: 1.2rem; /* 与LOGO保持适当距离 */
+}
+
+.logo-title {
+    font-size: 2rem; /* 从1.8rem增加到2rem */
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.4rem; /* 增加间距 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); /* 增强文字阴影 */
+    position: relative;
+    background: linear-gradient(135deg, #e8f4fd 0%, #b8daff 30%, #87ceeb 60%, #e8f4fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: titleShimmer 4s ease-in-out infinite;
+}
+
+/* 标题整体渐变动画 */
+@keyframes titleShimmer {
+    0%, 100% { 
+        background-position: 0% 50%;
+        filter: brightness(1) drop-shadow(0 0 8px rgba(184, 218, 255, 0.3));
+    }
+    50% { 
+        background-position: 100% 50%;
+        filter: brightness(1.1) drop-shadow(0 0 12px rgba(184, 218, 255, 0.5));
+    }
+}
+
+/* 增强黄色高亮效果 - "多模型"部分 */
+.logo-highlight {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 15%, #fff200 30%, #ffa500 45%, #ff8c00 60%, #ffed4e 75%, #ffd700 90%, #fff200 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 300% 300%;
+    font-weight: 900; /* 增加字重 */
+    position: relative;
+    animation: goldGlow 3s ease-in-out infinite alternate, colorShift 5s ease-in-out infinite;
+    display: inline-block;
+    transform-origin: center;
+}
+
+/* 为"多模型"添加发光边框效果 */
+.logo-highlight::before {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 140, 0, 0.3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: blur(1px);
+    transform: scale(1.05);
+}
+
+/* 黄色发光动画 */
+@keyframes goldGlow {
+    0% { 
+        filter: brightness(1) drop-shadow(0 0 8px rgba(255, 215, 0, 0.5)) drop-shadow(0 0 15px rgba(255, 140, 0, 0.3));
+        transform: scale(1);
+    }
+    100% { 
+        filter: brightness(1.3) drop-shadow(0 0 20px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 30px rgba(255, 140, 0, 0.5));
+        transform: scale(1.02);
+    }
+}
+
+/* 颜色渐变移动动画 */
+@keyframes colorShift {
+    0%, 100% { 
+        background-position: 0% 50%;
+    }
+    25% { 
+        background-position: 25% 25%;
+    }
+    50% { 
+        background-position: 100% 50%;
+    }
+    75% { 
+        background-position: 75% 75%;
+    }
+}
+
+.logo-subtitle {
+    font-size: 1rem; /* 从0.9rem增加到1rem */
+    opacity: 0.9;
+    font-weight: 400;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: linear-gradient(90deg, #e8f4fd 0%, #b8daff 25%, #87ceeb 50%, #b8daff 75%, #e8f4fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 200% 100%;
+    animation: subtitleFlow 5s ease-in-out infinite, subtitleGlow 4s ease-in-out infinite alternate;
+    text-shadow: 0 0 8px rgba(184, 218, 255, 0.4);
+    position: relative;
+}
+
+/* 副标题流动效果 */
+@keyframes subtitleFlow {
+    0%, 100% { 
+        background-position: 0% 50%;
+    }
+    50% { 
+        background-position: 100% 50%;
+    }
+}
+
+.logo-container:hover .logo-subtitle {
+    opacity: 1;
+}
+
+/* 星光闪烁效果 */
+.logo-title::before {
+    content: '✨';
+    position: absolute;
+    top: -5px;
+    right: -15px;
+    font-size: 0.8rem;
+    animation: sparkle 2s ease-in-out infinite;
+    opacity: 0;
+    z-index: 3;
+}
+
+.logo-highlight::after {
+    content: '⭐';
+    position: absolute;
+    top: -3px;
+    right: -20px;
+    font-size: 0.6rem;
+    animation: sparkle 3s ease-in-out infinite reverse;
+    opacity: 0;
+    z-index: 3;
+}
+
+/* 星光闪烁动画 */
+@keyframes sparkle {
+    0%, 100% { 
+        opacity: 0;
+        transform: scale(0.5) rotate(0deg);
+    }
+    50% { 
+        opacity: 1;
+        transform: scale(1.2) rotate(180deg);
+    }
+}
+
+/* 悬停时增强效果 */
+.logo-container:hover .logo-title {
+    animation-duration: 2s; /* 加快动画 */
+}
+
+.logo-container:hover .logo-highlight {
+    animation-duration: 1.5s, 3s; /* 加快动画 */
+    filter: brightness(1.4) drop-shadow(0 0 25px rgba(255, 215, 0, 1)) drop-shadow(0 0 35px rgba(255, 140, 0, 0.7));
+}
+
+.logo-container:hover .logo-subtitle {
+    animation-duration: 2.5s, 2s; /* 加快动画 */
+}
+
+/* 为后面的字添加渐变色彩效果 */
+.logo-title::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 20%, rgba(135, 206, 235, 0.2) 40%, rgba(255, 215, 0, 0.1) 60%, transparent 80%);
+    animation: titleWave 6s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* 波浪扫光效果 */
+@keyframes titleWave {
+    0%, 100% { 
+        transform: translateX(-100%) rotate(0deg);
+        opacity: 0;
+    }
+    25% { 
+        opacity: 0.3;
+        transform: translateX(-50%) rotate(5deg);
+    }
+    50% { 
+        opacity: 0.6;
+        transform: translateX(0%) rotate(-5deg);
+    }
+    75% { 
+        opacity: 0.3;
+        transform: translateX(50%) rotate(3deg);
+    }
+}
+
+/* 英文环境下的特殊布局调整 */
+body[data-lang="en"] .logo-title {
+    font-size: 1.3rem; /* 进一步减小字体以适应分行 */
+    line-height: 1.3;
+    white-space: normal; /* 允许换行 */
+    display: block;
+    max-width: 350px; /* 进一步限制宽度以强制换行 */
+    background: linear-gradient(135deg, #e8f4fd 0%, #add8e6 25%, #87ceeb 50%, #4682b4 75%, #e8f4fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 200% 200%;
+    animation: titleShimmer 4s ease-in-out infinite, englishTitleFlow 8s ease-in-out infinite;
+    word-break: break-word; /* 允许单词断行 */
+    hyphens: auto; /* 启用自动连字符 */
+    -webkit-hyphens: auto;
+    -moz-hyphens: auto;
+}
+
+/* 英文标题专用流动效果 */
+@keyframes englishTitleFlow {
+    0%, 100% { 
+        background-position: 0% 0%;
+        letter-spacing: 0.5px;
+    }
+    25% { 
+        background-position: 50% 25%;
+        letter-spacing: 1px;
+    }
+    50% { 
+        background-position: 100% 50%;
+        letter-spacing: 0.8px;
+    }
+    75% { 
+        background-position: 50% 75%;
+        letter-spacing: 1.2px;
+    }
+}
+
+body[data-lang="en"] .logo-highlight {
+    background: linear-gradient(135deg, #ffd700 0%, #ff6347 20%, #ff1493 40%, #9932cc 60%, #4169e1 80%, #ffd700 100%);
+    background-size: 400% 400%;
+    animation: goldGlow 3s ease-in-out infinite alternate, rainbowShift 6s ease-in-out infinite;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 0 25px rgba(255, 20, 147, 0.4);
+}
+
+/* 彩虹色彩变换效果 */
+@keyframes rainbowShift {
+    0% { background-position: 0% 50%; }
+    25% { background-position: 25% 25%; }
+    50% { background-position: 100% 50%; }
+    75% { background-position: 75% 75%; }
+    100% { background-position: 0% 50%; }
+}
+
+body[data-lang="en"] .logo-subtitle {
+    font-size: 0.85rem; /* 英文时调整副标题 */
+    letter-spacing: 0.5px;
+    white-space: normal; /* 允许副标题换行 */
+    max-width: 350px; /* 与主标题保持一致的宽度 */
+    line-height: 1.3;
+    word-break: break-word;
+    background: linear-gradient(90deg, #b8daff 0%, #87ceeb 50%, #b8daff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: subtitleGlow 4s ease-in-out infinite alternate;
+}
+
+/* 副标题发光效果 */
+@keyframes subtitleGlow {
+    0% { 
+        filter: brightness(1) drop-shadow(0 0 3px rgba(184, 218, 255, 0.3));
+    }
+    100% { 
+        filter: brightness(1.2) drop-shadow(0 0 8px rgba(184, 218, 255, 0.6));
+    }
+}
+
+body[data-lang="en"] .header-content {
+    gap: 2.5rem; /* 英文时减少间距 */
+}
+
+body[data-lang="en"] .logo-container {
+    gap: 1.5rem; /* 英文时减少LOGO间距 */
+}
+
+/* 英文环境下避免文字重叠 */
+body[data-lang="en"] .brand-section {
+    max-width: 520px; /* 增加一点宽度以适应特效 */
+}
+
+body[data-lang="en"] .logo-text {
+    margin-left: 1rem;
+}
+
+/* 英文模式下的页眉工具区域调整 */
+body[data-lang="en"] .header-utilities {
+    margin-left: 2rem; /* 增加左边距以避免与标题重叠 */
+    flex: 0 0 auto;
+    min-width: 120px; /* 确保有足够的空间 */
+}
+
+/* 英文模式下的语言选择框位置调整 */
+body[data-lang="en"] .lang-switcher {
+    margin-left: 1rem; /* 额外的左边距 */
+}
+
+body[data-lang="en"] .lang-select {
+    min-width: 100px; /* 稍微加宽以适应英文 */
+}
+
+/* 导航区域 - 优化间距 */
+.main-nav {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center; /* 确保垂直居中 */
+    min-width: 0;
+    height: 100%; /* 确保充满父容器高度 */
+}
+
+.nav-menu {
+    display: flex;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 25px;
+    padding: 0.3rem;
+    backdrop-filter: blur(10px);
+}
+
+.nav-menu::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+    border-radius: 25px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.nav-menu:hover::before {
+    opacity: 1;
+}
+
+.nav-item {
+    position: relative;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    padding: 0.6rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.nav-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 20px;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: #ffd700;
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.nav-link i {
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.nav-link:hover {
+    color: white;
+    transform: translateY(-1px);
+}
+
+.nav-link:hover::before {
+    opacity: 1;
+}
+
+.nav-link:hover::after {
+    width: 80%;
+}
+
+.nav-link:hover i {
+    transform: scale(1.1);
+}
+
+.nav-item.active .nav-link {
+    color: #ffd700;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+}
+
+.nav-item.active .nav-link::before {
+    opacity: 1;
+}
+
+.nav-item.active .nav-link i {
+    color: #ffd700;
+}
+
+/* 页眉工具区域 - 优化布局 */
+.header-utilities {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* 减少间距，因为元素少了 */
+    flex: 0 0 auto;
+    min-width: 0;
+    height: 100%; /* 确保充满父容器高度 */
+}
+
+/* 已删除 company-info 相关样式，因为该元素已从页眉移除 */
+
+/* 语言选择下拉框样式 */
+.lang-switcher {
+    position: relative;
+}
+
+.lang-select {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem 2rem 0.5rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    min-width: 80px;
+    text-align: center;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 16px;
+}
+
+.lang-select:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%);
+    border-color: rgba(255, 215, 0, 0.6);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    color: #ffd700;
+}
+
+.lang-select:focus {
+    border-color: #ffd700;
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
+}
+
+.lang-select option {
+    background: #1e3c72;
+    color: white;
+    padding: 0.5rem;
+}
+
+/* 已删除 support-info 相关样式，因为该元素已从页眉移除 */
+
+/* 专业页脚样式 - 企业级升级 */
+.professional-footer {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
+    color: white;
+    margin-top: 4rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.professional-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ffd700, #ffed4e, #ffd700);
+    animation: footerGlow 3s ease-in-out infinite;
+}
+
+@keyframes footerGlow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+.footer-main {
+    padding: 3.5rem 0 2.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.footer-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    gap: 3rem;
+    position: relative;
+}
+
+.footer-section {
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+}
+
+.footer-section:hover {
+    transform: translateY(-2px);
+}
+
+/* 公司介绍区 */
+.company-section {
+    padding-right: 1rem;
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.footer-logo:hover {
+    transform: translateX(5px);
+}
+
+.footer-logo i {
+    font-size: 2rem;
+    color: #ffd700;
+    transition: all 0.3s ease;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.footer-logo:hover i {
+    transform: rotate(15deg) scale(1.1);
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+}
+
+.footer-logo span {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, #ffffff 0%, #ffd700 50%, #ffffff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.footer-description {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+.footer-badges {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.badge {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 3px 12px rgba(52, 152, 219, 0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.badge:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+}
+
+.badge:hover::before {
+    left: 100%;
+}
+
+/* 页脚标题 - 企业级设计 */
+.footer-title {
+    color: #ffd700;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 2px solid rgba(255, 215, 0, 0.4);
+    position: relative;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.footer-title::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 30%;
+    height: 2px;
+    background: linear-gradient(90deg, #ffd700, #ffed4e);
+    border-radius: 1px;
+    transition: width 0.3s ease;
+}
+
+.footer-section:hover .footer-title::after {
+    width: 60%;
+}
+
+/* 页脚链接 */
+.footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-links li {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s ease;
+}
+
+.footer-links li:hover {
+    transform: translateX(5px);
+}
+
+.footer-links a {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.95rem;
+    font-weight: 500;
+    position: relative;
+    padding: 0.3rem 0;
+}
+
+.footer-links a::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #ffd700, #ffed4e);
+    transition: width 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: #ffd700;
+    transform: translateX(3px);
+}
+
+.footer-links a:hover::before {
+    width: 100%;
+}
+
+/* 模型徽章 */
+.model-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    min-width: 50px;
+    text-align: center;
+}
+
+.model-badge.dill {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+}
+
+.model-badge.enhanced {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    color: white;
+}
+
+.model-badge.car {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+    color: white;
+}
+
+.model-badge.custom {
+    background: linear-gradient(135deg, #27ae60, #229954);
+    color: white;
+}
+
+/* 联系信息 */
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+}
+
+.contact-item i {
+    color: #ffd700;
+    width: 18px;
+    text-align: center;
+}
+
+/* 页脚底部 */
+.footer-bottom {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1.2rem 0;
+}
+
+.footer-bottom-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    position: relative; /* 为LOGO定位提供参考 */
+}
+
+/* 页脚LOGO样式 - 放在徽章下方 */
+.footer-logos {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4rem; /* 增加LOGO间距从2rem到4rem */
+    margin-top: 1.5rem;
+    padding: 1rem 0;
+    opacity: 0.95;
+    animation: logosContainer 8s ease-in-out infinite; /* 容器整体动画 */
+}
+
+/* LOGO容器动画 - 轻微的呼吸效果 */
+@keyframes logosContainer {
+    0%, 100% { 
+        transform: scale(1);
+        opacity: 0.95;
+    }
+    50% { 
+        transform: scale(1.02);
+        opacity: 1;
+    }
+}
+
+.footer-university-logo,
+.footer-department-logo {
+    height: 55px;
+    width: auto;
+    transition: all 0.4s ease;
+    filter: brightness(1) contrast(1.15) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+    border-radius: 10px;
+    background: transparent;
+    padding: 3px;
+    cursor: pointer;
+}
+
+/* 校徽动画 - 缓慢旋转和发光 */
+.footer-university-logo {
+    height: 60px;
+    animation: universityLogoSpin 12s linear infinite, 
+               universityLogoGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes universityLogoSpin {
+    0% { 
+        transform: rotate(0deg) scale(1);
+    }
+    25% { 
+        transform: rotate(1deg) scale(1.02);
+    }
+    50% { 
+        transform: rotate(0deg) scale(1.05);
+    }
+    75% { 
+        transform: rotate(-1deg) scale(1.02);
+    }
+    100% { 
+        transform: rotate(0deg) scale(1);
+    }
+}
+
+@keyframes universityLogoGlow {
+    0% { 
+        filter: brightness(1) contrast(1.15) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+    }
+    100% { 
+        filter: brightness(1.1) contrast(1.25) drop-shadow(0 5px 15px rgba(255, 215, 0, 0.3))
+                drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+    }
+}
+
+/* 学院LOGO动画 - 浮动和脉动 */
+.footer-department-logo {
+    height: 50px;
+    animation: deptLogoFloat 6s ease-in-out infinite, 
+               deptLogoPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes deptLogoFloat {
+    0%, 100% { 
+        transform: translateY(0px) scale(1);
+    }
+    33% { 
+        transform: translateY(-3px) scale(1.03);
+    }
+    66% { 
+        transform: translateY(2px) scale(0.98);
+    }
+}
+
+@keyframes deptLogoPulse {
+    0% { 
+        filter: brightness(1) contrast(1.15) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+    }
+    100% { 
+        filter: brightness(1.15) contrast(1.3) drop-shadow(0 6px 20px rgba(52, 152, 219, 0.25))
+                drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+    }
+}
+
+/* 悬浮时增强效果 */
+.footer-university-logo:hover {
+    animation-play-state: paused;
+    transform: translateY(-5px) scale(1.15) rotate(5deg);
+    filter: brightness(1.2) contrast(1.4) drop-shadow(0 8px 25px rgba(255, 215, 0, 0.5))
+            drop-shadow(0 5px 15px rgba(0, 0, 0, 0.35));
+    z-index: 10;
+}
+
+.footer-department-logo:hover {
+    animation-play-state: paused;
+    transform: translateY(-5px) scale(1.15) rotate(-3deg);
+    filter: brightness(1.2) contrast(1.4) drop-shadow(0 8px 25px rgba(52, 152, 219, 0.5))
+            drop-shadow(0 5px 15px rgba(0, 0, 0, 0.35));
+    z-index: 10;
+}
+
+/* 移除原来的绝对定位和相关样式 */
+/* 确保版权信息不被LOGO遮挡 */
+.copyright {
+    margin-left: 0; /* 取消之前的左边距 */
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+}
+
+.copyright strong {
+    color: white;
+    font-weight: 600;
+}
+
+.footer-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+
+.footer-update {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.footer-separator {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.footer-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+    color: #ffd700;
+}
+
+/* 响应式设计优化 */
+@media (max-width: 1400px) {
+    .header-content {
+        max-width: 1200px;
+        padding: 0 1.5rem;
+    }
+    
+    .logo-title {
+        font-size: 1.5rem;
+    }
+    
+    .logo-subtitle {
+        font-size: 0.75rem;
+    }
+    
+    .nav-link {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.8rem;
+    }
+}
+
+@media (max-width: 1200px) {
+    .header-content {
+        max-width: 100%;
+        gap: 1.5rem;
+    }
+    
+    .company-info {
+        font-size: 0.8rem;
+    }
+    
+    .support-info {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    .lang-select {
+        font-size: 0.8rem;
+        padding: 0.4rem 1.8rem 0.4rem 0.6rem;
+        min-width: 70px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .header-content {
+        flex-wrap: wrap;
+        gap: 1rem;
+        min-height: auto; /* 在小屏幕上允许高度自适应 */
+    }
+    
+    .brand-section {
+        flex: 1 1 100%;
+        order: 1;
+        text-align: center;
+        height: auto; /* 小屏幕上取消固定高度 */
+        justify-content: center;
+    }
+    
+    .main-nav {
+        flex: 1 1 100%;
+        order: 3;
+        height: auto; /* 小屏幕上取消固定高度 */
+    }
+    
+    .header-utilities {
+        flex: 1 1 100%;
+        order: 2;
+        justify-content: center;
+        gap: 1rem;
+        height: auto; /* 小屏幕上取消固定高度 */
+    }
+    
+    .logo-container {
+        justify-content: center;
+        height: auto; /* 小屏幕上取消固定高度 */
+    }
+    
+    .logo-title {
+        font-size: 1.4rem;
+        text-align: center;
+    }
+    
+    .logo-subtitle {
+        text-align: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-main {
+        padding: 0.8rem 0;
+    }
+    
+    .header-content {
+        padding: 0 1rem;
+        gap: 0.8rem;
+    }
+    
+    .logo-icon {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .logo-icon i {
+        font-size: 1.6rem;
+    }
+    
+    .logo-title {
+        font-size: 1.3rem;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.3;
+    }
+    
+    .logo-subtitle {
+        font-size: 0.7rem;
+        white-space: normal;
+        text-align: center;
+    }
+    
+    .nav-menu {
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        padding: 0.2rem;
+    }
+    
+    .nav-link {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    .nav-link span {
+        display: none;
+    }
+    
+    .header-utilities {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .company-info {
+        order: 2;
+        font-size: 0.75rem;
+        text-align: center;
+    }
+    
+    .lang-switcher {
+        order: 1;
+    }
+    
+    .support-info {
+        order: 3;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-content {
+        padding: 0 0.5rem;
+    }
+    
+    .logo-container {
+        gap: 0.8rem;
+    }
+    
+    .logo-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .logo-icon i {
+        font-size: 1.4rem;
+    }
+    
+    .logo-title {
+        font-size: 1.1rem;
+    }
+    
+    .logo-subtitle {
+        font-size: 0.65rem;
+    }
+    
+    .nav-link {
+        padding: 0.3rem 0.4rem;
+    }
+    
+    .lang-select {
+        font-size: 0.75rem;
+        padding: 0.3rem 1.5rem 0.3rem 0.5rem;
+        min-width: 65px;
+    }
+}
+
+/* 高分辨率屏幕适配 - 解决图片模糊问题 */
+@media only screen and (-webkit-min-device-pixel-ratio: 2),
+       only screen and (min--moz-device-pixel-ratio: 2),
+       only screen and (-o-min-device-pixel-ratio: 2/1),
+       only screen and (min-device-pixel-ratio: 2),
+       only screen and (min-resolution: 192dpi),
+       only screen and (min-resolution: 2dppx) {
+    
+    .logo-icon {
+        transform: translateZ(0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+    }
+    
+    .logo-icon i {
+        transform: translateZ(0);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* 确保图标和文字清晰 */
+    .professional-header {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* 优化高分辨率下的渐变效果 */
+    .lang-select {
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-size: 14px;
+    }
+}
+
+/* 确保文字不被截断 */
+.logo-title,
+.logo-subtitle,
+.company-info span {
+    word-break: keep-all;
+    word-wrap: break-word;
+}
+
+/* 强制显示完整的"多模型光刻胶"文字 */
+.logo-title {
+    min-width: max-content;
+    flex-shrink: 0;
+}
+
+/* 确保关键元素始终可见 */
+.logo-highlight {
+    display: inline-block;
+    min-width: max-content;
+}
+
+/* 防止布局崩塌 */
+.header-content > * {
+    min-width: 0;
+}
+
+.brand-section {
+    min-width: max-content;
+}
+
+/* 滚动时的优化 */
+.professional-header.scrolled {
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+}
+
+.professional-header.scrolled .header-main {
+    padding: 0.6rem 0;
+}
+
+.professional-header.scrolled .logo-icon {
+    width: 40px;
+    height: 40px;
+}
+
+.professional-header.scrolled .logo-icon i {
+    font-size: 1.5rem;
+}
+
+.professional-header.scrolled .logo-title {
+    font-size: 1.3rem;
+}
+
+.professional-header.scrolled .nav-link {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+}
+
+/* ===========================================
+   企业级增强功能
+   =========================================== */
+
+/* 回到顶部按钮样式 */
+.back-to-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(30, 60, 114, 0.3);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+}
+
+.back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.back-to-top:hover {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #1e3c72;
+    transform: translateY(-3px) scale(1.1);
+    box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4);
+}
+
+.back-to-top:active {
+    transform: translateY(-1px) scale(1.05);
+}
+
+@media (max-width: 768px) {
+    .back-to-top {
+        bottom: 1.5rem;
+        right: 1.5rem;
+        width: 45px;
+        height: 45px;
+        font-size: 1.1rem;
+    }
+}
+
+/* 页面加载动画 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 页面元素动画 */
+.professional-header {
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.footer-section:nth-child(1) {
+    animation: fadeInLeft 0.8s ease-out 0.2s both;
+}
+
+.footer-section:nth-child(2) {
+    animation: fadeInUp 0.8s ease-out 0.4s both;
+}
+
+.footer-section:nth-child(3) {
+    animation: fadeInUp 0.8s ease-out 0.6s both;
+}
+
+.footer-section:nth-child(4) {
+    animation: fadeInRight 0.8s ease-out 0.8s both;
+}
+
+/* 增强的工具提示 */
+.tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1001;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 115%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.tooltip:hover::before,
+.tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 暗色主题支持 */
+@media (prefers-color-scheme: dark) {
+    .professional-header {
+        background: linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #0f1419 100%);
+    }
+    
+    .professional-footer {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+    }
+}
+
+/* 高对比度模式支持 */
+@media (prefers-contrast: high) {
+    .professional-header {
+        border-bottom: 4px solid #ffd700;
+    }
+    
+    .nav-link {
+        border: 2px solid transparent;
+    }
+    
+    .nav-link:hover,
+    .nav-item.active .nav-link {
+        border-color: #1e3c72;
+    }
+    
+    .footer-title {
+        border-bottom: 3px solid #ffd700;
+    }
+}
+
+/* 动画减少偏好 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .professional-header::before,
+    .professional-footer::before,
+    .nav-link::before,
+    .nav-link::after,
+    .logo-icon::before,
+    .badge::before {
+        display: none;
+    }
+}
+
+/* 打印样式 */
+@media print {
+    .professional-header,
+    .professional-footer {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+    }
+    
+    .header-top-bar {
+        display: none;
+    }
+    
+    .nav-menu {
+        background: transparent !important;
+        border: 1px solid #ccc !important;
+    }
+    
+    .nav-link {
+        color: black !important;
+    }
+    
+    .footer-badges,
+    .contact-item i,
+    .footer-logo i {
+        display: none;
+    }
+}
+
+/* 焦点可见性增强 */
+.nav-link:focus,
+#lang-toggle-btn:focus,
+.footer-links a:focus {
+    outline: 3px solid #ffd700;
+    outline-offset: 2px;
+}
+
+/* 选择文本样式 */
+::selection {
+    background: rgba(255, 215, 0, 0.3);
+    color: #1e3c72;
+}
+
+::-moz-selection {
+    background: rgba(255, 215, 0, 0.3);
+    color: #1e3c72;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #1e3c72, #2a5298);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+}
+
+/* 国际化布局优化 - 针对英文文本的特殊处理 */
+/* 优化页眉在英文状态下的布局 */
+.header-content {
+    flex-wrap: wrap;
+    row-gap: 1rem;
+}
+
+.header-utilities {
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: flex-end;
+    align-items: center;
+    min-width: fit-content;
+}
+
+.company-info {
+    flex-shrink: 0;
+    min-width: fit-content;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.support-info {
+    flex-shrink: 0;
+    min-width: fit-content;
+}
+
+/* 确保页脚在英文状态下正确换行 */
+.footer-content {
+    gap: 2rem;
+}
+
+.footer-section {
+    min-width: 0;
+}
+
+.footer-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.footer-links a {
+    word-break: break-word;
+    hyphens: auto;
+}
+
+/* 针对更小屏幕的优化 */
+@media (max-width: 1100px) {
+    .header-content {
+        gap: 1.5rem;
+    }
+    
+    .header-utilities {
+        gap: 0.8rem;
+    }
+    
+    .company-info {
+        font-size: 0.75rem;
+        max-width: 200px;
+    }
+    
+    .footer-content {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+    
+    .footer-section:nth-child(3),
+    .footer-section:nth-child(4) {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 900px) {
+    .header-content {
+        justify-content: space-between;
+    }
+    
+    .main-nav {
+        order: 3;
+        flex-basis: 100%;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    
+    .header-utilities {
+        order: 2;
+        flex-shrink: 0;
+    }
+    
+    .brand-section {
+        order: 1;
+        flex-shrink: 0;
+    }
+}
+
+/* 确保长文本在页脚中正确处理 */
+@media (max-width: 600px) {
+    .footer-content {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 2rem;
+    }
+    
+    .footer-section {
+        text-align: center;
+    }
+    
+    .footer-badges {
+        justify-content: center;
+    }
+    
+    .contact-info {
+        align-items: center;
+    }
+    
+    .footer-bottom-content {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .footer-meta {
+        order: 2;
+    }
+    
+    /* 响应式页脚LOGO样式 */
+    .footer-logos {
+        gap: 2.5rem; /* 增加小屏幕间距，保持与主样式的比例 */
+        margin-top: 1rem;
+        padding: 0.8rem 0;
+    }
+    
+    .footer-university-logo,
+    .footer-department-logo {
+        height: 40px; /* 在小屏幕上缩小 */
+    }
+    
+    .footer-university-logo {
+        height: 45px;
+    }
+    
+    .footer-department-logo {
+        height: 38px;
+    }
+    
+    .copyright {
+        margin-left: 0; /* 确保在小屏幕上无左边距 */
+        order: 3;
+    }
+}
+
+/* 添加中等屏幕的响应式样式 */
+@media (max-width: 900px) and (min-width: 601px) {
+    .footer-logos {
+        gap: 3rem; /* 增加中等屏幕间距，保持与主样式的比例 */
+        margin-top: 1.2rem;
+    }
+    
+    .footer-university-logo {
+        height: 55px;
+    }
+    
+    .footer-department-logo {
+        height: 45px;
+    }
+    
+    .copyright {
+        margin-left: 0; /* 确保无左边距 */
+    }
+}
+
+/* 确保语言切换器在所有情况下都能正确显示 */
+.lang-select {
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+/* 修复矩阵可视化页面的页眉布局 */
+.professional-header .header-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.professional-header .header-controls button {
+    white-space: nowrap;
+    min-width: fit-content;
+}
+
+/* ========================================
+   LOGO优化方案 - 去除白色背景的多种方法
+   ======================================== */
+
+/* 方案一：如果需要强制去除白色背景（当前使用） */
+.university-logo,
+.department-logo {
+    /* 当前方案：透明背景 + 滤镜增强 */
+}
+
+/* 方案二：如果图片确实有白色背景，可以使用以下样式 */
+/*
+.university-logo,
+.department-logo {
+    background: transparent;
+    mix-blend-mode: multiply;
+    filter: contrast(1.2) brightness(0.9);
+}
+*/
+
+/* 方案三：如果需要保留轻微背景但去除白色 */
+/*
+.university-logo,
+.department-logo {
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+*/
+
+/* 方案四：使用CSS蒙版去除白色（实验性） */
+/*
+.university-logo,
+.department-logo {
+    -webkit-mask: radial-gradient(circle, black 60%, transparent 80%);
+    mask: radial-gradient(circle, black 60%, transparent 80%);
+}
+*/ 
