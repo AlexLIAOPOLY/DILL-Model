@@ -2,10 +2,19 @@ services:
   - type: web
     name: dill-model
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn 'wsgi:app' --bind=0.0.0.0:$PORT
+    region: oregon
+    plan: free
+    buildCommand: cd dill_model && pip install -r requirements.txt
+    startCommand: cd dill_model && gunicorn wsgi:app --bind=0.0.0.0:$PORT --workers=1 --timeout=120
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.0
+        value: "3.9"
       - key: FLASK_ENV
-        value: production 
+        value: production
+      - key: PYTHONPATH
+        value: /opt/render/project/src/dill_model
+      - key: PORT
+        value: "10000"
+    healthCheckPath: /
+    # 自动部署设置
+    autoDeploy: true 
