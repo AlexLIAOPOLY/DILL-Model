@@ -30,6 +30,7 @@ import socket
 import argparse
 import threading
 import webbrowser
+import subprocess
 from datetime import datetime
 import requests
 
@@ -78,15 +79,45 @@ except ImportError as e:
     print("3. 或者运行: bash start.sh")
     sys.exit(1)
 
+def get_git_version():
+    """获取Git版本信息"""
+    try:
+        # 尝试获取当前提交的标签或提交信息
+        result = subprocess.run(
+            ['git', 'log', '--oneline', '-1'],
+            capture_output=True,
+            text=True,
+            cwd=current_dir
+        )
+        
+        if result.returncode == 0:
+            commit_info = result.stdout.strip()
+            # 提取版本信息，格式如: "ce8342a V 2.0"
+            if 'V ' in commit_info:
+                version = commit_info.split('V ')[1].split()[0]
+                return f"v{version}"
+            else:
+                # 如果没有版本标签，返回提交hash的前7位
+                commit_hash = commit_info.split()[0][:7]
+                return f"git-{commit_hash}"
+        else:
+            return "v1.3.0"  # 默认版本
+    except Exception:
+        return "v1.3.0"  # 默认版本
+
 def print_banner():
     """打印启动横幅"""
+    version = get_git_version()
     banner = """
 ╔══════════════════════════════════════════════════════════════╗
 ║                    Dill模型计算工具                            ║
-║                   版本: v1.3.0                               ║
+║                   版本: {version}                               ║
 ║                   启动时间: {time}                            ║
 ╚══════════════════════════════════════════════════════════════╝
-    """.format(time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    """.format(
+        version=version,
+        time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
     print(banner)
 
 def check_dependencies():
