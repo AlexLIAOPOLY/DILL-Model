@@ -5195,8 +5195,12 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             // 自定义向量数据的厚度分布
             valueLabel = '蚀刻深度/厚度:';
             valueUnit = '(自定义单位)';
-            formulaTitle = '1D DILL模型 - 基于自定义向量的厚度分布：';
-            formulaMath = '💾 <strong>基于用户自定义数据</strong><br/>H(x) = 根据自定义光强数据和用户设定参数计算的厚度/蚀刻深度';
+            formulaTitle = '1D DILL模型 - 理想曝光蚀刻深度计算：';
+            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> D<sub>0</sub>(x) = I<sub>0</sub>(x) × t<sub>exp</sub></div>';
+            formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
+            formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>0</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
+            formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>0</sub>(x) - c<sub>d</sub>)</sup></div>';
+            formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
             
             // 获取自定义数据的信息
             const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
@@ -5235,28 +5239,25 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             }
             
             formulaExplanation = `
-                <div>📊 <strong>基于自定义向量的厚度计算：</strong></div>
-                <div>• 光强数据来源: 用户上传的文件或手动输入</div>
-                <div>• 厚度计算: 使用自定义光强 + DILL模型参数</div>
-                <div>• 数据点总数: ${totalDataPoints} 个</div>
-                <div class="formula-separator"></div>
-                <div>📍 <strong>当前位置分析：</strong></div>
-                <div>• 点击位置: x = ${x.toFixed(3)}</div>
-                <div>• 显示厚度/深度: ${y.toFixed(6)}</div>
-                <div>• 对应光强: I = ${nearestIntensity.toFixed(6)} (从自定义数据)</div>
-                <div>• 曝光剂量: D = I × t = ${exposureDose.toFixed(2)} (理论值)</div>
-                <div>• 理论厚度: H = ${theoreticalThickness.toFixed(6)}</div>
-                <div class="formula-separator"></div>
-                <div>⚙️ <strong>使用的DILL参数：</strong></div>
+                <div>🔧 <strong>DILL模型阈值机制参数：</strong></div>
                 <div>• C: 光敏速率常数 = ${exposureConstant}</div>
                 <div>• c<sub>d</sub>: 曝光阈值 = ${thresholdCd}</div>
                 <div>• t<sub>exp</sub>: 曝光时间 = ${exposureTime} s</div>
                 <div class="formula-separator"></div>
-                <div>💡 <strong>说明：</strong></div>
-                <div>• 光强来自自定义数据，非公式计算</div>
-                <div>• 厚度基于DILL模型: H = 1 - e<sup>-C(D-c<sub>d</sub>)</sup></div>
-                <div>• 实际值可能因插值、后处理等有所差异</div>
-                <div>• 阈值以下区域不发生反应 (H = 0)</div>
+                <div>📊 <strong>基于自定义向量的计算：</strong></div>
+                <div>• 光强数据来源: 用户自定义数据</div>
+                <div>• 数据点总数: ${totalDataPoints} 个</div>
+                <div class="formula-separator"></div>
+                <div>📍 <strong>当前位置分析：</strong></div>
+                <div>• 点击位置: x = ${x.toFixed(3)}</div>
+                <div>• 对应光强: I<sub>0</sub>(x) = ${nearestIntensity.toFixed(6)}</div>
+                <div>• 曝光剂量: D<sub>0</sub>(x) = ${exposureDose.toFixed(2)}</div>
+                <div>• 蚀刻深度: H(x) = ${theoreticalThickness.toFixed(6)}</div>
+                <div class="formula-separator"></div>
+                <div>💡 <strong>计算说明：</strong></div>
+                <div>• 步骤1: 根据自定义光强计算曝光剂量</div>
+                <div>• 步骤2: 判断是否超过曝光阈值</div>
+                <div>• 步骤3: 计算最终蚀刻深度</div>
             `;
         } else if (isIdealExposureModel) {
             // 理想曝光模型的蚀刻深度公式

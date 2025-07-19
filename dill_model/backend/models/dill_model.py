@@ -931,7 +931,7 @@ class DillModel:
                 
                 # 检查是否使用自定义光强分布
                 if custom_intensity_data is not None:
-                    logger.info(f"🔸 使用自定义光强分布数据进行1D计算")
+                    logger.info(f"🔸 使用自定义光强分布数据进行1D计算（理想模型阈值机制）")
                     
                     # 创建基本的坐标轴
                     x_coords = np.linspace(-1000, 1000, 2001)
@@ -942,25 +942,71 @@ class DillModel:
                         custom_intensity_data=custom_intensity_data
                     )
                     
-                    # 计算厚度分布
-                    thickness = np.exp(-C * exposure_dose)
+                    # 获取光强分布
+                    intensity_distribution = self.calculate_intensity_distribution(
+                        x_coords, I_avg, V, K, '1d', 
+                        custom_intensity_data=custom_intensity_data
+                    )
                     
-                    # 返回自定义数据结果
+                    # 使用理想模型的阈值机制计算厚度分布
+                    # 步骤1: D0(x) = I0(x) × t_exp (已在exposure_dose中计算)
+                    # 步骤2: 阈值判断与抗蚀效果计算
+                    # 步骤3: H(x) = 1 - M(x) (蚀刻深度)
+                    
+                    # 获取曝光阈值参数（与前端保持一致）
+                    exposure_threshold = exposure_threshold
+                    
+                    logger.info(f"🔸 使用理想模型阈值机制:")
+                    logger.info(f"   - C (光敏速率常数) = {C}")
+                    logger.info(f"   - cd (曝光阈值) = {exposure_threshold}")
+                    logger.info(f"   - t_exp (曝光时间) = {t_exp}")
+                    
+                    # 初始化抗蚀效果 M 和蚀刻深度 H
+                    M_values = np.zeros_like(exposure_dose)
+                    H_values = np.zeros_like(exposure_dose)
+                    
+                    # 按理想模型的逻辑计算 M 和 H
+                    for i in range(len(exposure_dose)):
+                        if exposure_dose[i] < exposure_threshold:
+                            M_values[i] = 1.0  # 未达阈值，完全抗蚀
+                        else:
+                            M_values[i] = np.exp(-C * (exposure_dose[i] - exposure_threshold))
+                        H_values[i] = 1 - M_values[i]  # 蚀刻深度
+                    
+                    # thickness 使用 M 值（抗蚀效果，剩余厚度）
+                    thickness = M_values
+                    
+                    logger.info(f"🔸 理想模型计算结果:")
+                    logger.info(f"   - 曝光剂量范围: [{np.min(exposure_dose):.6f}, {np.max(exposure_dose):.6f}]")
+                    logger.info(f"   - M值范围: [{np.min(M_values):.6f}, {np.max(M_values):.6f}]")
+                    logger.info(f"   - 蚀刻深度范围: [{np.min(H_values):.6f}, {np.max(H_values):.6f}]")
+                    
+                    # 返回自定义数据结果（与理想模型格式保持一致）
                     return {
                         'x': x_coords.tolist(),
                         'x_coords': x_coords.tolist(),
                         'exposure_dose': exposure_dose.tolist(),
                         'thickness': thickness.tolist(),
-                        'intensity_distribution': self.calculate_intensity_distribution(
-                            x_coords, I_avg, V, K, '1d', 
-                            custom_intensity_data=custom_intensity_data
-                        ).tolist(),
+                        'intensity_distribution': intensity_distribution.tolist(),
+                        'M_values': M_values.tolist(),
+                        'H_values': H_values.tolist(),
+                        'etch_depths_data': [{
+                            'time': t_exp,
+                            'etch_depth': (-H_values).tolist(),  # 负值显示
+                            'M_values': M_values.tolist(),
+                            'D0_values': exposure_dose.tolist()
+                        }],
+                        'exposure_times': [t_exp],
                         'sine_type': '1d',
                         'is_1d': True,
                         'custom_intensity_mode': True,
-                        'etch_depths_data': [],  # 保持兼容性
-                        'exposure_times': [t_exp],  # 保持兼容性
-                        'is_ideal_exposure_model': False
+                        'is_ideal_exposure_model': True,  # 标记为使用理想模型
+                        'parameters': {
+                            'C': C,
+                            'cd': exposure_threshold,
+                            't_exp': t_exp,
+                            'model_type': 'ideal_threshold'
+                        }
                     }
                 
                 # 使用理想曝光模型参数
@@ -1434,4 +1480,4 @@ def get_model_by_name(model_name):
         from .car_model import CARModel
         return CARModel()
     else:
-        raise ValueError(f"未知模型类型: {model_name}") 
+        raise ValueError(f"未知模型类型: {model_name}")
