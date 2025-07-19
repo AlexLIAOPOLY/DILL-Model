@@ -310,6 +310,10 @@ function initApp() {
                     errorMessage.style.height = 'auto';
                     console.log('❌ 自定义向量模式下未加载数据，计算被阻止');
                 }
+                // 滚动到页面顶部
+                setTimeout(() => {
+                    window.scrollTo({top: 0, behavior: 'smooth'});
+                }, 50);
                 // 不执行计算
                 return;
             }
