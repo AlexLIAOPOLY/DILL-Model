@@ -77,6 +77,21 @@ def calculate():
     try:
         data = request.get_json()
         print('收到前端参数:', data)  # 调试用
+        
+        # === 🔍 调试自定义光强数据 ===
+        custom_intensity_data = data.get('custom_intensity_data', None)
+        print(f"🔍 API调试 - 自定义光强数据检查:")
+        print(f"   - custom_intensity_data存在: {custom_intensity_data is not None}")
+        if custom_intensity_data:
+            print(f"   - 数据类型: {type(custom_intensity_data)}")
+            print(f"   - 数据内容: {custom_intensity_data}")
+            if 'x' in custom_intensity_data and 'intensity' in custom_intensity_data:
+                print(f"   - X坐标点数: {len(custom_intensity_data['x'])}")
+                print(f"   - 光强点数: {len(custom_intensity_data['intensity'])}")
+                print(f"   - X范围: [{min(custom_intensity_data['x']):.3f}, {max(custom_intensity_data['x']):.3f}]")
+                print(f"   - 光强范围: [{min(custom_intensity_data['intensity']):.6f}, {max(custom_intensity_data['intensity']):.6f}]")
+        # === 调试结束 ===
+        
         model_type = data.get('model_type', 'dill')
         model = get_model_by_name(model_type)
         
@@ -100,6 +115,9 @@ def calculate():
             wavelength = float(data.get('wavelength', 405))
             contrast_ctr = float(data.get('contrast_ctr', 1))
             
+            # 检查是否使用自定义光强分布
+            custom_intensity_data = data.get('custom_intensity_data', None)
+            
             # 🔸 调试波长参数
             print(f"🌈 波长参数调试: wavelength = {wavelength} nm (来源: {data.get('wavelength', '默认值')})")
             add_progress_log('dill', f"波长参数设置: λ = {wavelength} nm", dimension=sine_type)
@@ -122,7 +140,8 @@ def calculate():
                 # 如果校验通过，则直接计算y_range
                 y_range = np.linspace(y_min, y_max, y_points).tolist()
                 plot_data = model.generate_plots(I_avg, V, None, t_exp, C, sine_type=sine_type, 
-                                               Kx=Kx, Ky=Ky, phi_expr=phi_expr, y_range=y_range)
+                                               Kx=Kx, Ky=Ky, phi_expr=phi_expr, y_range=y_range,
+                                               custom_intensity_data=custom_intensity_data)
             elif sine_type == '3d':
                 # 处理三维正弦波参数
                 Kx = float(data.get('Kx', 0))
@@ -143,7 +162,8 @@ def calculate():
                 
                 plots = model.generate_plots(I_avg, V, None, t_exp, C, sine_type=sine_type,
                                            Kx=Kx, Ky=Ky, Kz=Kz, phi_expr=phi_expr,
-                                           y_range=y_range, z_range=z_range)
+                                           y_range=y_range, z_range=z_range,
+                                           custom_intensity_data=custom_intensity_data)
             else:
                 K = float(data['K'])
                 
@@ -157,14 +177,17 @@ def calculate():
                     add_progress_log('dill', f"启用曝光时间窗口 (自定义时间: {custom_exposure_times})", dimension='1d')
                     plots = model.generate_plots(I_avg, V, K, t_exp, C, sine_type=sine_type, 
                                                angle_a=angle_a, exposure_threshold=exposure_threshold, 
-                                               contrast_ctr=contrast_ctr, wavelength=wavelength, custom_exposure_times=custom_exposure_times)
+                                               contrast_ctr=contrast_ctr, wavelength=wavelength, 
+                                               custom_exposure_times=custom_exposure_times,
+                                               custom_intensity_data=custom_intensity_data)
                     add_success_log('dill', f"曝光时间窗口数据生成完成 ({len(custom_exposure_times)}组时间)", dimension='1d')
                 else:
                     # 未启用曝光时间窗口：生成基于用户当前输入t_exp的单一时间数据
                     add_progress_log('dill', f"使用单一曝光时间 (t_exp: {t_exp}s)", dimension='1d')
                     plots = model.generate_plots(I_avg, V, K, t_exp, C, sine_type=sine_type, 
-                                               angle_a=angle_a, exposure_threshold=exposure_threshold, 
-                                               contrast_ctr=contrast_ctr, wavelength=wavelength)
+                                            angle_a=angle_a, exposure_threshold=exposure_threshold, 
+                                            contrast_ctr=contrast_ctr, wavelength=wavelength,
+                                            custom_intensity_data=custom_intensity_data)
                     add_success_log('dill', f"单一曝光时间数据生成完成 (t_exp: {t_exp}s)", dimension='1d')
                 
                 # 检查是否启用1D动画
@@ -336,15 +359,20 @@ def calculate_data():
         data = request.get_json()
         print('收到前端参数:', data)  # 调试用
         
-        # 强制调试曝光时间窗口参数
-        enable_exposure_time_window = data.get('enable_exposure_time_window', False) 
-        custom_exposure_times = data.get('custom_exposure_times', None)
-        print(f"🚨🚨🚨 强制调试: enable_exposure_time_window = {enable_exposure_time_window}")
-        print(f"🚨🚨🚨 强制调试: custom_exposure_times = {custom_exposure_times}")
-        print(f"🚨🚨🚨 强制调试: type(custom_exposure_times) = {type(custom_exposure_times)}")
-        if custom_exposure_times:
-            print(f"🚨🚨🚨 强制调试: len(custom_exposure_times) = {len(custom_exposure_times)}")
-        print(f"🚨🚨🚨 强制调试: 条件结果 = {enable_exposure_time_window and custom_exposure_times is not None and len(custom_exposure_times) > 0 if custom_exposure_times else False}")
+        # === 🔍 调试自定义光强数据 ===
+        custom_intensity_data = data.get('custom_intensity_data', None)
+        print(f"🔍 API调试 - 自定义光强数据检查:")
+        print(f"   - custom_intensity_data存在: {custom_intensity_data is not None}")
+        if custom_intensity_data:
+            print(f"   - 数据类型: {type(custom_intensity_data)}")
+            print(f"   - 数据内容: {custom_intensity_data}")
+            if 'x' in custom_intensity_data and 'intensity' in custom_intensity_data:
+                print(f"   - X坐标点数: {len(custom_intensity_data['x'])}")
+                print(f"   - 光强点数: {len(custom_intensity_data['intensity'])}")
+                print(f"   - X范围: [{min(custom_intensity_data['x']):.3f}, {max(custom_intensity_data['x']):.3f}]")
+                print(f"   - 光强范围: [{min(custom_intensity_data['intensity']):.6f}, {max(custom_intensity_data['intensity']):.6f}]")
+        # === 调试结束 ===
+        
         model_type = data.get('model_type', 'dill')
         model = get_model_by_name(model_type)
         sine_type = data.get('sine_type', '1d')
@@ -526,6 +554,9 @@ def calculate_data():
                 contrast_ctr = float(data.get('contrast_ctr', 1))
                 wavelength = float(data.get('wavelength', 405))
                 
+                # 检查是否使用自定义光强分布
+                custom_intensity_data = data.get('custom_intensity_data', None)
+                
                 # 检查是否启用曝光时间窗口
                 enable_exposure_time_window = data.get('enable_exposure_time_window', False)
                 custom_exposure_times = data.get('custom_exposure_times', None)
@@ -545,13 +576,15 @@ def calculate_data():
                     # 启用曝光时间窗口：使用自定义曝光时间生成数据
                     plot_data = model.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type, 
                                                    angle_a=angle_a, exposure_threshold=exposure_threshold, 
-                                                   contrast_ctr=contrast_ctr, wavelength=wavelength, custom_exposure_times=custom_exposure_times)
+                                                   contrast_ctr=contrast_ctr, wavelength=wavelength, custom_exposure_times=custom_exposure_times,
+                                                   custom_intensity_data=custom_intensity_data)
                 else:
                     print(f"🎯 calculate_data端点: 未启用曝光时间窗口，使用单一曝光时间 {t_exp}s")
                     # 未启用曝光时间窗口：使用单一曝光时间生成数据
                     plot_data = model.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type,
                                                    angle_a=angle_a, exposure_threshold=exposure_threshold, 
-                                                   contrast_ctr=contrast_ctr, wavelength=wavelength)
+                                                   contrast_ctr=contrast_ctr, wavelength=wavelength,
+                                                   custom_intensity_data=custom_intensity_data)
                 
                 static_calc_time = time.time() - calc_start
                 total_calc_time = static_calc_time
@@ -752,260 +785,6 @@ def calculate_data():
                     add_success_log('dill', f"1D V评估数据生成完成，{len(plot_data.get('v_evaluation_frames', []))}帧", dimension='1d')
                 else:
                     add_success_log('dill', f"一维计算完成，1000点，用时{calc_time:.3f}s", dimension='1d')
-        
-        elif model_type == 'enhanced_dill':
-            is_valid, message = validate_enhanced_input(data)
-            if not is_valid: 
-                add_error_log('enhanced_dill', f"参数校验失败: {message}", dimension=sine_type)
-                return jsonify(format_response(False, message=message)), 400
-                
-            z_h, T, t_B, I0, M0, t_exp_enh = float(data['z_h']), float(data['T']), float(data['t_B']), float(data.get('I0', 1.0)), float(data.get('M0', 1.0)), float(data['t_exp'])
-            
-            if sine_type == 'multi':
-                Kx, Ky, phi_expr = float(data.get('Kx',0)), float(data.get('Ky',0)), data.get('phi_expr','0')
-                y_min = float(data.get('y_min', 0))
-                y_max = float(data.get('y_max', 10))
-                y_points = int(data.get('y_points', 100))
-                
-                print(f"增强Dill模型参数 (2D正弦波): z_h={z_h}, T={T}, t_B={t_B}, I0={I0}, M0={M0}, t_exp={t_exp_enh}")
-                print(f"  二维参数: Kx={Kx}, Ky={Ky}, phi_expr='{phi_expr}'")
-                print(f"  Y轴范围: [{y_min}, {y_max}], 点数: {y_points}")
-                print(f"[Enhanced-Dill-2D] 开始计算厚胶二维空间分布，网格大小: 1000×{y_points}")
-                
-                # 添加到日志系统
-                add_log_entry('info', 'enhanced_dill', f"增强Dill-2D模型参数 (2D正弦波): z_h={z_h}, T={T}, t_B={t_B}, I0={I0}, M0={M0}, t_exp={t_exp_enh}", dimension='2d')
-                add_log_entry('info', 'enhanced_dill', f"二维参数: Kx={Kx}, Ky={Ky}, phi_expr='{phi_expr}'", dimension='2d')
-                add_log_entry('info', 'enhanced_dill', f"Y轴范围: [{y_min}, {y_max}], 点数: {y_points}", dimension='2d')
-                add_log_entry('progress', 'enhanced_dill', f"开始计算厚胶二维空间分布，网格大小: 1000×{y_points}", dimension='2d')
-                
-                if y_min >= y_max:
-                    add_error_log('enhanced_dill', "Y轴范围配置错误", dimension='2d')
-                    return jsonify(format_response(False, message_zh="Y轴范围最小值必须小于最大值", message_en="Y-axis range min must be less than max")), 400
-                if y_points <= 1:
-                    add_error_log('enhanced_dill', "Y轴点数配置错误", dimension='2d')
-                    return jsonify(format_response(False, message_zh="Y轴点数必须大于1才能进行二维计算", message_en="Number of Y-axis points must be greater than 1 for 2D calculation")), 400
-                
-                y_range = np.linspace(y_min, y_max, y_points).tolist()
-                
-                # 获取V参数（重要！用于空间光强调制）
-                V = float(data.get('V', 0.8))
-                
-                calc_start = time.time()
-                plot_data = model.generate_data(z_h, T, t_B, I0, M0, t_exp_enh, sine_type=sine_type, Kx=Kx, Ky=Ky, V=V, phi_expr=phi_expr, y_range=y_range)
-                calc_time = time.time() - calc_start
-                
-                if plot_data and 'z_exposure_dose' in plot_data:
-                    exposure_array = np.array(plot_data['z_exposure_dose'])
-                    thickness_array = np.array(plot_data['z_thickness'])
-                    
-                    print(f"[Enhanced-Dill-2D] 🎯 二维厚胶计算完成统计:")
-                    print(f"  ✅ 网格大小: {exposure_array.shape}")
-                    print(f"  ⏱️  计算时间: {calc_time:.3f}s")
-                    print(f"  🔢 曝光剂量范围: [{exposure_array.min():.3f}, {exposure_array.max():.3f}] mJ/cm²")
-                    print(f"  📏 厚度范围: [{thickness_array.min():.4f}, {thickness_array.max():.4f}] (归一化)")
-                    print(f"  🔬 增强Dill模型厚胶分析:")
-                    print(f"     胶层厚度: {z_h}μm")
-                    print(f"     前烘温度: {T}°C")
-                    print(f"     前烘时间: {t_B}s")
-                    print(f"     光强衰减分析: 考虑深度相关吸收")
-                    print(f"     空间频率: Kx={Kx}, Ky={Ky}")
-                    
-                    # 添加详细统计到日志系统
-                    add_log_entry('success', 'enhanced_dill', f"🎯 二维厚胶计算完成统计", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"✅ 网格大小: {exposure_array.shape}", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"⏱️ 计算时间: {calc_time:.3f}s", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"🔢 曝光剂量范围: [{exposure_array.min():.3f}, {exposure_array.max():.3f}] mJ/cm²", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"📏 厚度范围: [{thickness_array.min():.4f}, {thickness_array.max():.4f}] (归一化)", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"🔬 增强Dill模型厚胶分析", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"   胶层厚度: {z_h}μm", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"   前烘温度: {T}°C", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"   前烘时间: {t_B}s", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"   光强衰减分析: 考虑深度相关吸收", dimension='2d')
-                    add_log_entry('info', 'enhanced_dill', f"   空间频率: Kx={Kx}, Ky={Ky}", dimension='2d')
-                
-                add_success_log('enhanced_dill', f"二维厚胶计算完成，{z_h}μm厚度，用时{calc_time:.3f}s", dimension='2d')
-                
-            elif sine_type == '3d':
-                Kx, Ky, Kz, phi_expr = float(data.get('Kx',0)), float(data.get('Ky',0)), float(data.get('Kz',0)), data.get('phi_expr','0')
-                y_min = float(data.get('y_min', 0))
-                y_max = float(data.get('y_max', 10))
-                z_min = float(data.get('z_min', 0))
-                z_max = float(data.get('z_max', 10))
-                
-                # 检查4D动画参数
-                enable_4d_animation = data.get('enable_4d_animation', False)
-                t_start = float(data.get('t_start', 0))
-                t_end = float(data.get('t_end', 5))
-                time_steps = int(data.get('time_steps', 20))
-                
-                print(f"增强Dill模型参数 (3D正弦波): z_h={z_h}, T={T}, t_B={t_B}, I0={I0}, M0={M0}, t_exp={t_exp_enh}")
-                print(f"  三维参数: Kx={Kx}, Ky={Ky}, Kz={Kz}, phi_expr='{phi_expr}'")
-                print(f"  Y轴范围: [{y_min}, {y_max}]")
-                print(f"  Z轴范围: [{z_min}, {z_max}]")
-                
-                if enable_4d_animation:
-                    print(f"  4D动画参数: 启用, 时间范围=[{t_start}, {t_end}], 步数={time_steps}")
-                    print(f"[Enhanced-Dill-4D] 开始计算厚胶4D动画数据，预计网格大小: 20×20×{time_steps}")
-                    add_log_entry('info', 'enhanced_dill', f"增强Dill-4D模型参数 (3D+时间): z_h={z_h}, T={T}, t_B={t_B}, I0={I0}, M0={M0}, t_exp={t_exp_enh}", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"三维参数: Kx={Kx}, Ky={Ky}, Kz={Kz}, phi_expr='{phi_expr}'", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"4D动画参数: 时间范围=[{t_start}, {t_end}], 步数={time_steps}", dimension='4d')
-                    add_log_entry('progress', 'enhanced_dill', f"开始计算厚胶4D动画数据，预计网格大小: 20×20×{time_steps}", dimension='4d')
-                else:
-                    print(f"[Enhanced-Dill-3D] 开始计算厚胶三维空间分布，预计网格大小: 50×50×50")
-                add_log_entry('info', 'enhanced_dill', f"增强Dill-3D模型参数 (3D正弦波): z_h={z_h}, T={T}, t_B={t_B}, I0={I0}, M0={M0}, t_exp={t_exp_enh}", dimension='3d')
-                add_log_entry('info', 'enhanced_dill', f"三维参数: Kx={Kx}, Ky={Ky}, Kz={Kz}, phi_expr='{phi_expr}'", dimension='3d')
-                add_log_entry('info', 'enhanced_dill', f"Y轴范围: [{y_min}, {y_max}]", dimension='3d')
-                add_log_entry('info', 'enhanced_dill', f"Z轴范围: [{z_min}, {z_max}]", dimension='3d')
-                add_log_entry('progress', 'enhanced_dill', f"开始计算厚胶三维空间分布，预计网格大小: 50×50×50", dimension='3d')
-                
-                y_range = np.linspace(y_min, y_max, 50).tolist() if y_min < y_max else None
-                z_range = np.linspace(z_min, z_max, 50).tolist() if z_min < z_max else None
-                
-                # 获取V参数（重要！用于空间光强调制）
-                V = float(data.get('V', 0.8))
-                
-                calc_start = time.time()
-                plot_data = model.generate_data(z_h, T, t_B, I0, M0, t_exp_enh, sine_type=sine_type, Kx=Kx, Ky=Ky, Kz=Kz, V=V, phi_expr=phi_expr, 
-                                              y_range=y_range, z_range=z_range, enable_4d_animation=enable_4d_animation, 
-                                              t_start=t_start, t_end=t_end, time_steps=time_steps)
-                calc_time = time.time() - calc_start
-                
-                if enable_4d_animation:
-                    # 4D动画模式的输出统计
-                    print(f"[Enhanced-Dill-4D] 🎯 四维厚胶动画计算完成统计:")
-                    print(f"  ✅ 计算成功")
-                    print(f"  ⏱️  计算时间: {calc_time:.3f}s")
-                    print(f"  🎬 动画帧数: {time_steps}帧")
-                    print(f"  ⏰ 时间范围: {t_start}s ~ {t_end}s")
-                    print(f"  🔬 增强Dill模型4D厚胶分析:")
-                    print(f"     胶层厚度: {z_h}μm")
-                    print(f"     前烘条件: {T}°C, {t_B}s")
-                    print(f"     三维空间频率: Kx={Kx}, Ky={Ky}, Kz={Kz}")
-                    print(f"     时间依赖性: phi_expr='{phi_expr}'")
-                    
-                    # 检查4D动画数据完整性
-                    if plot_data and isinstance(plot_data, dict):
-                        has_exposure_frames = 'exposure_dose_frames' in plot_data and plot_data['exposure_dose_frames']
-                        has_thickness_frames = 'thickness_frames' in plot_data and plot_data['thickness_frames']
-                        
-                        if has_exposure_frames and has_thickness_frames:
-                            frames_count = len(plot_data['exposure_dose_frames'])
-                            print(f"  📊 数据完整性: ✅ 生成了{frames_count}帧动画数据")
-                            add_log_entry('success', 'enhanced_dill', f"📊 4D动画数据生成成功，共{frames_count}帧", dimension='4d')
-                        else:
-                            print(f"  📊 数据完整性: ❌ 动画数据不完整")
-                            add_log_entry('warning', 'enhanced_dill', f"📊 4D动画数据不完整", dimension='4d')
-                    
-                    # 添加到日志系统
-                    add_log_entry('success', 'enhanced_dill', f"🎯 四维厚胶动画计算完成统计", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"✅ 计算成功", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"⏱️ 计算时间: {calc_time:.3f}s", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"🎬 动画帧数: {time_steps}帧", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"⏰ 时间范围: {t_start}s ~ {t_end}s", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"🔬 增强Dill模型4D厚胶分析", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"   胶层厚度: {z_h}μm", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"   前烘条件: {T}°C, {t_B}s", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"   三维空间频率: Kx={Kx}, Ky={Ky}, Kz={Kz}", dimension='4d')
-                    add_log_entry('info', 'enhanced_dill', f"   时间依赖性: phi_expr='{phi_expr}'", dimension='4d')
-                    
-                    add_success_log('enhanced_dill', f"四维厚胶动画计算完成，{z_h}μm厚度，{time_steps}帧，用时{calc_time:.3f}s", dimension='4d')
-                else:
-                    # 3D静态模式的输出统计
-                    print(f"[Enhanced-Dill-3D] 🎯 三维厚胶计算完成统计:")
-                    print(f"  ✅ 计算成功")
-                    print(f"  ⏱️  计算时间: {calc_time:.3f}s")
-                    print(f"  🔬 增强Dill模型3D厚胶分析:")
-                    print(f"     胶层厚度: {z_h}μm")
-                    print(f"     前烘条件: {T}°C, {t_B}s")
-                    print(f"     三维空间频率: Kx={Kx}, Ky={Ky}, Kz={Kz}")
-                    
-                    # 添加到日志系统
-                    add_log_entry('success', 'enhanced_dill', f"🎯 三维厚胶计算完成统计", dimension='3d')
-                    add_log_entry('info', 'enhanced_dill', f"✅ 计算成功", dimension='3d')
-                    add_log_entry('info', 'enhanced_dill', f"⏱️ 计算时间: {calc_time:.3f}s", dimension='3d')
-                    add_log_entry('info', 'enhanced_dill', f"🔬 增强Dill模型3D厚胶分析", dimension='3d')
-                    add_log_entry('info', 'enhanced_dill', f"   胶层厚度: {z_h}μm", dimension='3d')
-                    add_log_entry('info', 'enhanced_dill', f"   前烘条件: {T}°C, {t_B}s", dimension='3d')
-                    add_log_entry('info', 'enhanced_dill', f"   三维空间频率: Kx={Kx}, Ky={Ky}, Kz={Kz}", dimension='3d')
-                
-                add_success_log('enhanced_dill', f"三维厚胶计算完成，{z_h}μm厚度，用时{calc_time:.3f}s", dimension='3d')
-                
-            else: # 1D Enhanced Dill
-                K = float(data.get('K', 2.0))
-                V = float(data.get('V', 0.8))
-                
-                print(f"增强Dill模型参数 (1D正弦波): z_h={z_h}, T={T}, t_B={t_B}, I0={I0}, M0={M0}, t_exp={t_exp_enh}")
-                print(f"  光学参数: K={K}, V={V}")
-                print(f"[Enhanced-Dill-1D] 开始计算厚胶一维空间分布，共1000个位置")
-                
-                # 添加到日志系统
-                add_log_entry('info', 'enhanced_dill', f"增强Dill-1D模型参数 (1D正弦波): z_h={z_h}, T={T}, t_B={t_B}, I0={I0}, M0={M0}, t_exp={t_exp_enh}", dimension='1d')
-                add_log_entry('info', 'enhanced_dill', f"光学参数: K={K}, V={V}", dimension='1d')
-                add_log_entry('progress', 'enhanced_dill', f"开始计算厚胶一维空间分布，共1000个位置", dimension='1d')
-                
-                calc_start = time.time()
-                # 修复：为厚胶1D模型指定足够的点数，确保索引不越界
-                plot_data = model.generate_data(z_h, T, t_B, I0, M0, t_exp_enh, sine_type=sine_type, K=K, V=V, num_points=1000)
-                calc_time = time.time() - calc_start
-                
-                if plot_data and 'exposure_dose' in plot_data:
-                    exposure_array = np.array(plot_data['exposure_dose'])
-                    thickness_array = np.array(plot_data['thickness'])
-                    x_array = np.array(plot_data['x'])
-                    
-                    # 确保数组长度足够，避免索引越界
-                    array_length = len(x_array)
-                    
-                    # 动态计算进度索引，确保不超过数组边界
-                    idx_20_percent = min(199, array_length - 1)
-                    idx_50_percent = min(499, array_length - 1) 
-                    idx_80_percent = min(799, array_length - 1)
-                    
-                    # 安全的进度输出
-                    print(f"[Enhanced-Dill-1D] 进度: {idx_20_percent+1}/{array_length}, pos={x_array[idx_20_percent]:.3f}, exposure={exposure_array[idx_20_percent]:.3f}, thickness={thickness_array[idx_20_percent]:.4f}")
-                    print(f"[Enhanced-Dill-1D] 进度: {idx_50_percent+1}/{array_length}, pos={x_array[idx_50_percent]:.3f}, exposure={exposure_array[idx_50_percent]:.3f}, thickness={thickness_array[idx_50_percent]:.4f}")
-                    print(f"[Enhanced-Dill-1D] 进度: {idx_80_percent+1}/{array_length}, pos={x_array[idx_80_percent]:.3f}, exposure={exposure_array[idx_80_percent]:.3f}, thickness={thickness_array[idx_80_percent]:.4f}")
-                    
-                    # 添加安全的进度信息到日志系统
-                    add_log_entry('progress', 'enhanced_dill', f"进度: {idx_20_percent+1}/{array_length}, pos={x_array[idx_20_percent]:.3f}, exposure={exposure_array[idx_20_percent]:.3f}, thickness={thickness_array[idx_20_percent]:.4f}", dimension='1d')
-                    add_log_entry('progress', 'enhanced_dill', f"进度: {idx_50_percent+1}/{array_length}, pos={x_array[idx_50_percent]:.3f}, exposure={exposure_array[idx_50_percent]:.3f}, thickness={thickness_array[idx_50_percent]:.4f}", dimension='1d')
-                    add_log_entry('progress', 'enhanced_dill', f"进度: {idx_80_percent+1}/{array_length}, pos={x_array[idx_80_percent]:.3f}, exposure={exposure_array[idx_80_percent]:.3f}, thickness={thickness_array[idx_80_percent]:.4f}", dimension='1d')
-                    
-                    print(f"[Enhanced-Dill-1D] 🎯 计算完成统计:")
-                    print(f"  ✅ 成功计算: 1000/1000 (100.0%)")
-                    print(f"  ❌ 失败计算: 0/1000 (0.0%)")
-                    print(f"  ⏱️  平均计算时间: {calc_time/1000:.6f}s/点")
-                    print(f"  🔢 曝光剂量范围: [{exposure_array.min():.3f}, {exposure_array.max():.3f}] mJ/cm²")
-                    print(f"  📏 厚度范围: [{thickness_array.min():.4f}, {thickness_array.max():.4f}] (归一化)")
-                    print(f"  🔬 增强Dill模型厚胶分析:")
-                    print(f"     胶层厚度: {z_h}μm")
-                    print(f"     前烘温度: {T}°C")
-                    print(f"     前烘时间: {t_B}s")
-                    if z_h > 5:
-                        print(f"     厚胶层({z_h}μm): 适合使用增强Dill模型")
-                    else:
-                        print(f"     薄胶层({z_h}μm): 可考虑使用标准Dill模型")
-                    
-                    # 添加详细统计到日志系统
-                    add_log_entry('success', 'enhanced_dill', f"🎯 计算完成统计", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"✅ 成功计算: 1000/1000 (100.0%)", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"❌ 失败计算: 0/1000 (0.0%)", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"⏱️ 平均计算时间: {calc_time/1000:.6f}s/点", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"🔢 曝光剂量范围: [{exposure_array.min():.3f}, {exposure_array.max():.3f}] mJ/cm²", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"📏 厚度范围: [{thickness_array.min():.4f}, {thickness_array.max():.4f}] (归一化)", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"🔬 增强Dill模型厚胶分析", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"   胶层厚度: {z_h}μm", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"   前烘温度: {T}°C", dimension='1d')
-                    add_log_entry('info', 'enhanced_dill', f"   前烘时间: {t_B}s", dimension='1d')
-                    
-                    # 添加厚胶层分析
-                    if z_h > 5:
-                        analysis_msg = f"厚胶层({z_h}μm): 适合使用增强Dill模型"
-                    else:
-                        analysis_msg = f"薄胶层({z_h}μm): 可考虑使用标准Dill模型"
-                    add_log_entry('info', 'enhanced_dill', f"   {analysis_msg}", dimension='1d')
-                
-                add_success_log('enhanced_dill', f"一维厚胶计算完成，{z_h}μm厚度，用时{calc_time:.3f}s", dimension='1d')
 
         elif model_type == 'car':
             is_valid, message = validate_car_input(data)
@@ -1514,7 +1293,7 @@ def compare_data():
                     print(f"  ⚠️  穿透不足: 底部可能曝光不足")
                 elif penetration_depth > z_h * 1.5:
                     print(f"  ✨ 穿透充分: 整层光刻胶均匀曝光")
-                
+
                 print(f"[Enhanced Dill] 🏁 总计算时间: {total_time:.3f}s")
                 
                 exposure_doses.append({

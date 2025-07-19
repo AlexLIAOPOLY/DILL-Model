@@ -168,9 +168,9 @@ class DillModel:
         
         return duty_cycle, critical_dose
     
-    def calculate_intensity_distribution(self, x, I_avg, V, K=None, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, t=0):
+    def calculate_intensity_distribution(self, x, I_avg, V, K=None, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, t=0, custom_intensity_data=None):
         """
-        计算光强分布，支持一维、二维和三维正弦波
+        计算光强分布，支持一维、二维和三维正弦波，以及自定义光强分布
         
         参数:
             x: 位置坐标数组
@@ -185,6 +185,7 @@ class DillModel:
             y: y坐标
             z: z坐标（三维模式使用）
             t: 时间
+            custom_intensity_data: 自定义光强分布数据 {'x': [], 'intensity': []}
             
         返回:
             光强分布数组
@@ -192,6 +193,79 @@ class DillModel:
         logger.info("=" * 60)
         logger.info("【Dill模型 - 光强分布计算】")
         logger.info("=" * 60)
+        
+        # === 🔍 调试光强分布计算接收参数 ===
+        logger.info(f"🔍 光强分布计算调试:")
+        logger.info(f"   - 传入的custom_intensity_data: {custom_intensity_data is not None}")
+        logger.info(f"   - sine_type: {sine_type}")
+        logger.info(f"   - x坐标范围: [{np.min(x):.3f}, {np.max(x):.3f}], 点数: {len(x)}")
+        if custom_intensity_data is not None:
+            logger.info(f"   - 自定义数据有效性: {'x' in custom_intensity_data and 'intensity' in custom_intensity_data}")
+        # === 调试结束 ===
+        
+        # 检查是否使用自定义光强分布数据
+        if custom_intensity_data is not None and 'x' in custom_intensity_data and 'intensity' in custom_intensity_data:
+            logger.info("🔸 计算模式: 自定义光强分布")
+            logger.info("🔸 使用外部提供的光强分布数据")
+            
+            custom_x = np.array(custom_intensity_data['x'])
+            custom_intensity = np.array(custom_intensity_data['intensity'])
+            
+            logger.info(f"🔸 自定义数据统计:")
+            logger.info(f"   - 数据点数: {len(custom_x)}")
+            logger.info(f"   - X坐标范围: [{np.min(custom_x):.3f}, {np.max(custom_x):.3f}]")
+            logger.info(f"   - 光强范围: [{np.min(custom_intensity):.6f}, {np.max(custom_intensity):.6f}]")
+            logger.info(f"   - 目标X坐标范围: [{np.min(x):.3f}, {np.max(x):.3f}], 点数: {len(x)}")
+            
+            # 使用插值将自定义数据映射到目标x坐标
+            from scipy.interpolate import interp1d
+            
+            # 确保自定义数据的x坐标是单调递增的
+            if not np.all(np.diff(custom_x) >= 0):
+                logger.warning("🔸 自定义数据X坐标不是单调递增，正在排序...")
+                sorted_indices = np.argsort(custom_x)
+                custom_x = custom_x[sorted_indices]
+                custom_intensity = custom_intensity[sorted_indices]
+            
+            # 创建插值函数，处理边界外的值
+            try:
+                # 扩展自定义数据范围以覆盖目标范围
+                x_min_target, x_max_target = np.min(x), np.max(x)
+                x_min_custom, x_max_custom = np.min(custom_x), np.max(custom_x)
+                
+                # 如果目标范围超出自定义数据范围，使用边界值进行扩展
+                extended_x = custom_x.copy()
+                extended_intensity = custom_intensity.copy()
+                
+                if x_min_target < x_min_custom:
+                    extended_x = np.concatenate([[x_min_target], extended_x])
+                    extended_intensity = np.concatenate([[custom_intensity[0]], extended_intensity])
+                
+                if x_max_target > x_max_custom:
+                    extended_x = np.concatenate([extended_x, [x_max_target]])
+                    extended_intensity = np.concatenate([extended_intensity, [custom_intensity[-1]]])
+                
+                interp_func = interp1d(extended_x, extended_intensity, 
+                                     kind='linear', 
+                                     bounds_error=False, 
+                                     fill_value=0.0)
+                
+                # 将自定义数据插值到目标x坐标
+                result = interp_func(x)
+                
+                # 确保结果为正值（光强不能为负）
+                result = np.maximum(result, 0)
+                
+                logger.info(f"🔸 插值计算结果:")
+                logger.info(f"   - 输出光强范围: [{np.min(result):.6f}, {np.max(result):.6f}]")
+                logger.info(f"   - 输出平均值: {np.mean(result):.6f}")
+                
+                return result
+                
+            except Exception as e:
+                logger.error(f"🔸 自定义光强数据插值失败: {str(e)}")
+                logger.warning("🔸 回退到公式计算模式")
+                # 回退到公式计算
         
         if sine_type == 'multi':
             logger.info("🔸 计算模式: 二维正弦波光强分布")
@@ -284,9 +358,9 @@ class DillModel:
             
             return result
     
-    def calculate_exposure_dose(self, x, I_avg, V, K=None, t_exp=1, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0):
+    def calculate_exposure_dose(self, x, I_avg, V, K=None, t_exp=1, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, custom_intensity_data=None):
         """
-        计算曝光剂量分布，支持一维、二维和三维正弦波
+        计算曝光剂量分布，支持一维、二维和三维正弦波，以及自定义光强分布
         
         参数:
             x: 位置坐标数组
@@ -301,6 +375,7 @@ class DillModel:
             phi_expr: 相位表达式
             y: y坐标
             z: z坐标（三维模式使用）
+            custom_intensity_data: 自定义光强分布数据 {'x': [], 'intensity': []}
             
         返回:
             曝光剂量分布数组
@@ -313,7 +388,7 @@ class DillModel:
         logger.info(f"   - t_exp (曝光时间) = {t_exp}")
         
         # 只支持t=0时的phi_expr，后续可扩展为时变
-        intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0)
+        intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0, custom_intensity_data=custom_intensity_data)
         exposure_dose = intensity * t_exp
         
         logger.info(f"🔸 计算结果:")
@@ -488,7 +563,7 @@ class DillModel:
         
         return result
 
-    def generate_data(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None):
+    def generate_data(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None):
         """
         生成数据，支持一维、二维、三维正弦波和4D动画
         
@@ -541,6 +616,21 @@ class DillModel:
         logger.info(f"   - z_range = {z_range}")
         logger.info(f"   - enable_4d_animation = {enable_4d_animation}")
         logger.info(f"   - custom_exposure_times = {custom_exposure_times}")
+        
+        # === 🔍 调试自定义光强数据接收 ===
+        logger.info(f"🔍 后端调试 - 自定义光强数据接收检查:")
+        logger.info(f"   - custom_intensity_data参数存在: {custom_intensity_data is not None}")
+        if custom_intensity_data is not None:
+            logger.info(f"   - 数据类型: {type(custom_intensity_data)}")
+            logger.info(f"   - 数据键: {list(custom_intensity_data.keys()) if isinstance(custom_intensity_data, dict) else 'N/A'}")
+            if isinstance(custom_intensity_data, dict) and 'x' in custom_intensity_data and 'intensity' in custom_intensity_data:
+                x_data = custom_intensity_data['x']
+                intensity_data = custom_intensity_data['intensity']
+                logger.info(f"   - X坐标点数: {len(x_data)}")
+                logger.info(f"   - 光强点数: {len(intensity_data)}")
+                logger.info(f"   - X坐标前5个值: {x_data[:5] if len(x_data) >= 5 else x_data}")
+                logger.info(f"   - 光强前5个值: {intensity_data[:5] if len(intensity_data) >= 5 else intensity_data}")
+        # === 调试结束 ===
         
         # 检查是否启用自定义曝光时间窗口
         logger.info(f"🔍 调试自定义曝光时间条件:")
@@ -839,6 +929,40 @@ class DillModel:
                     exposure_times_to_use = [t_exp]
                     logger.info(f"🔸 使用单一曝光时间: {exposure_times_to_use}")
                 
+                # 检查是否使用自定义光强分布
+                if custom_intensity_data is not None:
+                    logger.info(f"🔸 使用自定义光强分布数据进行1D计算")
+                    
+                    # 创建基本的坐标轴
+                    x_coords = np.linspace(-1000, 1000, 2001)
+                    
+                    # 使用自定义光强分布计算曝光剂量
+                    exposure_dose = self.calculate_exposure_dose(
+                        x_coords, I_avg, V, K, t_exp, '1d', 
+                        custom_intensity_data=custom_intensity_data
+                    )
+                    
+                    # 计算厚度分布
+                    thickness = np.exp(-C * exposure_dose)
+                    
+                    # 返回自定义数据结果
+                    return {
+                        'x': x_coords.tolist(),
+                        'x_coords': x_coords.tolist(),
+                        'exposure_dose': exposure_dose.tolist(),
+                        'thickness': thickness.tolist(),
+                        'intensity_distribution': self.calculate_intensity_distribution(
+                            x_coords, I_avg, V, K, '1d', 
+                            custom_intensity_data=custom_intensity_data
+                        ).tolist(),
+                        'sine_type': '1d',
+                        'is_1d': True,
+                        'custom_intensity_mode': True,
+                        'etch_depths_data': [],  # 保持兼容性
+                        'exposure_times': [t_exp],  # 保持兼容性
+                        'is_ideal_exposure_model': False
+                    }
+                
                 # 使用理想曝光模型参数
                 ideal_data = self.calculate_ideal_exposure_model(
                     I_avg=I_avg,  # 🔧 修复：传递实际的I_avg参数而不是硬编码0.5
@@ -923,7 +1047,7 @@ class DillModel:
                 
                 return enhanced_ideal_data
 
-    def generate_plots(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None):
+    def generate_plots(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None):
         """
         生成图表数据的包装器方法
         
@@ -951,7 +1075,8 @@ class DillModel:
         """
         logger.info("🎯 调用DillModel.generate_plots方法")
         logger.info(f"🎯 generate_plots收到的custom_exposure_times = {custom_exposure_times}")
-        return self.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type, Kx=Kx, Ky=Ky, Kz=Kz, phi_expr=phi_expr, y_range=y_range, z_range=z_range, enable_4d_animation=enable_4d_animation, t_start=t_start, t_end=t_end, time_steps=time_steps, x_min=x_min, x_max=x_max, angle_a=angle_a, exposure_threshold=exposure_threshold, contrast_ctr=contrast_ctr, wavelength=wavelength, custom_exposure_times=custom_exposure_times)
+        logger.info(f"🎯 generate_plots收到的custom_intensity_data = {custom_intensity_data is not None}")
+        return self.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type, Kx=Kx, Ky=Ky, Kz=Kz, phi_expr=phi_expr, y_range=y_range, z_range=z_range, enable_4d_animation=enable_4d_animation, t_start=t_start, t_end=t_end, time_steps=time_steps, x_min=x_min, x_max=x_max, angle_a=angle_a, exposure_threshold=exposure_threshold, contrast_ctr=contrast_ctr, wavelength=wavelength, custom_exposure_times=custom_exposure_times, custom_intensity_data=custom_intensity_data)
 
     def generate_1d_animation_data(self, I_avg, V, K, t_exp_start, t_exp_end, time_steps, C, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405):
         """

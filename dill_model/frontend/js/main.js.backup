@@ -49,42 +49,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化曝光时间窗口选择器
     initExposureTimeWindowSelector();
     
-    // 初始化自定义向量控制框状态
-    initCustomVectorControlsState();
-    
     // 初始化应用
     initApp();
 });
-
-// 初始化自定义向量控制框状态
-function initCustomVectorControlsState() {
-    const methodSelect = document.getElementById('intensity_input_method');
-    if (methodSelect && methodSelect.value === 'custom') {
-        // 如果当前已选择自定义向量模式，确保正确设置界面状态
-        // 延迟执行，确保DOM完全加载
-        setTimeout(() => {
-            if (typeof handleIntensityMethodChange === 'function') {
-                handleIntensityMethodChange();
-                console.log('🔒 页面加载时检测到自定义向量模式，已正确初始化界面状态');
-            }
-        }, 100);
-    }
-}
-
-// 强制清除错误消息显示
-function forceHideErrorMessage() {
-    const errorMessage = document.getElementById('error-message');
-    if (errorMessage) {
-        errorMessage.classList.remove('visible', 'shake');
-        errorMessage.style.display = 'none';
-        errorMessage.style.visibility = 'hidden';
-        errorMessage.style.opacity = '0';
-        errorMessage.style.height = '0';
-        errorMessage.style.marginBottom = '0';
-        errorMessage.textContent = '';
-        console.log('🔧 强制清除错误消息显示');
-    }
-}
 
 // 显示重新计算提示
 function showRecalculationNotice() {
@@ -243,9 +210,6 @@ function initApp() {
     bindSliderEvents();
     bindPhiExprUI();
     
-    // 🔧 强制清除任何可能的错误消息显示
-    forceHideErrorMessage();
-    
     // 触发初始波形类型变化事件以设置正确的初始显示状态
     setTimeout(() => {
         const dillSineType = document.getElementById('dill-sine-type');
@@ -279,41 +243,10 @@ function initApp() {
     const modelSelect = document.getElementById('model-select'); // 获取模型选择下拉框
     const modelSelectionSection = document.getElementById('model-selection-section'); // 获取模型选择区域
     
-    // 🔧 确保错误消息初始状态完全隐藏
-    if (errorMessage) {
-        errorMessage.classList.remove('visible');
-        errorMessage.style.display = 'none';
-        errorMessage.style.visibility = 'hidden';
-        errorMessage.style.opacity = '0';
-        errorMessage.style.height = '0';
-        errorMessage.textContent = '';
-        console.log('✅ 错误消息初始状态已强制隐藏');
-    }
-    
     // 为计算按钮绑定事件
     calculateBtn.addEventListener('click', function() {
         // 首先滑动到页面最底部
         scrollToBottomAndRefreshLogs();
-        
-        // 检查自定义向量模式下是否已加载数据
-        const intensityMethodSelect = document.getElementById('intensity_input_method');
-        if (intensityMethodSelect && intensityMethodSelect.value === 'custom') {
-            if (!customIntensityData.loaded || !customIntensityData.x || !customIntensityData.intensity || 
-                customIntensityData.x.length === 0 || customIntensityData.intensity.length === 0) {
-                // 显示错误消息
-                if (errorMessage) {
-                    errorMessage.textContent = '请先上传文件或手动输入光强分布数据，然后预览/应用数据后再计算';
-                    errorMessage.classList.add('visible', 'shake');
-                    errorMessage.style.display = 'block';
-                    errorMessage.style.visibility = 'visible';
-                    errorMessage.style.opacity = '1';
-                    errorMessage.style.height = 'auto';
-                    console.log('❌ 自定义向量模式下未加载数据，计算被阻止');
-                }
-                // 不执行计算
-                return;
-            }
-        }
         
         let modelType = modelSelect.value;
         let postData = getParameterValues(); // 使用 getParameterValues 获取所有参数
@@ -345,8 +278,8 @@ function initApp() {
                 loadingText.textContent = '加载中...';
             }
         }
-        // 强制隐藏错误消息
-        forceHideErrorMessage();
+        // 隐藏错误消息
+        errorMessage.classList.remove('visible');
         // 隐藏结果区域
         resultsSection.classList.remove('visible');
         
@@ -1253,28 +1186,50 @@ function getParameterValues() {
         const sineType = sineTypeElement ? sineTypeElement.value : 'single';
         params.sine_type = sineType;
         
-        // 添加空值检查的参数获取
-        const I_avg_elem = document.getElementById('I_avg');
-        const V_elem = document.getElementById('V');
-        const t_exp_elem = document.getElementById('t_exp');
-        const C_elem = document.getElementById('C');
+        // 🔥 新增：检查光强分布数据模式
+        const intensityData = window.intensityUploadManager ? window.intensityUploadManager.getIntensityData() : { mode: 'formula', data: null };
         
-        params.I_avg = I_avg_elem ? parseFloat(I_avg_elem.value) || 0.5 : 0.5;
-        params.V = V_elem ? parseFloat(V_elem.value) || 0.8 : 0.8;
-        params.t_exp = t_exp_elem ? parseFloat(t_exp_elem.value) || 100.0 : 100.0;
-        params.C = C_elem ? parseFloat(C_elem.value) || 0.022 : 0.022;
+        if (intensityData.mode === 'upload' && intensityData.data) {
+            // 数据上传模式：使用上传的光强分布数据
+            params.intensity_mode = 'upload';
+            params.uploaded_intensity_data = intensityData.data;
+            console.log('🔄 使用上传的光强分布数据:', intensityData.data);
+            
+            // 在上传模式下，仍需要获取其他必要参数
+            const t_exp_elem = document.getElementById('t_exp');
+            const C_elem = document.getElementById('C');
+            const exposure_threshold_elem = document.getElementById('exposure_threshold');
+            
+            params.t_exp = t_exp_elem ? parseFloat(t_exp_elem.value) || 100.0 : 100.0;
+            params.C = C_elem ? parseFloat(C_elem.value) || 0.022 : 0.022;
+            params.exposure_threshold = exposure_threshold_elem ? parseFloat(exposure_threshold_elem.value) || 20 : 20;
+            
+        } else {
+            // 公式计算模式：使用传统参数
+            params.intensity_mode = 'formula';
+            
+            // 添加空值检查的参数获取
+            const I_avg_elem = document.getElementById('I_avg');
+            const V_elem = document.getElementById('V');
+            const t_exp_elem = document.getElementById('t_exp');
+            const C_elem = document.getElementById('C');
         
-        // 添加理想曝光模型的新参数
-        const angle_a_elem = document.getElementById('angle_a');
-        const exposure_threshold_elem = document.getElementById('exposure_threshold');
-        const wavelength_elem = document.getElementById('wavelength');
-        const wavelength_number_elem = document.getElementById('wavelength_number');
+            params.I_avg = I_avg_elem ? parseFloat(I_avg_elem.value) || 0.5 : 0.5;
+            params.V = V_elem ? parseFloat(V_elem.value) || 0.8 : 0.8;
+            params.t_exp = t_exp_elem ? parseFloat(t_exp_elem.value) || 100.0 : 100.0;
+            params.C = C_elem ? parseFloat(C_elem.value) || 0.022 : 0.022;
+            
+            // 添加理想曝光模型的新参数
+            const angle_a_elem = document.getElementById('angle_a');
+            const exposure_threshold_elem = document.getElementById('exposure_threshold');
+            const wavelength_elem = document.getElementById('wavelength');
+            const wavelength_number_elem = document.getElementById('wavelength_number');
+            
+            params.angle_a = angle_a_elem ? parseFloat(angle_a_elem.value) || 11.7 : 11.7;
+            params.exposure_threshold = exposure_threshold_elem ? parseFloat(exposure_threshold_elem.value) || 20 : 20;
         
-        params.angle_a = angle_a_elem ? parseFloat(angle_a_elem.value) || 11.7 : 11.7;
-        params.exposure_threshold = exposure_threshold_elem ? parseFloat(exposure_threshold_elem.value) || 20 : 20;
-        
-        // 🔧 修复波长参数获取逻辑：优先使用数字输入框的值
-        let wavelengthValue = 405; // 默认值
+            // 🔧 修复波长参数获取逻辑：优先使用数字输入框的值
+            let wavelengthValue = 405; // 默认值
         if (wavelength_number_elem && wavelength_number_elem.value !== '') {
             // 优先使用数字输入框的值
             const numberValue = parseFloat(wavelength_number_elem.value);
@@ -1289,31 +1244,6 @@ function getParameterValues() {
             }
         }
         params.wavelength = wavelengthValue;
-        
-        // 检查是否使用自定义光强分布
-        const intensityMethodSelect = document.getElementById('intensity_input_method');
-        if (intensityMethodSelect && intensityMethodSelect.value === 'custom' && customIntensityData.loaded) {
-            console.log('🎯 使用自定义光强分布数据');
-            params.custom_intensity_data = {
-                x: customIntensityData.x,
-                intensity: customIntensityData.intensity
-            };
-            
-            // === 🔍 前端调试自定义光强数据 ===
-            console.log('🔍 前端调试 - 自定义光强数据传递检查:');
-            console.log('   - customIntensityData.loaded:', customIntensityData.loaded);
-            console.log('   - customIntensityData.x点数:', customIntensityData.x.length);
-            console.log('   - customIntensityData.intensity点数:', customIntensityData.intensity.length);
-            console.log('   - X坐标范围:', [Math.min(...customIntensityData.x), Math.max(...customIntensityData.x)]);
-            console.log('   - 光强范围:', [Math.min(...customIntensityData.intensity), Math.max(...customIntensityData.intensity)]);
-            console.log('   - 传递给后端的数据:', params.custom_intensity_data);
-            // === 调试结束 ===
-        } else {
-            console.log('🔧 未使用自定义光强分布，使用公式计算');
-            console.log('   - 输入方式选择器存在:', !!intensityMethodSelect);
-            console.log('   - 输入方式值:', intensityMethodSelect?.value);
-            console.log('   - customIntensityData.loaded:', customIntensityData.loaded);
-        }
         
         // 🔸 调试波长参数
         console.log(`🌈 前端波长参数调试: wavelength = ${params.wavelength} nm`);
@@ -5063,59 +4993,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
     // 检查是否为理想曝光模型（1D DILL模型使用理想曝光模型）
     const isIdealExposureModel = params.is_ideal_exposure_model || params.sine_type === 'single';
     
-    // 检查是否使用自定义向量数据
-    const intensityMethodSelect = document.getElementById('intensity_input_method');
-    const isUsingCustomData = intensityMethodSelect && intensityMethodSelect.value === 'custom' && customIntensityData.loaded;
-    
     if (plotType === 'exposure') {
-        if (isUsingCustomData) {
-            // 自定义向量数据的光强分布
-            valueLabel = '光强分布:';
-            valueUnit = '(自定义单位)';
-            formulaTitle = '1D DILL模型 - 自定义向量光强分布：';
-            formulaMath = '💾 <strong>基于用户自定义数据</strong><br/>I<sub>0</sub>(x) = 用户提供的光强向量数据';
-            
-            // 获取自定义数据的信息
-            const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
-            const xRange = customIntensityData.x ? [Math.min(...customIntensityData.x), Math.max(...customIntensityData.x)] : [0, 0];
-            const intensityRange = customIntensityData.intensity ? [Math.min(...customIntensityData.intensity), Math.max(...customIntensityData.intensity)] : [0, 0];
-            
-            // 找到当前点在自定义数据中的索引
-            let nearestIndex = 0;
-            let minDistance = Infinity;
-            if (customIntensityData.x) {
-                for (let i = 0; i < customIntensityData.x.length; i++) {
-                    const distance = Math.abs(customIntensityData.x[i] - x);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        nearestIndex = i;
-                    }
-                }
-            }
-            
-            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
-            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : y;
-            
-            formulaExplanation = `
-                <div>📊 <strong>自定义向量数据信息：</strong></div>
-                <div>• 数据来源: 用户上传的文件或手动输入</div>
-                <div>• 数据点总数: ${totalDataPoints} 个</div>
-                <div>• X坐标范围: [${xRange[0].toFixed(3)}, ${xRange[1].toFixed(3)}]</div>
-                <div>• 光强范围: [${intensityRange[0].toFixed(6)}, ${intensityRange[1].toFixed(6)}]</div>
-                <div class="formula-separator"></div>
-                <div>📍 <strong>当前位置数据：</strong></div>
-                <div>• 点击位置: x = ${x.toFixed(3)}</div>
-                <div>• 显示光强: ${y.toFixed(6)}</div>
-                <div>• 最近数据点: x = ${nearestX.toFixed(3)}, I = ${nearestIntensity.toFixed(6)}</div>
-                <div>• 距离差: ${Math.abs(nearestX - x).toFixed(6)}</div>
-                <div class="formula-separator"></div>
-                <div>💡 <strong>说明：</strong></div>
-                <div>• 此数据不是基于物理公式计算得出</div>
-                <div>• 光强值来自用户提供的真实测量或理论数据</div>
-                <div>• 系统使用插值方法处理非网格点的值</div>
-                <div>• 单位和物理意义取决于原始数据</div>
-            `;
-        } else if (isIdealExposureModel) {
+        if (isIdealExposureModel) {
             // 理想曝光模型的强度分布公式
             valueLabel = '光强分布:';
             valueUnit = '(mW/cm²)';
@@ -5191,74 +5070,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             }
         }
     } else if (plotType === 'thickness') {
-        if (isUsingCustomData) {
-            // 自定义向量数据的厚度分布
-            valueLabel = '蚀刻深度/厚度:';
-            valueUnit = '(自定义单位)';
-            formulaTitle = '1D DILL模型 - 基于自定义向量的厚度分布：';
-            formulaMath = '💾 <strong>基于用户自定义数据</strong><br/>H(x) = 根据自定义光强数据和用户设定参数计算的厚度/蚀刻深度';
-            
-            // 获取自定义数据的信息
-            const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
-            const xRange = customIntensityData.x ? [Math.min(...customIntensityData.x), Math.max(...customIntensityData.x)] : [0, 0];
-            const intensityRange = customIntensityData.intensity ? [Math.min(...customIntensityData.intensity), Math.max(...customIntensityData.intensity)] : [0, 0];
-            
-            // 找到当前点在自定义数据中的对应光强值
-            let nearestIndex = 0;
-            let minDistance = Infinity;
-            if (customIntensityData.x) {
-                for (let i = 0; i < customIntensityData.x.length; i++) {
-                    const distance = Math.abs(customIntensityData.x[i] - x);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        nearestIndex = i;
-                    }
-                }
-            }
-            
-            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
-            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : 0;
-            
-            // 获取DILL参数
-            const exposureConstant = params.C || 0.022;
-            const thresholdCd = params.exposure_threshold || 20;
-            const exposureTime = params.t_exp || 100;
-            
-            // 根据自定义光强计算理论曝光剂量
-            const exposureDose = nearestIntensity * exposureTime;
-            let theoreticalThickness;
-            if (exposureDose < thresholdCd) {
-                theoreticalThickness = 1.0; // 未达阈值，完全抗蚀
-            } else {
-                const M = Math.exp(-exposureConstant * (exposureDose - thresholdCd));
-                theoreticalThickness = 1 - M; // 蚀刻深度
-            }
-            
-            formulaExplanation = `
-                <div>📊 <strong>基于自定义向量的厚度计算：</strong></div>
-                <div>• 光强数据来源: 用户上传的文件或手动输入</div>
-                <div>• 厚度计算: 使用自定义光强 + DILL模型参数</div>
-                <div>• 数据点总数: ${totalDataPoints} 个</div>
-                <div class="formula-separator"></div>
-                <div>📍 <strong>当前位置分析：</strong></div>
-                <div>• 点击位置: x = ${x.toFixed(3)}</div>
-                <div>• 显示厚度/深度: ${y.toFixed(6)}</div>
-                <div>• 对应光强: I = ${nearestIntensity.toFixed(6)} (从自定义数据)</div>
-                <div>• 曝光剂量: D = I × t = ${exposureDose.toFixed(2)} (理论值)</div>
-                <div>• 理论厚度: H = ${theoreticalThickness.toFixed(6)}</div>
-                <div class="formula-separator"></div>
-                <div>⚙️ <strong>使用的DILL参数：</strong></div>
-                <div>• C: 光敏速率常数 = ${exposureConstant}</div>
-                <div>• c<sub>d</sub>: 曝光阈值 = ${thresholdCd}</div>
-                <div>• t<sub>exp</sub>: 曝光时间 = ${exposureTime} s</div>
-                <div class="formula-separator"></div>
-                <div>💡 <strong>说明：</strong></div>
-                <div>• 光强来自自定义数据，非公式计算</div>
-                <div>• 厚度基于DILL模型: H = 1 - e<sup>-C(D-c<sub>d</sub>)</sup></div>
-                <div>• 实际值可能因插值、后处理等有所差异</div>
-                <div>• 阈值以下区域不发生反应 (H = 0)</div>
-            `;
-        } else if (isIdealExposureModel) {
+        if (isIdealExposureModel) {
             // 理想曝光模型的蚀刻深度公式
             valueLabel = '蚀刻深度:';
             valueUnit = '(归一化)';
@@ -5368,17 +5180,9 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             </div>
         </div>
         <div class="point-info-section">
-            <h4>📋 ${LANGS[currentLang].popup_section_params_dill || '参数组'}: ${setName} (${isUsingCustomData ? '自定义向量DILL模型' : isIdealExposureModel ? 'DILL模型' : 'Dill模型'})</h4>
+            <h4>📋 ${LANGS[currentLang].popup_section_params_dill || '参数组'}: ${setName} (${isIdealExposureModel ? 'DILL模型' : 'Dill模型'})</h4>
             <div class="info-grid responsive-grid">
-                ${isUsingCustomData ? `
-                <div class="info-item"><span class="info-label">数据来源:</span><span class="info-value">自定义向量</span></div>
-                <div class="info-item"><span class="info-label">数据点数:</span><span class="info-value">${customIntensityData.x ? customIntensityData.x.length : 0} 个</span></div>
-                <div class="info-item"><span class="info-label">X范围:</span><span class="info-value">[${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 0}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 0}]</span></div>
-                <div class="info-item"><span class="info-label">光强范围:</span><span class="info-value">[${customIntensityData.intensity ? Math.min(...customIntensityData.intensity).toFixed(3) : 0}, ${customIntensityData.intensity ? Math.max(...customIntensityData.intensity).toFixed(3) : 0}]</span></div>
-                <div class="info-item"><span class="info-label">C常数:</span><span class="info-value">${params.C || 0.022}</span></div>
-                <div class="info-item"><span class="info-label">阈值(cd):</span><span class="info-value">${params.exposure_threshold || 20}</span></div>
-                <div class="info-item"><span class="info-label">曝光时间:</span><span class="info-value">${params.t_exp || 100} s</span></div>
-                ` : isIdealExposureModel ? `
+                ${isIdealExposureModel ? `
                 <div class="info-item"><span class="info-label">干涉条纹可见度(V):</span><span class="info-value">${params.V || 1}</span></div>
                 <div class="info-item"><span class="info-label">角度(a):</span><span class="info-value">${params.angle_a || 11.7}°</span></div>
                 <div class="info-item"><span class="info-label">波长(λ):</span><span class="info-value">${(params.parameters && params.parameters.wavelength_nm) || params.wavelength || 405} nm</span></div>
@@ -9892,34 +9696,6 @@ const debouncedUpdateDill1DFrame = debounce((frameIndex) => {
 
 // 曝光时间窗口选择器相关函数
 /**
- * 控制其他三个控制框的显示/隐藏
- * @param {boolean} hideControls - 是否隐藏控制框（true=隐藏，false=显示）
- */
-function toggleOtherControlsVisibility(hideControls) {
-    // 获取三个需要控制的容器
-    const exposureTimeContainer = document.getElementById('dill-exposure-time-params-container');
-    const animationContainer = document.getElementById('dill-1d-animation-params-container');
-    const vEvaluationContainer = document.getElementById('dill-1d-v-evaluation-params-container');
-    
-    // 控制显示/隐藏
-    const displayValue = hideControls ? 'none' : 'block';
-    
-    if (exposureTimeContainer) {
-        exposureTimeContainer.style.display = displayValue;
-    }
-    
-    if (animationContainer) {
-        animationContainer.style.display = displayValue;
-    }
-    
-    if (vEvaluationContainer) {
-        vEvaluationContainer.style.display = displayValue;
-    }
-    
-    console.log(`${hideControls ? '隐藏' : '显示'}了三个控制框: 曝光时间窗口、1D时间动画、1D V评估`);
-}
-
-/**
  * 切换曝光时间输入框的禁用/启用状态
  * @param {boolean} isDisabled - 是否禁用输入框
  */
@@ -9978,15 +9754,11 @@ function initExposureTimeWindowSelector() {
         // 初始状态：根据复选框状态显示/隐藏参数和禁用/启用曝光时间输入框
         exposureTimeParams.style.display = enableExposureTimeWindowCheckbox.checked ? 'block' : 'none';
         toggleExposureTimeInputState(enableExposureTimeWindowCheckbox.checked);
-        // 初始化时不需要隐藏其他控制框，移除错误的调用
         
         enableExposureTimeWindowCheckbox.addEventListener('change', function() {
             exposureTimeParams.style.display = this.checked ? 'block' : 'none';
             // 切换曝光时间输入框的禁用/启用状态
             toggleExposureTimeInputState(this.checked);
-            
-            // 注意：这里不需要隐藏其他控制框，只需要控制曝光时间窗口参数的显示
-            // 移除了错误的toggleOtherControlsVisibility调用
             
             if (this.checked) {
                 console.log('启用曝光时间窗口控制 - 将使用自定义曝光时间列表，单一曝光时间输入框已禁用');
@@ -11424,1143 +11196,647 @@ function hideMultiLineController() {
     }
 }
 
-// ========================================================================================
-// 自定义光强分布输入功能
-// ========================================================================================
+// 🔥 新增：光强分布数据上传功能
 
-// 全局变量存储自定义光强数据
-let customIntensityData = {
-    x: [],
-    intensity: [],
-    loaded: false
-};
-
-// 初始化自定义光强分布功能
-function initCustomIntensityFeature() {
-    console.log('🔧 初始化自定义光强分布功能');
-    
-    // 输入方式选择器事件
-    const methodSelect = document.getElementById('intensity_input_method');
-    if (methodSelect) {
-        methodSelect.addEventListener('change', handleIntensityMethodChange);
+/**
+ * 光强分布数据上传管理器
+ */
+class IntensityDataUploadManager {
+    constructor() {
+        this.uploadedData = null;
+        this.isUploadMode = false;
+        this.initializeEventListeners();
     }
-    
-    // 标签页切换事件
-    initCustomIntensityTabs();
-    
-    // 文件上传功能
-    initFileUploadFeature();
-    
-    // 手动输入功能
-    initManualInputFeature();
-    
-    // 数据管理功能
-    initDataManagementFeature();
-    
-    console.log('✅ 自定义光强分布功能初始化完成');
-}
 
+    /**
+     * 初始化事件监听器
+     */
+    initializeEventListeners() {
+        // 模式切换监听器
+        const modeRadios = document.querySelectorAll('input[name="intensity-mode"]');
+        modeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => this.handleModeChange(e.target.value));
+        });
 
+        // 文件上传相关事件
+        this.initializeFileUpload();
+        
+        // 手动输入相关事件
+        this.initializeManualInput();
+    }
 
-// 初始化自定义光强分布标签页
-function initCustomIntensityTabs() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    tabButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            const targetTab = e.target.dataset.tab;
+    /**
+     * 处理模式切换
+     */
+    handleModeChange(mode) {
+        console.log('🔄 光强分布数据模式切换:', mode);
+        
+        const formulaContainer = document.getElementById('intensity-formula-container');
+        const uploadContainer = document.getElementById('intensity-upload-container');
+        
+        this.isUploadMode = (mode === 'upload');
+        
+        if (mode === 'formula') {
+            // 显示公式计算参数，隐藏上传容器
+            formulaContainer.style.display = 'block';
+            uploadContainer.style.display = 'none';
             
-            // 移除所有活跃状态
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
+            // 清除上传的数据
+            this.clearUploadedData();
             
-            // 激活当前标签
-            e.target.classList.add('active');
-            const targetContent = document.getElementById(targetTab);
-            if (targetContent) {
-                targetContent.classList.add('active');
+            console.log('✅ 切换到公式计算模式');
+        } else if (mode === 'upload') {
+            // 隐藏公式计算参数，显示上传容器
+            formulaContainer.style.display = 'none';
+            uploadContainer.style.display = 'block';
+            
+            console.log('✅ 切换到数据上传模式');
+        }
+        
+        // 触发UI更新
+        this.updateCalculateButton();
+    }
+
+    /**
+     * 初始化文件上传功能
+     */
+    initializeFileUpload() {
+        const fileUploadArea = document.getElementById('intensity-file-upload');
+        const fileInput = document.getElementById('intensity-file-input');
+        const fileSelected = document.getElementById('intensity-file-selected');
+        const fileRemove = fileSelected?.querySelector('.file-remove');
+
+        if (!fileUploadArea || !fileInput) return;
+
+        // 点击上传区域触发文件选择
+        fileUploadArea.addEventListener('click', (e) => {
+            if (e.target.closest('.file-remove')) return;
+            fileInput.click();
+        });
+
+        // 文件选择事件
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                this.handleFileUpload(files[0]);
             }
-            
-            console.log('🏷️ 切换到标签页:', targetTab);
         });
-    });
-}
 
-// 初始化文件上传功能
-function initFileUploadFeature() {
-    const fileInput = document.getElementById('intensity-file-input');
-    const uploadBtn = document.getElementById('upload-file-btn');
-    
-    if (uploadBtn) {
-        uploadBtn.addEventListener('click', () => {
-            if (fileInput) fileInput.click();
+        // 拖拽上传支持
+        fileUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.add('drag-over');
         });
-    }
-    
-    if (fileInput) {
-        fileInput.addEventListener('change', handleFileUpload);
-    }
-}
 
-// 处理文件上传
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    console.log('📁 开始处理上传文件:', file.name);
-    
-    const fileName = file.name.toLowerCase();
-    const fileExtension = fileName.split('.').pop();
-    
-    // 支持的文件格式
-    const supportedFormats = ['txt', 'csv', 'json', 'dat'];
-    
-    if (!supportedFormats.includes(fileExtension)) {
-        showNotification(`不支持的文件格式: ${fileExtension}。支持的格式: ${supportedFormats.join(', ')}`, 'error');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const content = e.target.result;
-            parseFileContent(content, fileExtension, file.name);
-        } catch (error) {
-            console.error('文件读取错误:', error);
-            showNotification('文件读取失败: ' + error.message, 'error');
-        }
-    };
-    
-    reader.readAsText(file);
-}
+        fileUploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('drag-over');
+        });
 
-// 处理输入方式变化
-function handleIntensityMethodChange() {
-    const methodSelect = document.getElementById('intensity_input_method');
-    const customContainer = document.getElementById('custom-intensity-container');
-    const formulaContainer = document.getElementById('formula-intensity-params');
-    
-    // 获取三个控制框
-    const exposureTimeWindowControl = document.getElementById('exposure-time-window-control');
-    const animationParamsContainer = document.getElementById('dill-1d-animation-params-container');
-    const vEvaluationParamsContainer = document.getElementById('dill-1d-v-evaluation-params-container');
-    
-    if (!methodSelect || !customContainer || !formulaContainer) {
-        console.error('❌ 缺少必要的DOM元素');
-        return;
-    }
-    
-    const selectedMethod = methodSelect.value;
-    console.log(`🔄 光强分布输入方式切换为: ${selectedMethod}`);
-    
-    if (selectedMethod === 'custom') {
-        // 显示自定义输入，隐藏公式参数
-        customContainer.style.display = 'block';
-        formulaContainer.classList.add('hidden');
-        
-        // 隐藏三个控制框
-        if (exposureTimeWindowControl) {
-            exposureTimeWindowControl.style.display = 'none';
-            exposureTimeWindowControl.classList.add('hidden-by-custom-vector');
-        }
-        if (animationParamsContainer) {
-            animationParamsContainer.style.display = 'none';
-            animationParamsContainer.classList.add('hidden-by-custom-vector');
-        }
-        if (vEvaluationParamsContainer) {
-            vEvaluationParamsContainer.style.display = 'none';
-            vEvaluationParamsContainer.classList.add('hidden-by-custom-vector');
-        }
-        
-        // 清空图表
-        clearAllCharts();
-        
-        // 显示提示
-        showNotification('已切换到自定义向量模式，请上传文件或手动输入光强分布数据。三个控制框已隐藏', 'info');
-        console.log('🔒 已隐藏三个控制框：曝光时间窗口控制、1D时间动画控制、1D对比度评估控制');
-    } else {
-        // 显示公式参数，隐藏自定义输入
-        customContainer.style.display = 'none';
-        formulaContainer.classList.remove('hidden');
-        
-        // 显示三个控制框
-        if (exposureTimeWindowControl) {
-            exposureTimeWindowControl.style.display = '';
-            exposureTimeWindowControl.classList.remove('hidden-by-custom-vector');
-        }
-        if (animationParamsContainer) {
-            animationParamsContainer.style.display = '';
-            animationParamsContainer.classList.remove('hidden-by-custom-vector');
-        }
-        if (vEvaluationParamsContainer) {
-            vEvaluationParamsContainer.style.display = '';
-            vEvaluationParamsContainer.classList.remove('hidden-by-custom-vector');
-        }
-        
-        // 清除自定义数据
-        clearCustomIntensityData();
-        
-        // 清空图表
-        clearAllCharts();
-        
-        // 显示提示
-        showNotification('已切换到公式计算模式，所有控制框已恢复显示', 'info');
-        console.log('🔓 已恢复显示三个控制框：曝光时间窗口控制、1D时间动画控制、1D对比度评估控制');
-    }
-}
-
-// 初始化标签页功能
-function initCustomIntensityTabs() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
+        fileUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('drag-over');
             
-            // 移除所有活动状态
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            // 激活选中的标签页
-            button.classList.add('active');
-            const targetContent = document.getElementById(`${targetTab}-tab`);
-            if (targetContent) {
-                targetContent.classList.add('active');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                this.handleFileUpload(files[0]);
             }
-            
-            console.log(`📄 切换到标签页: ${targetTab}`);
         });
-    });
-}
 
-// 初始化文件上传功能
-function initFileUploadFeature() {
-    const uploadZone = document.getElementById('intensity-upload-zone');
-    const fileInput = document.getElementById('intensity-file-input');
-    
-    if (!uploadZone || !fileInput) return;
-    
-    // 点击上传区域触发文件选择
-    uploadZone.addEventListener('click', () => {
-        fileInput.click();
-    });
-    
-    // 文件选择事件
-    fileInput.addEventListener('change', handleFileSelection);
-    
-    // 拖拽上传事件
-    uploadZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadZone.classList.add('drag-over');
-    });
-    
-    uploadZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        uploadZone.classList.remove('drag-over');
-    });
-    
-    uploadZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadZone.classList.remove('drag-over');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFileUpload(files[0]);
+        // 移除文件按钮
+        if (fileRemove) {
+            fileRemove.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.clearFileSelection();
+            });
         }
-    });
-}
-
-// 处理文件选择
-function handleFileSelection(event) {
-    const file = event.target.files[0];
-    if (file) {
-        handleFileUpload(file);
     }
-}
 
-// 处理文件上传
-function handleFileUpload(file) {
-    console.log(`📂 开始处理文件: ${file.name}`);
-    
-    // 检查文件类型
-    const allowedTypes = ['.txt', '.csv', '.json'];
-    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-    
-    if (!allowedTypes.includes(fileExtension)) {
-        showNotification(`不支持的文件格式: ${fileExtension}。请使用 TXT、CSV 或 JSON 格式。`, 'error');
-        return;
-    }
-    
-    // 检查文件大小（限制为5MB）
-    if (file.size > 5 * 1024 * 1024) {
-        showNotification('文件过大，请选择小于5MB的文件。', 'error');
-        return;
-    }
-    
-    // 读取文件内容
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const content = e.target.result;
-        parseFileContent(content, fileExtension, file.name);
-    };
-    
-    reader.onerror = function() {
-        showNotification('文件读取失败，请重试。', 'error');
-    };
-    
-    reader.readAsText(file);
-}
+    /**
+     * 初始化手动输入功能
+     */
+    initializeManualInput() {
+        const validateBtn = document.getElementById('intensity-data-validate');
+        const clearBtn = document.getElementById('intensity-data-clear');
+        const exampleBtn = document.getElementById('intensity-data-example');
+        const manualInput = document.getElementById('intensity-manual-input');
 
-// 解析文件内容
-function parseFileContent(content, fileExtension, fileName) {
-    console.log(`🔍 解析 ${fileExtension} 文件内容`);
-    
-    try {
-        let x = [];
-        let intensity = [];
-        
-        switch (fileExtension) {
-            case '.txt':
-                ({ x, intensity } = parseTxtContent(content));
-                break;
-            case '.csv':
-                ({ x, intensity } = parseCsvContent(content));
-                break;
-            case '.json':
-                ({ x, intensity } = parseJsonContent(content));
-                break;
+        if (validateBtn) {
+            validateBtn.addEventListener('click', () => this.validateManualInput());
         }
-        
-        // 验证数据
-        if (!validateIntensityData(x, intensity)) {
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearManualInput());
+        }
+
+        if (exampleBtn) {
+            exampleBtn.addEventListener('click', () => this.loadExampleData());
+        }
+
+        if (manualInput) {
+            // 实时验证（防抖）
+            let validateTimer;
+            manualInput.addEventListener('input', () => {
+                clearTimeout(validateTimer);
+                validateTimer = setTimeout(() => {
+                    this.validateManualInput(true); // 静默验证
+                }, 500);
+            });
+        }
+    }
+
+    /**
+     * 处理文件上传
+     */
+    async handleFileUpload(file) {
+        console.log('📁 处理文件上传:', file.name, file.type, file.size);
+
+        // 文件大小检查（限制10MB）
+        if (file.size > 10 * 1024 * 1024) {
+            this.showError('文件大小超过10MB限制');
             return;
         }
-        
-        // 存储数据
-        customIntensityData = {
-            x: x,
-            intensity: intensity,
-            loaded: true,
-            source: 'file',
-            fileName: fileName
-        };
-        
-        // 显示数据状态
-        updateDataStatus();
-        
-        // 预览数据
-        previewIntensityData();
-        
-        showNotification(`成功加载文件: ${fileName}，包含 ${x.length} 个数据点`, 'success');
-        
-    } catch (error) {
-        console.error('❌ 文件解析错误:', error);
-        showNotification(`文件解析失败: ${error.message}`, 'error');
-    }
-}
 
-// 解析TXT文件内容
-function parseTxtContent(content) {
-    // 分割行并过滤掉空行和注释行
-    const lines = content.split('\n')
-        .map(line => line.trim())
-        .filter(line => line !== '' && !line.startsWith('#'));
-    
-    const x = [];
-    const intensity = [];
-    
-    if (lines.length === 0) {
-        throw new Error('TXT文件中没有找到有效的数据行（排除注释行）。');
-    }
-    
-    // 尝试检测格式 - 使用第一行有效数据
-    const firstLine = lines[0].trim();
-    const parts = firstLine.split(/\s+/);
-    
-    if (parts.length >= 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]))) {
-        console.log('检测到两列格式的TXT文件: x intensity');
-        // 格式：x intensity
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            const parts = line.split(/\s+/);
-            if (parts.length >= 2) {
-                const xVal = parseFloat(parts[0]);
-                const intensityVal = parseFloat(parts[1]);
-                if (!isNaN(xVal) && !isNaN(intensityVal)) {
-                    x.push(xVal);
-                    intensity.push(intensityVal);
-                } else {
-                    console.warn(`第 ${i + 1} 行包含无效数值，已跳过: "${line}"`);
-                }
-            } else {
-                console.warn(`第 ${i + 1} 行格式不正确，已跳过: "${line}"`);
-            }
+        // 文件类型检查
+        const allowedTypes = ['.txt', '.csv', '.json', '.dat'];
+        const fileName = file.name.toLowerCase();
+        const isValidType = allowedTypes.some(type => fileName.endsWith(type));
+        
+        if (!isValidType) {
+            this.showError(`不支持的文件类型。支持的格式：${allowedTypes.join(', ')}`);
+            return;
         }
-    } else if (parts.length === 1 && !isNaN(parseFloat(parts[0]))) {
-        console.log('检测到单列格式的TXT文件: intensity only');
-        // 格式：仅intensity值
-        for (let i = 0; i < lines.length; i++) {
-            const intensityVal = parseFloat(lines[i].trim());
-            if (!isNaN(intensityVal)) {
-                x.push(i); // 使用索引作为x坐标
-                intensity.push(intensityVal);
-            } else {
-                console.warn(`第 ${i + 1} 行包含无效数值，已跳过: "${lines[i]}"`);
-            }
-        }
-    } else {
-        throw new Error('无法识别的TXT文件格式。请使用"x intensity"或"intensity"格式。注释行请以#开头。');
-    }
-    
-    if (x.length === 0) {
-        throw new Error('TXT文件中没有找到有效的数值数据。');
-    }
-    
-    return { x, intensity };
-}
 
-// 解析CSV文件内容
-function parseCsvContent(content) {
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    const x = [];
-    const intensity = [];
-    
-    if (lines.length === 0) {
-        throw new Error('CSV文件为空或只包含空行。');
-    }
-    
-    // 检查第一行是否为标题行
-    const firstLine = lines[0].trim();
-    const firstParts = firstLine.split(',').map(part => part.trim());
-    
-    let startIndex = 0;
-    let xColumnIndex = 0;
-    let intensityColumnIndex = 1;
-    
-    // 检测标题行和列位置
-    if (firstParts.length >= 2 && isNaN(parseFloat(firstParts[0]))) {
-        console.log('检测到CSV标题行:', firstParts);
-        startIndex = 1;
-        
-        // 尝试找到正确的列
-        for (let i = 0; i < firstParts.length; i++) {
-            const header = firstParts[i].toLowerCase();
-            if (header.includes('x') || header.includes('position') || header.includes('pos')) {
-                xColumnIndex = i;
-                console.log(`找到X坐标列: ${firstParts[i]} (索引 ${i})`);
-            } else if (header.includes('intensity') || header.includes('int') || header.includes('value') || header.includes('y')) {
-                intensityColumnIndex = i;
-                console.log(`找到强度列: ${firstParts[i]} (索引 ${i})`);
-            }
-        }
-    } else {
-        console.log('未检测到CSV标题行，使用默认列顺序 (x, intensity)');
-    }
-    
-    // 解析数据行
-    for (let i = startIndex; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (line === '') continue;
-        
-        const parts = line.split(',').map(part => part.trim());
-        
-        if (parts.length >= Math.max(xColumnIndex + 1, intensityColumnIndex + 1)) {
-            const xVal = parseFloat(parts[xColumnIndex]);
-            const intensityVal = parseFloat(parts[intensityColumnIndex]);
+        try {
+            // 读取文件内容
+            const content = await this.readFileContent(file);
             
-            if (!isNaN(xVal) && !isNaN(intensityVal)) {
-                x.push(xVal);
-                intensity.push(intensityVal);
-            } else {
-                console.warn(`第 ${i + 1} 行包含无效数值，已跳过: "${line}"`);
+            // 解析数据
+            const parsedData = await this.parseFileContent(content, fileName);
+            
+            if (parsedData) {
+                this.uploadedData = parsedData;
+                this.showFileSelected(file.name);
+                this.updatePreview(parsedData);
+                this.showSuccess('文件上传成功！');
+                
+                console.log('✅ 文件解析成功:', parsedData);
             }
-        } else {
-            console.warn(`第 ${i + 1} 行列数不够，已跳过: "${line}"`);
+            
+        } catch (error) {
+            console.error('❌ 文件上传失败:', error);
+            this.showError(`文件解析失败: ${error.message}`);
         }
     }
-    
-    if (x.length === 0) {
-        throw new Error('CSV文件中未找到有效的数值数据。请确保包含数值型的坐标和强度列。');
-    }
-    
-    console.log(`成功解析CSV文件: ${x.length} 个数据点`);
-    return { x, intensity };
-}
 
-// 解析JSON文件内容
-function parseJsonContent(content) {
-    const data = JSON.parse(content);
-    
-    // 检查是否为数组格式: [{"x": value, "intensity": value}, ...]
-    if (Array.isArray(data)) {
-        console.log('检测到数组格式的JSON文件');
+    /**
+     * 读取文件内容
+     */
+    readFileContent(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => reject(new Error('文件读取失败'));
+            reader.readAsText(file, 'UTF-8');
+        });
+    }
+
+    /**
+     * 解析文件内容
+     */
+    parseFileContent(content, fileName) {
+        try {
+            if (fileName.endsWith('.json')) {
+                return this.parseJsonData(content);
+            } else if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileName.endsWith('.dat')) {
+                return this.parseCsvData(content);
+            } else {
+                throw new Error('不支持的文件格式');
+            }
+        } catch (error) {
+            throw new Error(`数据解析错误: ${error.message}`);
+        }
+    }
+
+    /**
+     * 解析JSON格式数据
+     */
+    parseJsonData(content) {
+        const data = JSON.parse(content);
+        
+        if (!data.x || !data.intensity) {
+            throw new Error('JSON格式错误：需要包含 x 和 intensity 数组');
+        }
+        
+        if (!Array.isArray(data.x) || !Array.isArray(data.intensity)) {
+            throw new Error('JSON格式错误：x 和 intensity 必须是数组');
+        }
+        
+        if (data.x.length !== data.intensity.length) {
+            throw new Error('数据长度不匹配：x 和 intensity 数组长度必须相同');
+        }
+        
+        if (data.x.length < 2) {
+            throw new Error('数据点数不足：至少需要2个数据点');
+        }
+        
+        return {
+            x: data.x.map(Number),
+            intensity: data.intensity.map(Number),
+            format: 'json'
+        };
+    }
+
+    /**
+     * 解析CSV/TXT格式数据
+     */
+    parseCsvData(content) {
+        const lines = content.trim().split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+            throw new Error('数据点数不足：至少需要2行数据');
+        }
+        
         const x = [];
         const intensity = [];
         
-        for (let i = 0; i < data.length; i++) {
-            const item = data[i];
-            if (!item.hasOwnProperty('x') || !item.hasOwnProperty('intensity')) {
-                throw new Error(`JSON数组格式错误：第 ${i + 1} 个元素必须包含"x"和"intensity"字段。`);
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            // 跳过注释行
+            if (line.startsWith('#') || line.startsWith('//')) continue;
+            
+            const parts = line.split(/[,\s\t]+/).filter(p => p);
+            
+            if (parts.length < 2) {
+                throw new Error(`第${i+1}行格式错误：需要至少2列数据（x坐标,光强值）`);
             }
             
-            const xVal = parseFloat(item.x);
-            const intensityVal = parseFloat(item.intensity);
+            const xVal = parseFloat(parts[0]);
+            const intensityVal = parseFloat(parts[1]);
             
             if (isNaN(xVal) || isNaN(intensityVal)) {
-                throw new Error(`JSON数组格式错误：第 ${i + 1} 个元素包含无效数值。`);
+                throw new Error(`第${i+1}行数据错误：包含非数字值`);
             }
             
             x.push(xVal);
             intensity.push(intensityVal);
         }
         
-        return { x, intensity };
-    }
-    
-    // 检查是否为对象格式: {"x": [...], "intensity": [...]}
-    if (!data.x || !data.intensity) {
-        throw new Error('JSON文件必须包含"x"和"intensity"字段。');
-    }
-    
-    if (!Array.isArray(data.x) || !Array.isArray(data.intensity)) {
-        throw new Error('JSON文件中的"x"和"intensity"必须是数组。');
-    }
-    
-    if (data.x.length !== data.intensity.length) {
-        throw new Error('JSON文件中的"x"和"intensity"数组长度必须相等。');
-    }
-    
-    return {
-        x: data.x.map(val => parseFloat(val)),
-        intensity: data.intensity.map(val => parseFloat(val))
-    };
-}
-
-// 初始化手动输入功能
-function initManualInputFeature() {
-    // 手动输入方式选择器
-    const methodRadios = document.querySelectorAll('input[name="manual-method"]');
-    methodRadios.forEach(radio => {
-        radio.addEventListener('change', handleManualMethodChange);
-    });
-    
-    // 预览和应用按钮
-    const previewBtn = document.getElementById('preview-intensity-btn');
-    const applyBtn = document.getElementById('apply-intensity-btn');
-    
-    if (previewBtn) {
-        previewBtn.addEventListener('click', previewManualInput);
-    }
-    
-    if (applyBtn) {
-        applyBtn.addEventListener('click', applyManualInput);
-    }
-    
-    // 为手动输入框添加事件监听器，当数据改变时清空图表
-    const coordsTextarea = document.getElementById('intensity-coords-textarea');
-    const valuesTextarea = document.getElementById('intensity-values-textarea');
-    const xRangeMin = document.getElementById('x-range-min');
-    const xRangeMax = document.getElementById('x-range-max');
-    
-    // 添加输入事件监听器
-    function handleInputChange() {
-        if (typeof clearAllCharts === 'function') {
-            clearAllCharts();
-            console.log('🔄 用户修改自定义向量数据，已清空计算结果图表');
-        }
-    }
-    
-    if (coordsTextarea) {
-        coordsTextarea.addEventListener('input', handleInputChange);
-    }
-    
-    if (valuesTextarea) {
-        valuesTextarea.addEventListener('input', handleInputChange);
-    }
-    
-    if (xRangeMin) {
-        xRangeMin.addEventListener('input', handleInputChange);
-    }
-    
-    if (xRangeMax) {
-        xRangeMax.addEventListener('input', handleInputChange);
-    }
-}
-
-// 处理手动输入方式变化
-function handleManualMethodChange() {
-    const coordsInput = document.getElementById('coordinates-input');
-    const intensityOnlyInput = document.getElementById('intensity-only-input');
-    const selectedMethod = document.querySelector('input[name="manual-method"]:checked').value;
-    
-    if (selectedMethod === 'coordinates') {
-        coordsInput.style.display = 'block';
-        intensityOnlyInput.style.display = 'none';
-    } else {
-        coordsInput.style.display = 'none';
-        intensityOnlyInput.style.display = 'block';
-    }
-}
-
-// 预览手动输入数据
-function previewManualInput() {
-    try {
-        const data = parseManualInput();
-        
-        // 验证数据
-        if (!validateIntensityData(data.x, data.intensity)) {
-            return;
+        if (x.length < 2) {
+            throw new Error('有效数据点数不足：至少需要2个数据点');
         }
         
-        // 临时存储用于预览
-        const tempData = {
-            x: data.x,
-            intensity: data.intensity,
-            loaded: true,
-            source: 'manual-preview'
+        return {
+            x: x,
+            intensity: intensity,
+            format: 'csv'
         };
-        
-        // 显示预览
-        previewIntensityData(tempData);
-        
-        // 自动应用预览数据，使其可用于计算
-        customIntensityData = {
-            x: data.x,
-            intensity: data.intensity,
-            loaded: true,
-            source: 'manual-preview-auto-applied'
-        };
-        
-        // 更新数据状态显示
-        updateDataStatus();
-        
-        showNotification(`预览成功，包含 ${data.x.length} 个数据点，已自动应用可用于计算`, 'success');
-        
-    } catch (error) {
-        console.error('❌ 手动输入解析错误:', error);
-        showNotification(`输入解析失败: ${error.message}`, 'error');
     }
-}
 
-// 应用手动输入数据
-function applyManualInput() {
-    try {
-        const data = parseManualInput();
+    /**
+     * 验证手动输入的数据
+     */
+    validateManualInput(silent = false) {
+        const manualInput = document.getElementById('intensity-manual-input');
+        const content = manualInput?.value.trim();
         
-        // 验证数据
-        if (!validateIntensityData(data.x, data.intensity)) {
-            return;
-        }
-        
-        // 检查数据是否已经通过预览自动应用过了
-        if (customIntensityData.loaded && 
-            customIntensityData.source === 'manual-preview-auto-applied' &&
-            customIntensityData.x.length === data.x.length) {
-            // 数据已经通过预览应用过了，只需要更新source标识
-            customIntensityData.source = 'manual-confirmed';
-            showNotification(`数据已确认应用，包含 ${data.x.length} 个数据点`, 'info');
-            return;
-        }
-        
-        // 存储数据
-        customIntensityData = {
-            x: data.x,
-            intensity: data.intensity,
-            loaded: true,
-            source: 'manual'
-        };
-        
-        // 更新显示
-        updateDataStatus();
-        previewIntensityData();
-        
-        showNotification(`成功应用手动输入数据，包含 ${data.x.length} 个数据点`, 'success');
-        
-    } catch (error) {
-        console.error('❌ 手动输入应用错误:', error);
-        showNotification(`应用失败: ${error.message}`, 'error');
-    }
-}
-
-// 解析手动输入数据
-function parseManualInput() {
-    const selectedMethod = document.querySelector('input[name="manual-method"]:checked').value;
-    
-    if (selectedMethod === 'coordinates') {
-        return parseCoordinatesInput();
-    } else {
-        return parseIntensityOnlyInput();
-    }
-}
-
-// 解析坐标+强度输入
-function parseCoordinatesInput() {
-    const textarea = document.getElementById('intensity-coords-textarea');
-    const content = textarea.value.trim();
-    
-    if (!content) {
-        throw new Error('请输入坐标和强度数据');
-    }
-    
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    const x = [];
-    const intensity = [];
-    
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        const parts = line.split(/\s+/);
-        
-        if (parts.length < 2) {
-            throw new Error(`第 ${i + 1} 行格式错误，需要两个数值: x intensity`);
-        }
-        
-        const xVal = parseFloat(parts[0]);
-        const intensityVal = parseFloat(parts[1]);
-        
-        if (isNaN(xVal) || isNaN(intensityVal)) {
-            throw new Error(`第 ${i + 1} 行包含无效数值`);
-        }
-        
-        x.push(xVal);
-        intensity.push(intensityVal);
-    }
-    
-    return { x, intensity };
-}
-
-// 解析仅强度值输入
-function parseIntensityOnlyInput() {
-    const textarea = document.getElementById('intensity-values-textarea');
-    const xMinInput = document.getElementById('x-range-min');
-    const xMaxInput = document.getElementById('x-range-max');
-    
-    const content = textarea.value.trim();
-    const xMin = parseFloat(xMinInput.value);
-    const xMax = parseFloat(xMaxInput.value);
-    
-    if (!content) {
-        throw new Error('请输入强度数据');
-    }
-    
-    if (isNaN(xMin) || isNaN(xMax)) {
-        throw new Error('请输入有效的X坐标范围');
-    }
-    
-    if (xMin >= xMax) {
-        throw new Error('X坐标最小值必须小于最大值');
-    }
-    
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    const intensity = [];
-    
-    for (let i = 0; i < lines.length; i++) {
-        const val = parseFloat(lines[i].trim());
-        if (isNaN(val)) {
-            throw new Error(`第 ${i + 1} 行包含无效数值`);
-        }
-        intensity.push(val);
-    }
-    
-    if (intensity.length < 2) {
-        throw new Error('至少需要2个强度数据点');
-    }
-    
-    // 生成等间隔的x坐标
-    const x = [];
-    for (let i = 0; i < intensity.length; i++) {
-        const xVal = xMin + (xMax - xMin) * i / (intensity.length - 1);
-        x.push(xVal);
-    }
-    
-    return { x, intensity };
-}
-
-// 验证光强数据
-function validateIntensityData(x, intensity) {
-    if (!Array.isArray(x) || !Array.isArray(intensity)) {
-        showNotification('数据格式错误：x和intensity必须是数组', 'error');
-        return false;
-    }
-    
-    if (x.length !== intensity.length) {
-        showNotification('数据格式错误：x和intensity数组长度必须相等', 'error');
-        return false;
-    }
-    
-    if (x.length < 2) {
-        showNotification('数据点太少，至少需要2个数据点', 'error');
-        return false;
-    }
-    
-    if (x.length > 10000) {
-        showNotification('数据点过多，最多支持10000个数据点', 'error');
-        return false;
-    }
-    
-    // 检查数值有效性
-    for (let i = 0; i < x.length; i++) {
-        if (isNaN(x[i]) || isNaN(intensity[i])) {
-            showNotification(`数据点 ${i + 1} 包含无效数值`, 'error');
+        if (!content) {
+            if (!silent) this.showError('请输入数据');
             return false;
         }
         
-        if (!isFinite(x[i]) || !isFinite(intensity[i])) {
-            showNotification(`数据点 ${i + 1} 包含无限值`, 'error');
+        try {
+            let parsedData;
+            
+            // 尝试解析为JSON
+            if (content.startsWith('{') && content.endsWith('}')) {
+                parsedData = this.parseJsonData(content);
+            } else {
+                // 解析为CSV格式
+                parsedData = this.parseCsvData(content);
+            }
+            
+            this.uploadedData = parsedData;
+            this.updatePreview(parsedData);
+            
+            if (!silent) {
+                this.showSuccess('数据验证成功！');
+            }
+            
+            return true;
+            
+        } catch (error) {
+            if (!silent) {
+                this.showError(`数据验证失败: ${error.message}`);
+            }
             return false;
         }
     }
-    
-    // 检查强度值是否为负数 - 允许负值但给出提示
-    const hasNegativeIntensity = intensity.some(val => val < 0);
-    if (hasNegativeIntensity) {
-        console.log('🔍 检测到负强度值，这在某些光学模拟中是允许的（如干涉条纹）');
-        // showNotification('提示：检测到负强度值，在干涉条纹模拟中这是正常的', 'info');
-    }
-    
-    console.log(`✅ 数据验证通过: ${x.length} 个有效数据点`);
-    return true;
-}
 
-// 初始化数据管理功能
-function initDataManagementFeature() {
-    const clearBtn = document.getElementById('clear-intensity-data');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', clearCustomIntensityData);
-    }
-}
-
-// 清除自定义光强数据
-function clearCustomIntensityData() {
-    customIntensityData = {
-        x: [],
-        intensity: [],
-        loaded: false
-    };
-    
-    // 隐藏数据状态
-    const statusDiv = document.getElementById('intensity-data-status');
-    if (statusDiv) {
-        statusDiv.style.display = 'none';
-    }
-    
-    // 清空输入框
-    const coordsTextarea = document.getElementById('intensity-coords-textarea');
-    const intensityTextarea = document.getElementById('intensity-values-textarea');
-    const fileInput = document.getElementById('intensity-file-input');
-    
-    if (coordsTextarea) coordsTextarea.value = '';
-    if (intensityTextarea) intensityTextarea.value = '';
-    if (fileInput) fileInput.value = '';
-    
-    // 清空图表
-    clearAllCharts();
-    
-    showNotification('已清除自定义光强数据', 'info');
-    console.log('🗑️ 自定义光强数据已清除');
-}
-
-// 更新数据状态显示（针对预览数据）
-function updateDataStatusForPreview(data) {
-    const statusDiv = document.getElementById('intensity-data-status');
-    const pointCountSpan = document.getElementById('intensity-point-count');
-    const xRangeSpan = document.getElementById('intensity-x-range');
-    const valueRangeSpan = document.getElementById('intensity-value-range');
-    
-    if (!statusDiv || !data || !data.x || !data.intensity) return;
-    
-    const { x, intensity } = data;
-    
-    // 计算统计信息
-    const pointCount = x.length;
-    const xMin = Math.min(...x);
-    const xMax = Math.max(...x);
-    const intensityMin = Math.min(...intensity);
-    const intensityMax = Math.max(...intensity);
-    
-    // 更新显示
-    if (pointCountSpan) pointCountSpan.textContent = pointCount;
-    if (xRangeSpan) xRangeSpan.textContent = `${xMin.toFixed(3)} ~ ${xMax.toFixed(3)}`;
-    if (valueRangeSpan) valueRangeSpan.textContent = `${intensityMin.toFixed(6)} ~ ${intensityMax.toFixed(6)}`;
-    
-    // 显示状态区域
-    statusDiv.style.display = 'block';
-    
-    // 如果是预览数据，添加标识
-    if (data.source === 'manual-preview') {
-        const statusTitle = statusDiv.querySelector('.status-title');
-        if (statusTitle) {
-            statusTitle.textContent = '预览光强数据';
+    /**
+     * 清空手动输入
+     */
+    clearManualInput() {
+        const manualInput = document.getElementById('intensity-manual-input');
+        if (manualInput) {
+            manualInput.value = '';
+            this.clearUploadedData();
         }
     }
-    
-    console.log(`📊 数据状态更新: ${pointCount} 点, X[${xMin.toFixed(3)}, ${xMax.toFixed(3)}], I[${intensityMin.toFixed(6)}, ${intensityMax.toFixed(6)}]`);
-}
 
-// 更新数据状态显示
-function updateDataStatus() {
-    const statusDiv = document.getElementById('intensity-data-status');
-    const pointCountSpan = document.getElementById('intensity-point-count');
-    const xRangeSpan = document.getElementById('intensity-x-range');
-    const valueRangeSpan = document.getElementById('intensity-value-range');
-    
-    if (!statusDiv || !customIntensityData.loaded) return;
-    
-    const { x, intensity } = customIntensityData;
-    
-    // 计算统计信息
-    const pointCount = x.length;
-    const xMin = Math.min(...x);
-    const xMax = Math.max(...x);
-    const intensityMin = Math.min(...intensity);
-    const intensityMax = Math.max(...intensity);
-    
-    // 更新显示
-    if (pointCountSpan) pointCountSpan.textContent = pointCount;
-    if (xRangeSpan) xRangeSpan.textContent = `${xMin.toFixed(3)} ~ ${xMax.toFixed(3)}`;
-    if (valueRangeSpan) valueRangeSpan.textContent = `${intensityMin.toFixed(6)} ~ ${intensityMax.toFixed(6)}`;
-    
-    // 显示状态区域
-    statusDiv.style.display = 'block';
-    
-    // 恢复正常标题（应用数据时）
-    const statusTitle = statusDiv.querySelector('.status-title');
-    if (statusTitle) {
-        statusTitle.textContent = '已加载的光强数据';
-    }
-    
-    console.log(`📊 数据状态更新: ${pointCount} 点, X[${xMin.toFixed(3)}, ${xMax.toFixed(3)}], I[${intensityMin.toFixed(6)}, ${intensityMax.toFixed(6)}]`);
-}
+    /**
+     * 加载示例数据
+     */
+    loadExampleData() {
+        const exampleData = `# 示例光强分布数据 (CSV格式)
+# x坐标(μm), 光强值(mW/cm²)
+-5.0, 0.2
+-4.0, 0.3
+-3.0, 0.5
+-2.0, 0.8
+-1.0, 1.2
+0.0, 1.5
+1.0, 1.2
+2.0, 0.8
+3.0, 0.5
+4.0, 0.3
+5.0, 0.2`;
 
-// 预览光强数据
-function previewIntensityData(data = null) {
-    const plotDiv = document.getElementById('intensity-preview-plot');
-    if (!plotDiv) return;
-    
-    // 确保数据状态容器可见
-    const dataStatusDiv = document.getElementById('intensity-data-status');
-    if (dataStatusDiv) {
-        dataStatusDiv.style.display = 'block';
+        const manualInput = document.getElementById('intensity-manual-input');
+        if (manualInput) {
+            manualInput.value = exampleData;
+            this.validateManualInput();
+        }
     }
-    
-    const dataToPlot = data || customIntensityData;
-    if (!dataToPlot.loaded || !dataToPlot.x || !dataToPlot.intensity) return;
-    
-    // 更新数据状态信息（针对预览数据）
-    updateDataStatusForPreview(dataToPlot);
-    
-    try {
+
+    /**
+     * 显示文件选中状态
+     */
+    showFileSelected(fileName) {
+        const fileContent = document.querySelector('#intensity-file-upload .file-upload-content');
+        const fileSelected = document.getElementById('intensity-file-selected');
+        
+        if (fileContent && fileSelected) {
+            fileContent.style.display = 'none';
+            fileSelected.style.display = 'flex';
+            fileSelected.querySelector('.file-name').textContent = fileName;
+        }
+    }
+
+    /**
+     * 清除文件选择
+     */
+    clearFileSelection() {
+        const fileContent = document.querySelector('#intensity-file-upload .file-upload-content');
+        const fileSelected = document.getElementById('intensity-file-selected');
+        const fileInput = document.getElementById('intensity-file-input');
+        
+        if (fileContent && fileSelected) {
+            fileContent.style.display = 'block';
+            fileSelected.style.display = 'none';
+        }
+        
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        this.clearUploadedData();
+    }
+
+    /**
+     * 清除上传的数据
+     */
+    clearUploadedData() {
+        this.uploadedData = null;
+        this.clearPreview();
+        console.log('🗑️ 清除上传数据');
+    }
+
+    /**
+     * 更新数据预览
+     */
+    updatePreview(data) {
+        const previewChart = document.getElementById('intensity-data-preview');
+        const previewInfo = document.getElementById('intensity-preview-info');
+        
+        if (!previewChart || !previewInfo || !data) return;
+        
+        // 显示预览信息
+        previewInfo.style.display = 'block';
+        
+        // 更新统计信息
+        const pointCount = data.x.length;
+        const xRange = `${Math.min(...data.x).toFixed(3)} ~ ${Math.max(...data.x).toFixed(3)}`;
+        const intensityRange = `${Math.min(...data.intensity).toFixed(6)} ~ ${Math.max(...data.intensity).toFixed(6)}`;
+        
+        document.getElementById('preview-point-count').textContent = pointCount;
+        document.getElementById('preview-x-range').textContent = xRange;
+        document.getElementById('preview-intensity-range').textContent = intensityRange;
+        
+        // 数据验证状态
+        const statusElement = document.getElementById('preview-status');
+        const isValid = this.validateDataPhysics(data);
+        
+        statusElement.textContent = isValid.status;
+        statusElement.className = `info-value status ${isValid.valid ? 'valid' : 'warning'}`;
+        
+        // 绘制预览图表
+        this.drawPreviewChart(previewChart, data);
+        
+        console.log('📊 预览数据更新:', { pointCount, xRange, intensityRange, status: isValid });
+    }
+
+    /**
+     * 验证数据的物理合理性
+     */
+    validateDataPhysics(data) {
+        const warnings = [];
+        
+        // 检查光强值范围
+        const minIntensity = Math.min(...data.intensity);
+        const maxIntensity = Math.max(...data.intensity);
+        
+        if (minIntensity < 0) {
+            warnings.push('包含负光强值');
+        }
+        
+        if (maxIntensity > 1000) {
+            warnings.push('光强值过大');
+        }
+        
+        // 检查x坐标排序
+        const isSorted = data.x.every((val, i) => i === 0 || val >= data.x[i - 1]);
+        if (!isSorted) {
+            warnings.push('x坐标未排序');
+        }
+        
+        // 检查数据点密度
+        if (data.x.length < 50) {
+            warnings.push('数据点较少');
+        }
+        
+        return {
+            valid: warnings.length === 0,
+            status: warnings.length === 0 ? '正常' : warnings.join(', ')
+        };
+    }
+
+    /**
+     * 绘制预览图表
+     */
+    drawPreviewChart(container, data) {
+        // 清除现有内容
+        container.innerHTML = '';
+        
         const trace = {
-            x: dataToPlot.x,
-            y: dataToPlot.intensity,
+            x: data.x,
+            y: data.intensity,
             type: 'scatter',
             mode: 'lines+markers',
-            name: '光强分布',
-            line: {
-                color: '#3498db',
-                width: 2
-            },
-            marker: {
-                color: '#3498db',
-                size: 4
-            }
+            line: { color: '#4285f4', width: 2 },
+            marker: { size: 4, color: '#4285f4' },
+            name: '光强分布'
         };
         
         const layout = {
-            title: '光强分布预览',
-            xaxis: {
-                title: '位置 (mm)',
-                gridcolor: '#f0f0f0'
+            title: {
+                text: '上传数据预览',
+                font: { size: 14 }
             },
-            yaxis: {
+            xaxis: { 
+                title: 'X坐标 (μm)',
+                font: { size: 12 }
+            },
+            yaxis: { 
                 title: '光强 (mW/cm²)',
-                gridcolor: '#f0f0f0'
+                font: { size: 12 }
             },
-            plot_bgcolor: 'white',
-            paper_bgcolor: 'white',
-            margin: { t: 40, b: 50, l: 60, r: 20 },
-            font: { size: 12 }
+            margin: { l: 50, r: 20, t: 40, b: 40 },
+            showlegend: false,
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: 'white'
         };
         
-        const config = {
-            responsive: true,
-            displayModeBar: false
-        };
-        
-        Plotly.newPlot(plotDiv, [trace], layout, config);
-        
-        console.log('📈 光强分布预览图已更新');
-        
-    } catch (error) {
-        console.error('❌ 预览图生成失败:', error);
-        plotDiv.innerHTML = '<div style="padding: 2rem; text-align: center; color: #dc3545;">预览图生成失败</div>';
-    }
-}
-
-// 获取当前光强分布数据（供计算使用）
-function getCurrentIntensityData() {
-    const methodSelect = document.getElementById('intensity_input_method');
-    const method = methodSelect ? methodSelect.value : 'formula';
-    
-    if (method === 'custom' && customIntensityData.loaded) {
-        console.log('🔧 使用自定义光强分布数据');
-        return {
-            isCustom: true,
-            x: customIntensityData.x,
-            intensity: customIntensityData.intensity
-        };
-    } else {
-        console.log('🔧 使用公式计算光强分布');
-        return {
-            isCustom: false
-        };
-    }
-}
-
-// 显示通知消息
-function showNotification(message, type = 'info') {
-    // 创建通知元素
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <i class="fas ${getNotificationIcon(type)}"></i>
-            <span>${message}</span>
-        </div>
-        <button class="notification-close" onclick="this.parentElement.remove()">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    
-    // 添加到页面
-    const container = getOrCreateNotificationContainer();
-    container.appendChild(notification);
-    
-    // 自动移除
-    setTimeout(() => {
-        if (notification.parentElement) {
-            notification.remove();
+        try {
+            Plotly.newPlot(container, [trace], layout, { responsive: true, displayModeBar: false });
+        } catch (error) {
+            console.error('预览图表绘制失败:', error);
+            container.innerHTML = '<div class="preview-placeholder"><p>预览图表绘制失败</p></div>';
         }
-    }, 5000);
-    
-    console.log(`📢 通知 [${type}]: ${message}`);
-}
+    }
 
-// 获取通知图标
-function getNotificationIcon(type) {
-    const icons = {
-        'info': 'fa-info-circle',
-        'success': 'fa-check-circle',
-        'warning': 'fa-exclamation-triangle',
-        'error': 'fa-times-circle'
-    };
-    return icons[type] || icons['info'];
-}
+    /**
+     * 清除预览
+     */
+    clearPreview() {
+        const previewChart = document.getElementById('intensity-data-preview');
+        const previewInfo = document.getElementById('intensity-preview-info');
+        
+        if (previewChart) {
+            previewChart.innerHTML = `
+                <div class="preview-placeholder">
+                    <i class="fas fa-chart-line placeholder-icon"></i>
+                    <p>数据上传后将在此处显示预览图</p>
+                </div>
+            `;
+        }
+        
+        if (previewInfo) {
+            previewInfo.style.display = 'none';
+        }
+    }
 
-// 获取或创建通知容器
-function getOrCreateNotificationContainer() {
-    let container = document.getElementById('notification-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'notification-container';
-        container.style.cssText = `
+    /**
+     * 更新计算按钮状态
+     */
+    updateCalculateButton() {
+        // 这里可以添加计算按钮状态更新逻辑
+        // 例如在上传模式下，只有当有有效数据时才启用计算按钮
+    }
+
+    /**
+     * 显示成功消息
+     */
+    showSuccess(message) {
+        this.showMessage(message, 'success');
+    }
+
+    /**
+     * 显示错误消息
+     */
+    showError(message) {
+        this.showMessage(message, 'error');
+    }
+
+    /**
+     * 显示消息
+     */
+    showMessage(message, type) {
+        // 可以使用现有的通知系统或创建临时提示
+        console.log(`${type === 'success' ? '✅' : '❌'} ${message}`);
+        
+        // 简单的临时提示实现
+        const toast = document.createElement('div');
+        toast.className = `intensity-upload-toast ${type}`;
+        toast.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-width: 400px;
-        `;
-        document.body.appendChild(container);
-    }
-    return container;
-}
-
-// 添加通知样式到文档头部
-function addNotificationStyles() {
-    if (document.getElementById('notification-styles')) return;
-    
-    const style = document.createElement('style');
-    style.id = 'notification-styles';
-    style.textContent = `
-        .notification {
-            display: flex;
-            align-items: center;
-            padding: 12px 16px;
+            padding: 12px 20px;
             border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
             animation: slideIn 0.3s ease-out;
-            max-width: 100%;
-        }
+            background: ${type === 'success' ? '#4caf50' : '#f44336'};
+        `;
+        toast.textContent = message;
         
-        .notification-info {
-            background: #d1ecf1;
-            border-left: 4px solid #17a2b8;
-            color: #0c5460;
-        }
+        document.body.appendChild(toast);
         
-        .notification-success {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
-            color: #155724;
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => document.body.removeChild(toast), 300);
+        }, 3000);
+    }
+
+    /**
+     * 获取当前的光强分布数据
+     * 供其他模块调用
+     */
+    getIntensityData() {
+        if (this.isUploadMode && this.uploadedData) {
+            return {
+                mode: 'upload',
+                data: this.uploadedData
+            };
+        } else {
+            return {
+                mode: 'formula',
+                data: null
+            };
         }
-        
-        .notification-warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            color: #856404;
-        }
-        
-        .notification-error {
-            background: #f8d7da;
-            border-left: 4px solid #dc3545;
-            color: #721c24;
-        }
-        
-        .notification-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-        }
-        
-        .notification-close {
-            background: none;
-            border: none;
-            cursor: pointer;
-            opacity: 0.6;
-            padding: 4px;
-            margin-left: 8px;
-        }
-        
-        .notification-close:hover {
-            opacity: 1;
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-    `;
-    document.head.appendChild(style);
+    }
+
+    /**
+     * 检查是否在上传模式且有有效数据
+     */
+    hasValidUploadData() {
+        return this.isUploadMode && this.uploadedData && 
+               this.uploadedData.x && this.uploadedData.intensity &&
+               this.uploadedData.x.length > 0;
+    }
 }
 
-// 立即添加通知样式
-addNotificationStyles();
+// 创建全局实例
+let intensityUploadManager;
 
-// 在DOM加载完成后初始化功能
+// 在DOM加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
-    // 延迟初始化以确保其他组件已经加载
-    setTimeout(() => {
-        initCustomIntensityFeature();
-    }, 500);
+    intensityUploadManager = new IntensityDataUploadManager();
+    console.log('🚀 光强分布数据上传管理器已初始化');
 });
+
+// 导出供其他模块使用
+window.IntensityDataUploadManager = IntensityDataUploadManager;

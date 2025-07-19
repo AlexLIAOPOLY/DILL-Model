@@ -7,7 +7,7 @@ function initBackToTop() {
     // 创建回到顶部按钮
     const backToTopBtn = document.createElement('button');
     backToTopBtn.className = 'back-to-top';
-    backToTopBtn.innerHTML = '<i class="fas fa-chevron-up"></i>';
+    backToTopBtn.innerHTML = '<span class="arrow-icon">⬆</span>';
     
     // 获取当前语言，使用更安全的方式
     const currentLang = window.currentLang || localStorage.getItem('lang') || 'zh-CN';

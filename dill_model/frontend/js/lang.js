@@ -1,8 +1,8 @@
 // 语言包
 const LANGS = {
     'zh-CN': {
-        title: '多模型光刻胶计算工具',
-        logo_title: '多模型光刻胶计算平台',
+        title: '自定义光刻胶计算平台',
+        logo_title: '自定义光刻胶计算平台',
         logo_subtitle: 'Multi-Model Photoresist Simulation Platform',
         nav_guide: '使用指南',
         nav_single: '单一计算',
@@ -220,9 +220,9 @@ const LANGS = {
         // 这里直接引用zh-CN的所有属性
     },
     en: {
-        title: 'Multi-Model Photoresist Calculator',
-        logo_title: 'Multi-Model Photoresist Simulation Platform',
-        logo_subtitle: 'Multi-Model Photoresist Simulation Platform',
+        title: 'Custom Photoresist Calculation Platform',
+        logo_title: 'Custom Photoresist Calculation Platform',
+        logo_subtitle: 'Custom Photoresist Calculation Platform',
         nav_guide: 'User Guide',
         nav_single: 'Single Calculation',
         nav_compare: 'Parameter Comparison',

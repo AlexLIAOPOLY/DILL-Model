@@ -17,6 +17,23 @@
     <link rel="stylesheet" href="css/animation-controls.css?v=2.0">
     <!-- 添加数学公式所需的样式 -->
     <style>
+        /* 隐藏浏览器默认的网络状态指示器和进度条 */
+        body {
+            position: relative !important;
+        }
+        
+        /* 防止Chrome等浏览器的红色网络状态条 */
+        body::before,
+        html::before,
+        *::before {
+            content: none !important;
+        }
+        
+        /* 强制隐藏页面顶部的任何红色条 */
+        body > *:first-child::before {
+            display: none !important;
+        }
+        
         /* 分数样式 */
         .fraction {
             display: inline-block;
@@ -255,7 +272,7 @@
     <main class="main-content">
         <div class="container">
             <!-- 错误消息 -->
-            <div id="error-message" class="error-message" data-i18n="error_message"></div>
+            <div id="error-message" class="error-message" data-i18n="error_message" style="display: none !important; height: 0; opacity: 0;"></div>
 
             <!-- 模型选择与公式展示区域 -->
             <section id="model-selection-section" class="model-selection-section">
@@ -452,7 +469,212 @@
                 <div id="dill-params" class="parameters-grid" style="display:block;">
                     <!-- Dill模型基本参数容器 -->
                     <div class="parameter-group-container" id="dill-basic-params-container" data-title="Dill模型基本参数" data-i18n-title="dill_basic_params">
+                        <!-- 光强分布输入方式选择器 -->
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span class="parameter-name">光强分布输入方式</span>
+                            </div>
+                            <div class="parameter-input">
+                                <select id="intensity_input_method" class="method-select" title="选择光强分布输入方式" aria-label="光强分布输入方式选择">
+                                    <option value="formula">公式计算</option>
+                                    <option value="custom">自定义向量</option>
+                                </select>
+                            </div>
+                            <div class="parameter-description">选择光强分布的输入方式：公式计算（使用数学公式）或自定义向量（上传文件或手动输入）</div>
+                        </div>
+
+                        <!-- 自定义光强分布输入区域 -->
+                        <div id="custom-intensity-container" class="custom-intensity-container" style="display:none;">
+                            <!-- 输入方式选择标签页 -->
+                            <div class="custom-input-tabs">
+                                <button class="tab-button active" data-tab="file-upload">文件上传</button>
+                                <button class="tab-button" data-tab="manual-input">手动输入</button>
+                            </div>
+
+                            <!-- 文件上传标签页 -->
+                            <div id="file-upload-tab" class="tab-content active">
+                                <div class="file-upload-area">
+                                    <div class="upload-zone" id="intensity-upload-zone">
+                                        <div class="upload-icon">
+                                            <div class="custom-upload-icon">
+                                                <div class="cloud-icon">
+                                                    <div class="cloud-base"></div>
+                                                    <div class="cloud-puff cloud-puff-1"></div>
+                                                    <div class="cloud-puff cloud-puff-2"></div>
+                                                    <div class="cloud-puff cloud-puff-3"></div>
+                                                </div>
+                                                <div class="upload-arrow">
+                                                    <div class="arrow-body"></div>
+                                                    <div class="arrow-head"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="upload-text">
+                                            <div class="upload-title">拖拽文件到此处或点击选择</div>
+                                            <div class="upload-subtitle">支持格式：TXT, CSV, JSON</div>
+                                        </div>
+                                        <input type="file" id="intensity-file-input" accept=".txt,.csv,.json" style="display:none;">
+                                    </div>
+                                    <div class="file-format-help">
+                                        <details>
+                                            <summary>支持的文件格式说明</summary>
+                                            <div class="format-examples">
+                                                <div class="format-item">
+                                                    <strong>TXT格式:</strong>
+                                                    <code>
+x1 intensity1<br>
+x2 intensity2<br>
+或纯强度值（每行一个）
+                                                    </code>
+                                                </div>
+                                                <div class="format-item">
+                                                    <strong>CSV格式:</strong>
+                                                    <code>
+x,intensity<br>
+-1.0,0.5<br>
+-0.9,0.52
+                                                    </code>
+                                                </div>
+                                                <div class="format-item">
+                                                    <strong>JSON格式:</strong>
+                                                    <code>
+{"x": [-1.0, -0.9, ...], "intensity": [0.5, 0.52, ...]}
+                                                    </code>
+                                                </div>
+                                            </div>
+                                        </details>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 手动输入标签页 -->
+                            <div id="manual-input-tab" class="tab-content">
+                                <div class="manual-input-area">
+                                    <div class="input-method-selector">
+                                        <label>
+                                            <input type="radio" name="manual-method" value="coordinates" checked>
+                                            坐标+强度对
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="manual-method" value="intensity-only">
+                                            仅强度值
+                                        </label>
+                                    </div>
+                                    
+                                    <div id="coordinates-input" class="input-section">
+                                        <label for="intensity-coords-textarea">坐标和强度值（格式：x intensity，每行一对）:</label>
+                                        <textarea id="intensity-coords-textarea" placeholder="例如：&#10;-1.0 0.5&#10;-0.9 0.52&#10;-0.8 0.54&#10;..."></textarea>
+                                    </div>
+                                    
+                                    <div id="intensity-only-input" class="input-section" style="display:none;">
+                                        <div class="range-input-group">
+                                            <label>X坐标范围:</label>
+                                            <input type="number" id="x-range-min" placeholder="最小值" value="-1" step="0.1">
+                                            <span>到</span>
+                                            <input type="number" id="x-range-max" placeholder="最大值" value="1" step="0.1">
+                                        </div>
+                                        <label for="intensity-values-textarea">强度值（每行一个，按X坐标顺序）:</label>
+                                        <textarea id="intensity-values-textarea" placeholder="例如：&#10;0.5&#10;0.52&#10;0.54&#10;..."></textarea>
+                                    </div>
+
+                                    <!-- 手动输入格式帮助 -->
+                                    <div class="file-format-help">
+                                        <details>
+                                            <summary>手动输入格式规范与说明</summary>
+                                            <div class="format-examples">
+                                                <div class="format-item">
+                                                    <strong>坐标+强度对格式:</strong>
+                                                    <code>
+x1 intensity1
+x2 intensity2
+x3 intensity3
+...
+
+示例：
+-1.0 0.5000
+-0.9 0.5236
+-0.8 0.5436
+-0.7 0.5593
+-0.6 0.5698</code>
+                                                </div>
+                                                <div class="format-item">
+                                                    <strong>仅强度值格式:</strong>
+                                                    <code>
+intensity1
+intensity2
+intensity3
+...
+
+示例：
+0.5000
+0.5236
+0.5436
+0.5593
+0.5698
+
+注意：使用此格式需要设置X坐标范围，程序会自动分配坐标</code>
+                                                </div>
+                                                <div class="format-item">
+                                                    <strong>数据要求:</strong>
+                                                    <code>
+• 数据精度：建议保留3-4位小数
+• 数据范围：强度值通常在0-1之间
+• 坐标范围：x坐标建议在[-5, 5]范围内
+• 数据量：建议50-1000个数据点
+• 格式要求：每行一个数据点或数据对</code>
+                                                </div>
+                                                <div class="format-item">
+                                                    <strong>注意事项:</strong>
+                                                    <code>
+• 坐标+强度对：用空格或制表符分隔x和intensity
+• 仅强度值：每行只包含一个强度数值
+• 避免空行：数据中间不要留空行
+• 数据顺序：建议按x坐标升序排列
+• 特殊字符：避免使用逗号、分号等特殊分隔符</code>
+                                                </div>
+                                            </div>
+                                        </details>
+                                    </div>
+                                    
+                                    <div class="input-actions">
+                                        <button id="preview-intensity-btn" class="preview-btn">
+                                            <i class="fas fa-eye"></i> 预览分布
+                                        </button>
+                                        <button id="apply-intensity-btn" class="apply-btn">
+                                            <i class="fas fa-check"></i> 应用数据
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 数据状态显示 -->
+                            <div id="intensity-data-status" class="data-status" style="display:none;">
+                                <div class="status-header">
+                                    <span class="status-title">已加载的光强数据</span>
+                                    <button id="clear-intensity-data" class="clear-btn">
+                                        <i class="fas fa-trash"></i> 清除
+                                    </button>
+                                </div>
+                                <div class="status-info">
+                                    <div class="info-item">
+                                        <span class="info-label">数据点数:</span>
+                                        <span id="intensity-point-count">0</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">X范围:</span>
+                                        <span id="intensity-x-range">-</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">强度范围:</span>
+                                        <span id="intensity-value-range">-</span>
+                                    </div>
+                                </div>
+                                <div id="intensity-preview-plot" class="preview-plot"></div>
+                            </div>
+                        </div>
+
                         <!-- 光强分布阶段参数 -->
+                        <div id="formula-intensity-params" class="formula-params-container">
                         
                         <!-- 参数1: angle_a -->
                         <div class="parameter-item slider-fill">
@@ -556,6 +778,8 @@
                             <div class="parameter-description" data-i18n="param_desc_I_avg">光强分布阶段：平均入射光强度，单位：mW/cm²</div>
                         </div>
                         
+                        </div> <!-- End of formula-params-container -->
+
                         <!-- 曝光反应阶段参数 -->
                         
                         <!-- 参数6: C -->
@@ -605,7 +829,7 @@
                         </div>
                         
                         <!-- 曝光时间窗口控制 -->
-                        <div class="parameter-item">
+                        <div class="parameter-item" id="exposure-time-window-control">
                             <div class="parameter-label">
                                 <span class="parameter-name">
                                     <i class="fas fa-clock"></i> 曝光时间窗口控制
