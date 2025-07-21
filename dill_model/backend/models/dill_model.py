@@ -229,26 +229,41 @@ class DillModel:
             
             # 创建插值函数，处理边界外的值
             try:
+                # 检查是否有单位信息
+                unit_scale = custom_intensity_data.get('unit_scale', 1.0)
+                original_unit = custom_intensity_data.get('original_unit', 'mm')
+                
+                logger.info(f"🔸 单位信息检测:")
+                logger.info(f"   - 原始单位: {original_unit}")
+                logger.info(f"   - 单位比例: {unit_scale}")
+                
                 # 扩展自定义数据范围以覆盖目标范围
                 x_min_target, x_max_target = np.min(x), np.max(x)
                 x_min_custom, x_max_custom = np.min(custom_x), np.max(custom_x)
+                
+                logger.info(f"🔸 坐标范围比较:")
+                logger.info(f"   - 自定义数据范围: [{x_min_custom:.6f}, {x_max_custom:.6f}]")
+                logger.info(f"   - 目标范围: [{x_min_target:.6f}, {x_max_target:.6f}]")
                 
                 # 如果目标范围超出自定义数据范围，使用边界值进行扩展
                 extended_x = custom_x.copy()
                 extended_intensity = custom_intensity.copy()
                 
                 if x_min_target < x_min_custom:
+                    logger.info(f"   - 扩展下限: {x_min_target} < {x_min_custom}")
                     extended_x = np.concatenate([[x_min_target], extended_x])
                     extended_intensity = np.concatenate([[custom_intensity[0]], extended_intensity])
                 
                 if x_max_target > x_max_custom:
+                    logger.info(f"   - 扩展上限: {x_max_target} > {x_max_custom}")
                     extended_x = np.concatenate([extended_x, [x_max_target]])
                     extended_intensity = np.concatenate([extended_intensity, [custom_intensity[-1]]])
                 
+                # 创建线性插值函数
                 interp_func = interp1d(extended_x, extended_intensity, 
                                      kind='linear', 
                                      bounds_error=False, 
-                                     fill_value=0.0)
+                                     fill_value=(custom_intensity[0], custom_intensity[-1]))  # 超出范围使用两端值
                 
                 # 将自定义数据插值到目标x坐标
                 result = interp_func(x)
@@ -259,6 +274,7 @@ class DillModel:
                 logger.info(f"🔸 插值计算结果:")
                 logger.info(f"   - 输出光强范围: [{np.min(result):.6f}, {np.max(result):.6f}]")
                 logger.info(f"   - 输出平均值: {np.mean(result):.6f}")
+                logger.info(f"   - 数据点数: {len(result)}")
                 
                 return result
                 
@@ -933,8 +949,32 @@ class DillModel:
                 if custom_intensity_data is not None:
                     logger.info(f"🔸 使用自定义光强分布数据进行1D计算（理想模型阈值机制）")
                     
-                    # 创建基本的坐标轴
-                    x_coords = np.linspace(-1000, 1000, 2001)
+                    # 检查自定义数据中是否有范围信息
+                    custom_x = np.array(custom_intensity_data.get('x', []))
+                    if len(custom_x) > 0:
+                        # 获取自定义数据的范围
+                        x_min_custom = np.min(custom_x)
+                        x_max_custom = np.max(custom_x)
+                        
+                        # 计算合适的坐标轴
+                        # 扩展范围，使坐标轴比数据点多20%
+                        x_range = x_max_custom - x_min_custom
+                        x_padding = x_range * 0.2  # 20% 的额外空间
+                        calc_x_min = x_min_custom - x_padding
+                        calc_x_max = x_max_custom + x_padding
+                        
+                        # 打印坐标信息
+                        logger.info(f"🔸 使用基于自定义数据范围的计算网格:")
+                        logger.info(f"   - 自定义数据范围: [{x_min_custom:.3f}, {x_max_custom:.3f}]")
+                        logger.info(f"   - 计算网格范围: [{calc_x_min:.3f}, {calc_x_max:.3f}]")
+                    else:
+                        # 如果没有范围信息，使用默认范围
+                        calc_x_min = -1000
+                        calc_x_max = 1000
+                        logger.info(f"🔸 使用默认计算网格范围: [{calc_x_min}, {calc_x_max}]")
+                    
+                    # 创建坐标轴，点数保持一致为2001
+                    x_coords = np.linspace(calc_x_min, calc_x_max, 2001)
                     
                     # 使用自定义光强分布计算曝光剂量
                     exposure_dose = self.calculate_exposure_dose(

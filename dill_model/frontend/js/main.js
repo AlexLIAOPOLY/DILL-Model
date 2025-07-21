@@ -59,6 +59,22 @@ document.addEventListener('DOMContentLoaded', function() {
 // 初始化自定义向量控制框状态
 function initCustomVectorControlsState() {
     const methodSelect = document.getElementById('intensity_input_method');
+    
+    // 初始状态下，设置未点击预览按钮的标志
+    window.isPreviewDataButtonClicked = false;
+    
+    // 确保数据状态容器初始隐藏
+    const statusDiv = document.getElementById('intensity-data-status');
+    if (statusDiv) {
+        statusDiv.style.display = 'none';
+    }
+    
+    // 初始禁用手动输入区域的卸载按钮
+    const applyBtn = document.getElementById('apply-intensity-btn');
+    if (applyBtn) {
+        applyBtn.disabled = !customIntensityData || !customIntensityData.loaded;
+    }
+    
     if (methodSelect && methodSelect.value === 'custom') {
         // 如果当前已选择自定义向量模式，确保正确设置界面状态
         // 延迟执行，确保DOM完全加载
@@ -1298,9 +1314,23 @@ function getParameterValues() {
         const intensityMethodSelect = document.getElementById('intensity_input_method');
         if (intensityMethodSelect && intensityMethodSelect.value === 'custom' && customIntensityData.loaded) {
             console.log('🎯 使用自定义光强分布数据');
+            
+            // 检查是否需要进行单位转换
+            let x_data = [...customIntensityData.x]; // 复制数组，避免修改原始数据
+            const unit_scale = customIntensityData.unit_scale || 1.0;
+            
+            // 如果单位不是默认的mm，需要进行转换
+            if (unit_scale !== 1.0) {
+                console.log(`🔄 单位转换: ${customIntensityData.x_unit} -> mm，比例: ×${unit_scale}`);
+                // 对x坐标进行单位转换
+                x_data = x_data.map(x => x * unit_scale);
+            }
+            
             params.custom_intensity_data = {
-                x: customIntensityData.x,
-                intensity: customIntensityData.intensity
+                x: x_data, // 使用可能经过单位转换的坐标
+                intensity: customIntensityData.intensity,
+                original_unit: customIntensityData.x_unit,
+                unit_scale: unit_scale
             };
             
             // === 🔍 前端调试自定义光强数据 ===
@@ -1308,7 +1338,8 @@ function getParameterValues() {
             console.log('   - customIntensityData.loaded:', customIntensityData.loaded);
             console.log('   - customIntensityData.x点数:', customIntensityData.x.length);
             console.log('   - customIntensityData.intensity点数:', customIntensityData.intensity.length);
-            console.log('   - X坐标范围:', [Math.min(...customIntensityData.x), Math.max(...customIntensityData.x)]);
+            console.log('   - X坐标原始范围:', [Math.min(...customIntensityData.x), Math.max(...customIntensityData.x)], customIntensityData.x_unit);
+            console.log('   - X坐标转换后范围:', [Math.min(...x_data), Math.max(...x_data)], 'mm');
             console.log('   - 光强范围:', [Math.min(...customIntensityData.intensity), Math.max(...customIntensityData.intensity)]);
             console.log('   - 传递给后端的数据:', params.custom_intensity_data);
             // === 调试结束 ===
@@ -11437,7 +11468,12 @@ function hideMultiLineController() {
 let customIntensityData = {
     x: [],
     intensity: [],
-    loaded: false
+    loaded: false,
+    source: null,
+    fileName: null,
+    x_unit: 'mm', // 默认单位为mm
+    x_range: {min: 0, max: 0},
+    auto_detected: false // 是否已自动检测单位
 };
 
 // 初始化自定义光强分布功能
@@ -11519,7 +11555,7 @@ function handleFileUpload(event) {
     const fileExtension = fileName.split('.').pop();
     
     // 支持的文件格式
-    const supportedFormats = ['txt', 'csv', 'json', 'dat'];
+    const supportedFormats = ['txt', 'csv', 'json', 'dat', 'xls', 'xlsx', 'mat'];
     
     if (!supportedFormats.includes(fileExtension)) {
         showNotification(`不支持的文件格式: ${fileExtension}。支持的格式: ${supportedFormats.join(', ')}`, 'error');
@@ -11690,32 +11726,70 @@ function handleFileUpload(file) {
     console.log(`📂 开始处理文件: ${file.name}`);
     
     // 检查文件类型
-    const allowedTypes = ['.txt', '.csv', '.json'];
+    const allowedTypes = [
+        // 文本类型
+        '.txt', '.csv', '.json', '.dat', '.tab', '.tsv', '.asc',
+        // 表格类型
+        '.xls', '.xlsx', 
+        // 数据类型
+        '.mat', '.lis', '.log', '.out', '.pro', '.sim', '.fdt',
+        // 光刻仿真软件特定格式
+        '.pli', '.ldf', '.msk', '.slf', '.int'
+    ];
     const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
     
     if (!allowedTypes.includes(fileExtension)) {
-        showNotification(`不支持的文件格式: ${fileExtension}。请使用 TXT、CSV 或 JSON 格式。`, 'error');
+        showNotification(`不支持的文件格式: ${fileExtension}。请使用光刻仿真软件支持的格式，如TXT、CSV、DAT等。`, 'error');
         return;
     }
     
-    // 检查文件大小（限制为5MB）
-    if (file.size > 5 * 1024 * 1024) {
-        showNotification('文件过大，请选择小于5MB的文件。', 'error');
+    // 检查文件大小（限制为10MB）
+    if (file.size > 10 * 1024 * 1024) {
+        showNotification('文件过大，请选择小于10MB的文件。', 'error');
         return;
     }
     
-    // 读取文件内容
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const content = e.target.result;
-        parseFileContent(content, fileExtension, file.name);
-    };
-    
-    reader.onerror = function() {
-        showNotification('文件读取失败，请重试。', 'error');
-    };
-    
-    reader.readAsText(file);
+    // 根据文件类型选择不同的读取方式
+    // 表格文件类型（二进制）
+    if (['.xls', '.xlsx'].includes(fileExtension)) {
+        // Excel文件需要以二进制方式读取
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                parseExcelFile(e.target.result, file.name);
+            } catch (error) {
+                console.error('Excel文件解析错误:', error);
+                showNotification(`Excel文件解析失败: ${error.message}`, 'error');
+            }
+        };
+        reader.onerror = function() {
+            showNotification('Excel文件读取失败，请重试。', 'error');
+        };
+        reader.readAsArrayBuffer(file);
+    } 
+    // MATLAB和其他二进制数据文件
+    else if (['.mat', '.fdt', '.slf', '.bin'].includes(fileExtension)) {
+        // 特殊二进制文件处理
+        handleBinaryDataFile(file, fileExtension);
+    } 
+    // 光刻仿真软件特定格式
+    else if (['.pli', '.ldf', '.msk', '.int', '.pro', '.sim'].includes(fileExtension)) {
+        // 尝试作为文本文件处理光刻仿真软件格式
+        handleLithographySimFile(file, fileExtension);
+    }
+    // 文本和通用数据文件
+    else {
+        // 文本文件（TXT, CSV, JSON, DAT, TAB, TSV, LIS, LOG, OUT, ASC等）
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            parseFileContent(content, fileExtension, file.name);
+        };
+        reader.onerror = function() {
+            showNotification('文件读取失败，请重试。', 'error');
+        };
+        reader.readAsText(file);
+    }
 }
 
 // 解析文件内容
@@ -11736,6 +11810,16 @@ function parseFileContent(content, fileExtension, fileName) {
             case '.json':
                 ({ x, intensity } = parseJsonContent(content));
                 break;
+            case '.dat':
+                ({ x, intensity } = parseDatContent(content));
+                break;
+            case '.xls':
+            case '.xlsx':
+                ({ x, intensity } = parseExcelContent(content, fileExtension));
+                break;
+            case '.mat':
+                ({ x, intensity } = parseMatContent(content));
+                break;
         }
         
         // 验证数据
@@ -11743,22 +11827,30 @@ function parseFileContent(content, fileExtension, fileName) {
             return;
         }
         
-        // 存储数据
-        customIntensityData = {
-            x: x,
-            intensity: intensity,
-            loaded: true,
-            source: 'file',
-            fileName: fileName
-        };
-        
-        // 显示数据状态
-        updateDataStatus();
-        
-        // 预览数据
-        previewIntensityData();
-        
-        showNotification(`成功加载文件: ${fileName}，包含 ${x.length} 个数据点`, 'success');
+            // 存储数据
+    customIntensityData = {
+        ...customIntensityData, // 保留已有属性
+        x: x,
+        intensity: intensity,
+        loaded: true,
+        source: 'file',
+        fileName: fileName
+    };
+    
+    // 设置标志表示未点击预览按钮
+    window.isPreviewDataButtonClicked = false;
+    
+    // 隐藏数据状态（用户要求直到点击预览按钮前不显示数据状态）
+    const statusDiv = document.getElementById('intensity-data-status');
+    if (statusDiv) {
+        statusDiv.style.display = 'none';
+    }
+    
+    // 不在这里立即预览数据，而是显示单位选择提示
+    showNotification(`成功加载文件: ${fileName}，包含 ${x.length} 个数据点。请确认坐标单位后点击"预览数据"按钮。`, 'success');
+    
+    // 添加一个预览按钮
+    addPreviewButton();
         
     } catch (error) {
         console.error('❌ 文件解析错误:', error);
@@ -11784,7 +11876,49 @@ function parseTxtContent(content) {
     const firstLine = lines[0].trim();
     const parts = firstLine.split(/\s+/);
     
-    if (parts.length >= 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]))) {
+    // 尝试查找可能的标题行
+    if (firstLine.toLowerCase().includes('x') || firstLine.toLowerCase().includes('intensity') || 
+        firstLine.toLowerCase().includes('position') || firstLine.toLowerCase().includes('value')) {
+        console.log('检测到可能的标题行:', firstLine);
+        // 跳过第一行
+        const dataLines = lines.slice(1);
+        if (dataLines.length > 0) {
+            // 再次检查第二行（第一个数据行）的格式
+            const dataFirstLine = dataLines[0].trim();
+            const dataParts = dataFirstLine.split(/\s+/);
+            
+            if (dataParts.length >= 2 && !isNaN(parseFloat(dataParts[0])) && !isNaN(parseFloat(dataParts[1]))) {
+                // 处理两列数据格式
+                for (let i = 0; i < dataLines.length; i++) {
+                    const line = dataLines[i];
+                    const parts = line.split(/\s+/);
+                    if (parts.length >= 2) {
+                        const xVal = parseFloat(parts[0]);
+                        const intensityVal = parseFloat(parts[1]);
+                        if (!isNaN(xVal) && !isNaN(intensityVal)) {
+                            x.push(xVal);
+                            intensity.push(intensityVal);
+                        } else {
+                            console.warn(`第 ${i + 2} 行包含无效数值，已跳过: "${line}"`);
+                        }
+                    } else {
+                        console.warn(`第 ${i + 2} 行格式不正确，已跳过: "${line}"`);
+                    }
+                }
+            } else if (dataParts.length === 1 && !isNaN(parseFloat(dataParts[0]))) {
+                // 处理单列数据格式
+                for (let i = 0; i < dataLines.length; i++) {
+                    const intensityVal = parseFloat(dataLines[i].trim());
+                    if (!isNaN(intensityVal)) {
+                        x.push(i); // 使用索引作为x坐标
+                        intensity.push(intensityVal);
+                    } else {
+                        console.warn(`第 ${i + 2} 行包含无效数值，已跳过: "${dataLines[i]}"`);
+                    }
+                }
+            }
+        }
+    } else if (parts.length >= 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]))) {
         console.log('检测到两列格式的TXT文件: x intensity');
         // 格式：x intensity
         for (let i = 0; i < lines.length; i++) {
@@ -11826,9 +11960,770 @@ function parseTxtContent(content) {
     return { x, intensity };
 }
 
+// 解析DAT文件内容
+function parseDatContent(content) {
+    // DAT文件通常与TXT类似，但可能有更多注释和头信息
+    // 分割行并过滤掉空行
+    const lines = content.split('\n').map(line => line.trim());
+    
+    // 收集注释和元数据（以#开头的行）
+    const comments = lines.filter(line => line.startsWith('#')).map(line => line.substring(1).trim());
+    console.log('DAT文件元数据/注释:', comments);
+    
+    // 过滤有效数据行
+    const dataLines = lines.filter(line => line !== '' && !line.startsWith('#'));
+    
+    const x = [];
+    const intensity = [];
+    
+    if (dataLines.length === 0) {
+        throw new Error('DAT文件中没有找到有效的数据行。');
+    }
+    
+    // 尝试检测分隔符
+    let separator = /\s+/;  // 默认为空白字符
+    const possibleSeparators = [/\s+/, ',', ';', '\t', '|'];
+    
+    for (const sep of possibleSeparators) {
+        const parts = dataLines[0].split(sep);
+        if (parts.length > 1) {
+            separator = sep;
+            console.log(`检测到分隔符: "${sep}"`);
+            break;
+        }
+    }
+    
+    // 尝试检测列位置
+    let xColumnIndex = 0;
+    let intensityColumnIndex = 1;
+    
+    // 查看注释中是否有列信息
+    for (const comment of comments) {
+        const lowerComment = comment.toLowerCase();
+        if (lowerComment.includes('column') || lowerComment.includes('列') || lowerComment.includes('field')) {
+            console.log('从注释中检测列信息:', comment);
+            
+            // 尝试查找列位置指示
+            if (lowerComment.includes('x') || lowerComment.includes('position') || lowerComment.includes('distance')) {
+                // 例如 "Column 1: X Position"
+                const match = lowerComment.match(/column\s*(\d+)[:\s]*.*?(x|pos|position|distance)/i);
+                if (match && match[1]) {
+                    xColumnIndex = parseInt(match[1]) - 1;  // 转为0索引
+                    console.log(`从注释中找到X列索引: ${xColumnIndex}`);
+                }
+            }
+            
+            if (lowerComment.includes('intensity') || lowerComment.includes('value') || lowerComment.includes('power')) {
+                // 例如 "Column 2: Intensity"
+                const match = lowerComment.match(/column\s*(\d+)[:\s]*.*?(intensity|value|power)/i);
+                if (match && match[1]) {
+                    intensityColumnIndex = parseInt(match[1]) - 1;  // 转为0索引
+                    console.log(`从注释中找到强度列索引: ${intensityColumnIndex}`);
+                }
+            }
+        }
+    }
+    
+    // 检查第一行是否为表头
+    const firstLine = dataLines[0];
+    const headerParts = firstLine.split(separator);
+    
+    let startIndex = 0;
+    
+    if (headerParts.length > 1) {
+        // 检查是否为表头（如果包含非数字内容）
+        const containsText = headerParts.some(part => isNaN(parseFloat(part)) && part.trim() !== '');
+        
+        if (containsText) {
+            console.log('检测到表头:', headerParts);
+            startIndex = 1;
+            
+            // 尝试从表头确定列位置
+            for (let i = 0; i < headerParts.length; i++) {
+                const header = headerParts[i].toLowerCase().trim();
+                if (header.includes('x') || header.includes('position') || header.includes('distance')) {
+                    xColumnIndex = i;
+                    console.log(`从表头找到X列: "${headerParts[i]}" (索引 ${i})`);
+                } else if (header.includes('intensity') || header.includes('value') || header.includes('power')) {
+                    intensityColumnIndex = i;
+                    console.log(`从表头找到强度列: "${headerParts[i]}" (索引 ${i})`);
+                }
+            }
+        }
+    }
+    
+    // 处理数据行
+    for (let i = startIndex; i < dataLines.length; i++) {
+        const line = dataLines[i];
+        const parts = line.split(separator);
+        
+        if (parts.length > Math.max(xColumnIndex, intensityColumnIndex)) {
+            const xVal = parseFloat(parts[xColumnIndex]);
+            const intensityVal = parseFloat(parts[intensityColumnIndex]);
+            
+            if (!isNaN(xVal) && !isNaN(intensityVal)) {
+                x.push(xVal);
+                intensity.push(intensityVal);
+            } else {
+                console.warn(`第 ${i + 1} 行数值无效，已跳过: "${line}"`);
+            }
+        } else {
+            console.warn(`第 ${i + 1} 行列数不足，已跳过: "${line}"`);
+        }
+    }
+    
+    if (x.length === 0) {
+        throw new Error('DAT文件中没有找到有效的数据。');
+    }
+    
+    return { x, intensity };
+}
+
+// 解析Excel文件 (XLS/XLSX)
+function parseExcelFile(arrayBuffer, fileName) {
+    try {
+        // 显示加载状态
+        showNotification('正在解析Excel文件...', 'info');
+        
+        // 使用XLSX库解析Excel文件
+        const workbook = XLSX.read(arrayBuffer, {type: 'array'});
+        
+        // 获取第一个工作表
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!firstSheet) {
+            throw new Error('Excel文件不包含任何工作表');
+        }
+        
+        console.log('Excel工作表名称:', workbook.SheetNames);
+        console.log('使用第一个工作表:', workbook.SheetNames[0]);
+        
+        // 将工作表转换为JSON (带表头)
+        const headerOptions = {header: 1, raw: true};
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, headerOptions);
+        
+        if (jsonData.length === 0) {
+            throw new Error('Excel工作表为空');
+        }
+        
+        console.log('Excel数据行数:', jsonData.length);
+        console.log('第一行数据:', jsonData[0]);
+        
+        // 查找适合的x和intensity列
+        let xColumnIndex = 0;
+        let intensityColumnIndex = 1;
+        let startRow = 0;
+        
+        // 检查是否有标题行 - 第一行包含文本而不是数值
+        if (jsonData[0] && jsonData[0].some(cell => typeof cell === 'string')) {
+            console.log('检测到可能的Excel标题行:', jsonData[0]);
+            startRow = 1;
+            
+            // 查找可能的x和intensity列
+            for (let i = 0; i < jsonData[0].length; i++) {
+                if (!jsonData[0][i]) continue; // 跳过空单元格
+                
+                const header = String(jsonData[0][i]).toLowerCase();
+                if (header.includes('x') || header.includes('pos') || header.includes('dist')) {
+                    xColumnIndex = i;
+                    console.log(`找到X坐标列: "${jsonData[0][i]}" (索引 ${i})`);
+                } else if (header.includes('int') || header.includes('value') || header.includes('y') || 
+                           header.includes('power') || header.includes('signal')) {
+                    intensityColumnIndex = i;
+                    console.log(`找到强度列: "${jsonData[0][i]}" (索引 ${i})`);
+                }
+            }
+        } else if (jsonData[0] && jsonData[0].length > 1) {
+            // 如果没有标题行但有多列，检查最适合作为x和intensity的列
+            console.log('未检测到标题行，使用默认列布局');
+            
+            // 默认使用前两列作为x和intensity
+            xColumnIndex = 0;
+            intensityColumnIndex = 1;
+        } else if (jsonData[0] && jsonData[0].length === 1) {
+            // 如果只有一列数据，假设是intensity，用行号作为x
+            console.log('检测到单列数据，将使用行号作为x坐标');
+            xColumnIndex = -1; // 特殊标记，表示使用行号
+            intensityColumnIndex = 0;
+        }
+        
+        // 提取数据
+        const x = [];
+        const intensity = [];
+        
+        // 处理数据行
+        for (let i = startRow; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row || row.length === 0) continue; // 跳过空行
+            
+            let xVal, intensityVal;
+            
+            // 处理x值 - 如果xColumnIndex为-1，使用行号作为x坐标
+            if (xColumnIndex === -1) {
+                xVal = i - startRow;
+            } else if (row[xColumnIndex] !== undefined) {
+                xVal = parseFloat(row[xColumnIndex]);
+            } else {
+                continue; // 跳过没有x值的行
+            }
+            
+            // 处理强度值
+            if (row[intensityColumnIndex] !== undefined) {
+                intensityVal = parseFloat(row[intensityColumnIndex]);
+            } else {
+                continue; // 跳过没有强度值的行
+            }
+            
+            // 检查是否为有效数值
+            if (!isNaN(xVal) && !isNaN(intensityVal)) {
+                x.push(xVal);
+                intensity.push(intensityVal);
+            } else {
+                console.warn(`Excel行 ${i + 1} 包含无效数值，已跳过`);
+            }
+        }
+        
+        if (x.length === 0) {
+            throw new Error('Excel文件中未找到有效的数值数据');
+        }
+        
+        // 存储并应用数据
+        customIntensityData = {
+            x: x,
+            intensity: intensity,
+            loaded: true,
+            source: 'excel',
+            fileName: fileName
+        };
+        
+        // 更新状态显示
+        updateDataStatus();
+        
+        console.log(`✅ 成功从Excel文件中提取 ${x.length} 个数据点`);
+        showNotification(`成功加载Excel文件: ${fileName}，包含 ${x.length} 个数据点。请确认坐标单位后点击"预览数据"按钮。`, 'success');
+        
+        // 添加预览按钮
+        addPreviewButton();
+        
+    } catch (error) {
+        console.error('❌ Excel文件解析错误:', error);
+        showNotification(`Excel文件解析失败: ${error.message}`, 'error');
+    }
+}
+
+// 处理二进制数据文件 (MAT, FDT, SLF, BIN等)
+function handleBinaryDataFile(file, fileExtension) {
+    // 显示正在处理的通知
+    showNotification(`正在尝试处理${fileExtension}格式文件...`, 'info');
+    
+    if (fileExtension === '.mat') {
+        // MATLAB文件特殊处理
+        showNotification('MATLAB文件需要服务器端支持，请将MAT文件导出为CSV或TXT格式后再上传', 'info');
+        
+        // 创建一个情境温和的通知，帮助用户转换MAT文件
+        setTimeout(() => {
+            showNotification('提示: 在MATLAB中可使用 "writematrix(data, \'data.csv\')" 命令导出数据', 'info');
+        }, 3000);
+        
+        // 尝试通过FileReader读取文件，但只展示基本信息
+        try {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // 检查MAT文件头部标识
+                const headerBytes = new Uint8Array(e.target.result.slice(0, 124));
+                const header = new TextDecoder().decode(headerBytes);
+                
+                if (header.includes('MATLAB')) {
+                    console.log('确认为MATLAB文件，版本信息:', header.substring(0, 124));
+                    showNotification('已确认为MATLAB文件，但需要先转换为CSV或TXT格式', 'info');
+                } else {
+                    showNotification('此文件可能不是标准的MATLAB格式，请检查', 'warning');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } catch (error) {
+            console.error('MATLAB文件读取错误:', error);
+        }
+    } else if (['.fdt', '.slf'].includes(fileExtension)) {
+        // 尝试处理光刻仿真软件的二进制数据文件
+        showNotification(`${fileExtension.toUpperCase().substring(1)}格式是光刻仿真二进制格式，请导出为CSV或TXT格式`, 'info');
+        
+        setTimeout(() => {
+            showNotification('提示: 大多数光刻仿真软件都支持导出ASCII或CSV数据格式', 'info');
+        }, 3000);
+    } else {
+        // 通用二进制文件处理
+        showNotification('二进制数据文件需要特定解析器，请导出为文本格式后再上传', 'warning');
+    }
+}
+
+// 处理光刻仿真软件特定格式文件 (PLI, LDF, MSK, INT, PRO, SIM等)
+function handleLithographySimFile(file, fileExtension) {
+    // 尝试作为文本文件读取
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        
+        // 首先检查文件是否为文本格式
+        if (isBinaryContent(content)) {
+            showNotification(`${fileExtension}文件似乎是二进制格式，请将其导出为文本格式`, 'warning');
+            return;
+        }
+        
+        // 尝试解析光刻仿真软件输出
+        try {
+            parseLithographySimulationFile(content, fileExtension, file.name);
+        } catch (error) {
+            console.error(`光刻仿真文件解析错误:`, error);
+            // 尝试作为普通文本文件解析
+            try {
+                console.log('尝试作为通用文本文件解析...');
+                parseFileContent(content, '.txt', file.name);
+            } catch (fallbackError) {
+                showNotification(`无法解析文件: ${error.message}`, 'error');
+            }
+        }
+    };
+    
+    reader.onerror = function() {
+        showNotification('文件读取失败，请重试', 'error');
+    };
+    
+    reader.readAsText(file);
+}
+
+// 检查内容是否为二进制
+function isBinaryContent(content) {
+    // 检查前1000个字符
+    const sampleSize = Math.min(1000, content.length);
+    const sample = content.substring(0, sampleSize);
+    
+    // 计算非可打印字符的比例
+    let nonPrintableCount = 0;
+    for (let i = 0; i < sample.length; i++) {
+        const charCode = sample.charCodeAt(i);
+        // 排除常见的控制字符
+        if ((charCode < 32 || charCode > 126) && charCode !== 9 && charCode !== 10 && charCode !== 13) {
+            nonPrintableCount++;
+        }
+    }
+    
+    // 如果非可打印字符超过5%，可能是二进制文件
+    return (nonPrintableCount / sampleSize) > 0.05;
+}
+
+// 解析光刻仿真软件的特定格式文件
+function parseLithographySimulationFile(content, fileExtension, fileName) {
+    console.log(`开始解析光刻仿真文件: ${fileName} (${fileExtension})`);
+    
+    // 根据文件类型选择不同的解析策略
+    let result;
+    switch(fileExtension) {
+        case '.pli': // PROLITH格式
+            result = parseProlithFile(content);
+            break;
+        case '.ldf': // Lithography格式
+            result = parseLdfFile(content);
+            break;
+        case '.msk': // 掩模格式
+            result = parseMaskFile(content);
+            break;
+        case '.int': // Intensity格式
+            result = parseIntensityFile(content);
+            break;
+        case '.pro': // 工艺文件
+        case '.sim': // 仿真文件
+            result = parseSimProcessFile(content);
+            break;
+        default:
+            // 尝试通用解析
+            result = parseGenericSimFile(content);
+    }
+    
+    if (!result || !result.x || !result.intensity || result.x.length === 0) {
+        throw new Error(`未能从${fileExtension}文件中提取有效数据`);
+    }
+    
+    // 提取成功，应用数据
+    customIntensityData = {
+        x: result.x,
+        intensity: result.intensity,
+        loaded: true,
+        source: fileExtension.substring(1), // 去掉点号
+        fileName: fileName
+    };
+    
+    // 更新UI
+    updateDataStatus();
+    previewIntensityData();
+    
+    showNotification(`成功从${fileExtension.toUpperCase().substring(1)}文件中提取${result.x.length}个数据点`, 'success');
+}
+
+// 解析PROLITH格式文件
+function parseProlithFile(content) {
+    // PROLITH通常使用特定的标记和格式
+    const lines = content.split('\n').map(line => line.trim());
+    
+    // 查找数据区域开始的标记
+    let dataStartIndex = -1;
+    let xColumn = 0;
+    let intensityColumn = 1;
+    
+    // 查找标题行或数据开始标记
+    for (let i = 0; i < lines.length; i++) {
+        // 查找可能的列头
+        if (lines[i].toLowerCase().includes('intensity') || 
+            lines[i].toLowerCase().includes('position') || 
+            lines[i].toLowerCase().includes('data')) {
+            
+            // 分析可能的表头
+            const parts = lines[i].split(/[\s,;:]+/).filter(p => p.trim() !== '');
+            
+            for (let j = 0; j < parts.length; j++) {
+                const part = parts[j].toLowerCase();
+                if (part.includes('x') || part.includes('pos') || part.includes('dist')) {
+                    xColumn = j;
+                } else if (part.includes('int') || part.includes('amp') || part.includes('value')) {
+                    intensityColumn = j;
+                }
+            }
+            
+            dataStartIndex = i + 1; // 数据从下一行开始
+            console.log(`在PROLITH文件中找到数据开始行: ${i+1}, X列: ${xColumn}, 强度列: ${intensityColumn}`);
+            break;
+        }
+        
+        // 查找数据部分开始的标记
+        if (lines[i].includes('BEGIN_DATA') || lines[i].includes('DATA_START')) {
+            dataStartIndex = i + 1;
+            console.log(`在PROLITH文件中找到数据标记: ${lines[i]}, 从行 ${i+1} 开始`);
+            break;
+        }
+    }
+    
+    // 如果没有找到明确的数据开始标记，尝试查找第一个包含数值数据的行
+    if (dataStartIndex === -1) {
+        for (let i = 0; i < lines.length; i++) {
+            const parts = lines[i].split(/[\s,;:]+/).filter(p => p.trim() !== '');
+            if (parts.length >= 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]))) {
+                dataStartIndex = i;
+                console.log(`在PROLITH文件中找到第一行数值数据: ${i+1}`);
+                break;
+            }
+        }
+    }
+    
+    // 如果仍然没有找到数据，抛出错误
+    if (dataStartIndex === -1) {
+        throw new Error('无法在PROLITH文件中找到有效数据区域');
+    }
+    
+    // 提取数据
+    const x = [];
+    const intensity = [];
+    
+    for (let i = dataStartIndex; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // 检查数据区域结束标记
+        if (line.includes('END_DATA') || line.includes('DATA_END')) {
+            break;
+        }
+        
+        // 跳过空行
+        if (line === '') continue;
+        
+        // 尝试多种分隔符
+        const parts = line.split(/[\s,;:]+/).filter(p => p.trim() !== '');
+        
+        // 确保有足够的数据列
+        if (parts.length <= Math.max(xColumn, intensityColumn)) continue;
+        
+        const xVal = parseFloat(parts[xColumn]);
+        const intVal = parseFloat(parts[intensityColumn]);
+        
+        if (!isNaN(xVal) && !isNaN(intVal)) {
+            x.push(xVal);
+            intensity.push(intVal);
+        }
+    }
+    
+    return { x, intensity };
+}
+
+// 解析LDF (Lithography Data Format) 文件
+function parseLdfFile(content) {
+    // LDF格式通常有特定的结构，首先搜索数据区域
+    const lines = content.split('\n').map(line => line.trim());
+    let dataFound = false;
+    const x = [];
+    const intensity = [];
+    
+    // 查找数据区域和列标识
+    let xColumn = 0;
+    let intensityColumn = 1;
+    
+    // 首先查找数据格式定义
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].toLowerCase();
+        
+        // 查找列定义
+        if (line.includes('column') || line.includes('field') || line.includes('format')) {
+            const parts = line.split(/[\s:=]+/);
+            for (let j = 0; j < parts.length; j++) {
+                if (parts[j].includes('x') || parts[j].includes('pos')) {
+                    // 尝试提取列号
+                    const match = /(\d+)/.exec(parts[j+1] || '');
+                    if (match) {
+                        xColumn = parseInt(match[1]) - 1; // 转换为0-索引
+                    }
+                } else if (parts[j].includes('int') || parts[j].includes('value')) {
+                    // 尝试提取列号
+                    const match = /(\d+)/.exec(parts[j+1] || '');
+                    if (match) {
+                        intensityColumn = parseInt(match[1]) - 1; // 转换为0-索引
+                    }
+                }
+            }
+        }
+        
+        // 查找数据开始标记
+        if (line.includes('begin data') || line.includes('data_start') || line.includes('data:')) {
+            dataFound = true;
+            continue;
+        }
+        
+        // 如果找到了数据区域，开始处理数据行
+        if (dataFound) {
+            // 检查数据区域结束
+            if (line.includes('end data') || line.includes('data_end')) {
+                break;
+            }
+            
+            // 跳过空行和注释行
+            if (line === '' || line.startsWith('#') || line.startsWith('//')) {
+                continue;
+            }
+            
+            // 解析数据行
+            const parts = line.split(/[\s,;:]+/).filter(p => p.trim() !== '');
+            
+            // 确保有足够的列
+            if (parts.length <= Math.max(xColumn, intensityColumn)) {
+                continue;
+            }
+            
+            const xVal = parseFloat(parts[xColumn]);
+            const intVal = parseFloat(parts[intensityColumn]);
+            
+            if (!isNaN(xVal) && !isNaN(intVal)) {
+                x.push(xVal);
+                intensity.push(intVal);
+            }
+        } else {
+            // 如果还没找到数据区域，检查这行是否包含数值数据
+            // 这是为了处理没有明确数据区域标记的文件
+            const parts = line.split(/[\s,;:]+/).filter(p => p.trim() !== '');
+            
+            if (parts.length >= 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]))) {
+                const xVal = parseFloat(parts[xColumn]);
+                const intVal = parseFloat(parts[intensityColumn]);
+                
+                if (!isNaN(xVal) && !isNaN(intVal)) {
+                    x.push(xVal);
+                    intensity.push(intVal);
+                }
+            }
+        }
+    }
+    
+    // 如果没有找到任何数据，尝试按常规文本文件解析
+    if (x.length === 0) {
+        return parseGenericSimFile(content);
+    }
+    
+    return { x, intensity };
+}
+
+// 解析掩模文件 (.msk)
+function parseMaskFile(content) {
+    // 掩模文件通常包含多种信息，需要提取与位置和强度相关的部分
+    // 这里使用简化的逻辑，假设掩模文件中包含位置和强度数据
+    return parseGenericSimFile(content);
+}
+
+// 解析强度文件 (.int)
+function parseIntensityFile(content) {
+    // 强度文件通常是直接包含光强分布数据的专用格式
+    // 通常格式比较简单，一行对应一个数据点
+    const lines = content.split('\n').map(line => line.trim());
+    const x = [];
+    const intensity = [];
+    
+    // 查找可能的数据行
+    for (let i = 0; i < lines.length; i++) {
+        // 跳过空行和注释行
+        if (lines[i] === '' || lines[i].startsWith('#') || lines[i].startsWith('//')) {
+            continue;
+        }
+        
+        // 假设每行都是一个数据点，格式为 "x intensity" 或 "intensity"
+        const parts = lines[i].split(/[\s,;:]+/).filter(p => p.trim() !== '');
+        
+        if (parts.length >= 2) {
+            // 两列或以上：假设第一列是x，第二列是强度
+            const xVal = parseFloat(parts[0]);
+            const intVal = parseFloat(parts[1]);
+            
+            if (!isNaN(xVal) && !isNaN(intVal)) {
+                x.push(xVal);
+                intensity.push(intVal);
+            }
+        } else if (parts.length === 1) {
+            // 单列：假设仅包含强度值，使用索引作为位置
+            const intVal = parseFloat(parts[0]);
+            if (!isNaN(intVal)) {
+                x.push(i);
+                intensity.push(intVal);
+            }
+        }
+    }
+    
+    if (x.length === 0) {
+        throw new Error('未能从强度文件中提取有效数据');
+    }
+    
+    return { x, intensity };
+}
+
+// 解析工艺或仿真文件 (.pro, .sim)
+function parseSimProcessFile(content) {
+    // 这些文件可能包含多种信息，尝试提取强度相关数据
+    return parseGenericSimFile(content);
+}
+
+// 通用仿真文件解析
+function parseGenericSimFile(content) {
+    // 通用解析逻辑，适用于大多数仿真软件输出的文本格式
+    
+    // 首先分割成行
+    const lines = content.split('\n').map(line => line.trim());
+    const x = [];
+    const intensity = [];
+    
+    // 尝试检测列的位置
+    let xColumn = 0;
+    let intensityColumn = 1;
+    let dataStartLine = 0;
+    
+    // 检查前几行是否包含列标题
+    for (let i = 0; i < Math.min(20, lines.length); i++) {
+        const line = lines[i].toLowerCase();
+        
+        // 跳过空行
+        if (line === '') continue;
+        
+        // 检查是否为注释或标题行
+        if (line.startsWith('#') || line.startsWith('//') || line.startsWith('!')) {
+            // 在注释中查找列指示
+            if (line.includes('x') || line.includes('pos') || line.includes('dist') || 
+                line.includes('int') || line.includes('val') || line.includes('amp')) {
+                
+                const words = line.split(/[\s:,;=]+/).filter(w => w !== '');
+                
+                for (let j = 0; j < words.length; j++) {
+                    if (words[j].includes('x') || words[j].includes('pos') || words[j].includes('dist')) {
+                        xColumn = j;
+                    } else if (words[j].includes('int') || words[j].includes('val') || words[j].includes('amp')) {
+                        intensityColumn = j;
+                    }
+                }
+                
+                dataStartLine = i + 1;
+            }
+            continue;
+        }
+        
+        // 检查非注释行是否包含可能的列标题
+        if (!isNaN(parseFloat(line.split(/[\s,;:]+/)[0]))) {
+            // 这似乎是第一行数据
+            dataStartLine = i;
+            break;
+        } else {
+            // 这可能是列标题
+            const parts = line.split(/[\s,;:]+/).filter(p => p !== '');
+            
+            for (let j = 0; j < parts.length; j++) {
+                if (parts[j].includes('x') || parts[j].includes('pos') || parts[j].includes('dist')) {
+                    xColumn = j;
+                } else if (parts[j].includes('int') || parts[j].includes('val') || parts[j].includes('amp')) {
+                    intensityColumn = j;
+                }
+            }
+            
+            dataStartLine = i + 1;
+        }
+    }
+    
+    // 处理数据行
+    for (let i = dataStartLine; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // 跳过空行和注释行
+        if (line === '' || line.startsWith('#') || line.startsWith('//') || line.startsWith('!')) {
+            continue;
+        }
+        
+        // 尝试多种分隔符
+        const parts = line.split(/[\s,;:]+/).filter(p => p.trim() !== '');
+        
+        // 确保有足够的列
+        if (parts.length <= Math.max(xColumn, intensityColumn)) {
+            continue;
+        }
+        
+        // 提取数值
+        const xVal = parseFloat(parts[xColumn]);
+        const intVal = parseFloat(parts[intensityColumn]);
+        
+        if (!isNaN(xVal) && !isNaN(intVal)) {
+            x.push(xVal);
+            intensity.push(intVal);
+        }
+    }
+    
+    // 如果没有成功提取数据，尝试最简单的假设：前两列是x和强度
+    if (x.length === 0) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // 跳过空行和注释行
+            if (line === '' || line.startsWith('#') || line.startsWith('//') || line.startsWith('!')) {
+                continue;
+            }
+            
+            const parts = line.split(/[\s,;:]+/).filter(p => p.trim() !== '');
+            
+            if (parts.length >= 2) {
+                const xVal = parseFloat(parts[0]);
+                const intVal = parseFloat(parts[1]);
+                
+                if (!isNaN(xVal) && !isNaN(intVal)) {
+                    x.push(xVal);
+                    intensity.push(intVal);
+                }
+            }
+        }
+    }
+    
+    return { x, intensity };
+}
+
 // 解析CSV文件内容
 function parseCsvContent(content) {
-    const lines = content.split('\n').filter(line => line.trim() !== '');
+    // 支持Windows (CRLF)、Mac (CR) 和 Unix (LF) 格式的换行符
+    const normalizedContent = content.replace(/\r\n|\r|\n/g, '\n');
+    const lines = normalizedContent.split('\n').filter(line => line.trim() !== '');
     const x = [];
     const intensity = [];
     
@@ -11836,26 +12731,93 @@ function parseCsvContent(content) {
         throw new Error('CSV文件为空或只包含空行。');
     }
     
+    // 检测分隔符：CSV文件可能使用逗号、分号、制表符等
+    let separator = ',';  // 默认使用逗号分隔
+    const possibleSeparators = [',', ';', '\t', '|', ':'];
+    const countSeparators = {};
+    
+    // 统计第一行中每种分隔符的出现次数
+    for (const sep of possibleSeparators) {
+        countSeparators[sep] = (lines[0].match(new RegExp(sep === '\t' ? '\t' : sep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+    }
+    
+    // 选择出现次数最多的分隔符
+    let maxCount = 0;
+    for (const sep in countSeparators) {
+        if (countSeparators[sep] > maxCount) {
+            maxCount = countSeparators[sep];
+            separator = sep;
+        }
+    }
+    
+    console.log(`检测到CSV分隔符: "${separator === '\t' ? 'Tab' : separator}"`);
+    
+    // 处理带引号的CSV：例如 "value 1","value, with, commas"
+    function parseCSVLine(line, sep) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                if (i + 1 < line.length && line[i + 1] === '"') {
+                    // 处理双引号转义 ("") 作为一个引号字符
+                    current += '"';
+                    i++; // 跳过下一个引号
+                } else {
+                    // 切换引号状态
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === sep && !inQuotes) {
+                // 遇到分隔符且不在引号内
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        // 添加最后一个字段
+        result.push(current.trim());
+        
+        return result;
+    }
+    
     // 检查第一行是否为标题行
     const firstLine = lines[0].trim();
-    const firstParts = firstLine.split(',').map(part => part.trim());
+    const firstParts = parseCSVLine(firstLine, separator);
     
     let startIndex = 0;
     let xColumnIndex = 0;
     let intensityColumnIndex = 1;
     
     // 检测标题行和列位置
-    if (firstParts.length >= 2 && isNaN(parseFloat(firstParts[0]))) {
+    // 如果第一行有两个或更多的字段，并且第一个字段不是数字
+    const firstPartIsNotNumber = isNaN(parseFloat(firstParts[0].replace(/^["']|["']$/g, '')));
+    
+    if (firstParts.length >= 2 && (firstPartIsNotNumber || 
+        firstParts.some(p => p.toLowerCase().includes('x') || 
+                         p.toLowerCase().includes('position') || 
+                         p.toLowerCase().includes('intensity')))) {
         console.log('检测到CSV标题行:', firstParts);
         startIndex = 1;
         
         // 尝试找到正确的列
         for (let i = 0; i < firstParts.length; i++) {
-            const header = firstParts[i].toLowerCase();
-            if (header.includes('x') || header.includes('position') || header.includes('pos')) {
+            // 移除可能的引号
+            const header = firstParts[i].toLowerCase().replace(/^["']|["']$/g, '');
+            
+            // 多种可能的列名
+            if (header.includes('x') || header.includes('position') || header.includes('pos') || 
+                header.includes('distance') || header.includes('location') || header === 'pos' || 
+                header === 'x' || header === 'px') {
                 xColumnIndex = i;
                 console.log(`找到X坐标列: ${firstParts[i]} (索引 ${i})`);
-            } else if (header.includes('intensity') || header.includes('int') || header.includes('value') || header.includes('y')) {
+            } else if (header.includes('intensity') || header.includes('int') || header.includes('value') || 
+                       header.includes('y') || header.includes('power') || header.includes('signal') || 
+                       header === 'i' || header === 'y' || header === 'val') {
                 intensityColumnIndex = i;
                 console.log(`找到强度列: ${firstParts[i]} (索引 ${i})`);
             }
@@ -11869,11 +12831,15 @@ function parseCsvContent(content) {
         const line = lines[i].trim();
         if (line === '') continue;
         
-        const parts = line.split(',').map(part => part.trim());
+        const parts = parseCSVLine(line, separator);
         
         if (parts.length >= Math.max(xColumnIndex + 1, intensityColumnIndex + 1)) {
-            const xVal = parseFloat(parts[xColumnIndex]);
-            const intensityVal = parseFloat(parts[intensityColumnIndex]);
+            // 移除引号 (如 "123" => 123)
+            const xStr = parts[xColumnIndex].replace(/^["']|["']$/g, '');
+            const intensityStr = parts[intensityColumnIndex].replace(/^["']|["']$/g, '');
+            
+            const xVal = parseFloat(xStr);
+            const intensityVal = parseFloat(intensityStr);
             
             if (!isNaN(xVal) && !isNaN(intensityVal)) {
                 x.push(xVal);
@@ -11890,57 +12856,200 @@ function parseCsvContent(content) {
         throw new Error('CSV文件中未找到有效的数值数据。请确保包含数值型的坐标和强度列。');
     }
     
-    console.log(`成功解析CSV文件: ${x.length} 个数据点`);
+    console.log(`成功解析CSV文件: ${x.length} 个数据点，X范围: [${Math.min(...x)}, ${Math.max(...x)}], 强度范围: [${Math.min(...intensity)}, ${Math.max(...intensity)}]`);
     return { x, intensity };
 }
 
 // 解析JSON文件内容
 function parseJsonContent(content) {
-    const data = JSON.parse(content);
-    
-    // 检查是否为数组格式: [{"x": value, "intensity": value}, ...]
-    if (Array.isArray(data)) {
-        console.log('检测到数组格式的JSON文件');
-        const x = [];
-        const intensity = [];
+    try {
+        const data = JSON.parse(content);
         
-        for (let i = 0; i < data.length; i++) {
-            const item = data[i];
-            if (!item.hasOwnProperty('x') || !item.hasOwnProperty('intensity')) {
-                throw new Error(`JSON数组格式错误：第 ${i + 1} 个元素必须包含"x"和"intensity"字段。`);
+        // 检查是否为数组格式: [{"x": value, "intensity": value}, ...]
+        if (Array.isArray(data)) {
+            console.log('检测到数组格式的JSON文件');
+            const x = [];
+            const intensity = [];
+            
+            // 检查数组元素的格式，适应不同的字段名
+            if (data.length > 0) {
+                const firstItem = data[0] || {};
+                const keys = Object.keys(firstItem);
+                
+                // 尝试查找x和intensity对应的字段名
+                let xField = 'x';
+                let intensityField = 'intensity';
+                
+                for (const key of keys) {
+                    const lowerKey = key.toLowerCase();
+                    if (lowerKey === 'x' || lowerKey.includes('position') || lowerKey.includes('pos') || lowerKey.includes('distance')) {
+                        xField = key;
+                        console.log(`使用字段 '${key}' 作为x坐标`);
+                    } else if (lowerKey === 'intensity' || lowerKey.includes('int') || lowerKey.includes('value') || 
+                               lowerKey.includes('power') || lowerKey === 'y' || lowerKey.includes('signal')) {
+                        intensityField = key;
+                        console.log(`使用字段 '${key}' 作为强度值`);
+                    }
+                }
+                
+                // 处理数组中的每个对象
+                for (let i = 0; i < data.length; i++) {
+                    const item = data[i];
+                    if (!item.hasOwnProperty(xField) || !item.hasOwnProperty(intensityField)) {
+                        console.warn(`JSON数组元素 ${i + 1} 缺少必要字段 '${xField}' 或 '${intensityField}'，已跳过`);
+                        continue;
+                    }
+                    
+                    const xVal = parseFloat(item[xField]);
+                    const intensityVal = parseFloat(item[intensityField]);
+                    
+                    if (isNaN(xVal) || isNaN(intensityVal)) {
+                        console.warn(`JSON数组元素 ${i + 1} 包含无效数值，已跳过`);
+                        continue;
+                    }
+                    
+                    x.push(xVal);
+                    intensity.push(intensityVal);
+                }
+                
+                if (x.length > 0) {
+                    console.log(`成功从JSON数组中提取 ${x.length} 个数据点`);
+                    return { x, intensity };
+                }
             }
             
-            const xVal = parseFloat(item.x);
-            const intensityVal = parseFloat(item.intensity);
-            
-            if (isNaN(xVal) || isNaN(intensityVal)) {
-                throw new Error(`JSON数组格式错误：第 ${i + 1} 个元素包含无效数值。`);
-            }
-            
-            x.push(xVal);
-            intensity.push(intensityVal);
+            throw new Error('未能从JSON数组中提取有效数据');
         }
         
-        return { x, intensity };
+        // 检查是否为对象格式 (多种可能的字段名组合)
+        // 标准格式: {"x": [...], "intensity": [...]}
+        // 或者其他变体: {"position": [...], "values": [...]} 等
+        
+        // 查找可能的x坐标数组
+        let xArray = null;
+        let intensityArray = null;
+        
+        // 尝试可能的字段名
+        const xFieldNames = ['x', 'X', 'position', 'pos', 'distance', 'xaxis', 'x_axis', 'x_values'];
+        const intensityFieldNames = ['intensity', 'int', 'y', 'values', 'data', 'amplitude', 'value', 'yaxis', 'y_axis', 'y_values'];
+        
+        for (const fieldName of xFieldNames) {
+            if (data[fieldName] && Array.isArray(data[fieldName])) {
+                xArray = data[fieldName];
+                console.log(`找到x坐标数组，字段名: "${fieldName}"`);
+                break;
+            }
+        }
+        
+        for (const fieldName of intensityFieldNames) {
+            if (data[fieldName] && Array.isArray(data[fieldName])) {
+                intensityArray = data[fieldName];
+                console.log(`找到强度数组，字段名: "${fieldName}"`);
+                break;
+            }
+        }
+        
+        // 如果找不到预期字段，尝试找到任何可能的数值数组
+        if (!xArray || !intensityArray) {
+            for (const key in data) {
+                if (Array.isArray(data[key]) && data[key].length > 0 && typeof data[key][0] === 'number') {
+                    if (!xArray) {
+                        xArray = data[key];
+                        console.log(`找到可能的x坐标数组，字段名: "${key}"`);
+                    } else if (!intensityArray) {
+                        intensityArray = data[key];
+                        console.log(`找到可能的强度数组，字段名: "${key}"`);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 如果还找不到，检查是否有嵌套数据结构
+        if (!xArray || !intensityArray) {
+            for (const key in data) {
+                if (typeof data[key] === 'object' && data[key] !== null && !Array.isArray(data[key])) {
+                    const nestedObj = data[key];
+                    console.log(`检查嵌套对象: "${key}"`);
+                    
+                    // 在嵌套对象中查找数组
+                    for (const nestedKey in nestedObj) {
+                        if (Array.isArray(nestedObj[nestedKey]) && nestedObj[nestedKey].length > 0) {
+                            const lowerKey = nestedKey.toLowerCase();
+                            if ((lowerKey.includes('x') || lowerKey.includes('pos') || lowerKey.includes('dist')) && !xArray) {
+                                xArray = nestedObj[nestedKey];
+                                console.log(`在嵌套对象中找到x坐标数组: "${key}.${nestedKey}"`);
+                            } else if ((lowerKey.includes('y') || lowerKey.includes('int') || lowerKey.includes('val') || lowerKey.includes('power')) && !intensityArray) {
+                                intensityArray = nestedObj[nestedKey];
+                                console.log(`在嵌套对象中找到强度数组: "${key}.${nestedKey}"`);
+                            }
+                            
+                            if (xArray && intensityArray) break;
+                        }
+                    }
+                    
+                    if (xArray && intensityArray) break;
+                }
+            }
+        }
+        
+        if (!xArray || !intensityArray) {
+            // 最后尝试一种特殊格式：二维数组 [[x1, y1], [x2, y2], ...]
+            for (const key in data) {
+                if (Array.isArray(data[key]) && data[key].length > 0 && 
+                    Array.isArray(data[key][0]) && data[key][0].length === 2) {
+                    console.log(`检测到二维点数组格式: "${key}"`);
+                    
+                    const points = data[key];
+                    xArray = [];
+                    intensityArray = [];
+                    
+                    for (const point of points) {
+                        if (Array.isArray(point) && point.length === 2) {
+                            xArray.push(point[0]);
+                            intensityArray.push(point[1]);
+                        }
+                    }
+                    
+                    break;
+                }
+            }
+        }
+        
+        if (!xArray || !intensityArray) {
+            throw new Error('无法在JSON中找到合适的数据结构。JSON文件必须包含x和intensity数组，或者格式为[{"x": ..., "intensity": ...}, ...]');
+        }
+        
+        if (xArray.length !== intensityArray.length) {
+            console.warn(`x和intensity数组长度不匹配: x=${xArray.length}, intensity=${intensityArray.length}. 将使用较短长度.`);
+        }
+        
+        // 确保x和intensity数组长度相同
+        const minLength = Math.min(xArray.length, intensityArray.length);
+        const x = xArray.slice(0, minLength).map(val => parseFloat(val));
+        const intensity = intensityArray.slice(0, minLength).map(val => parseFloat(val));
+        
+        // 检查解析后的数据是否有效
+        const validPairs = x.filter((_, i) => !isNaN(x[i]) && !isNaN(intensity[i])).length;
+        
+        if (validPairs === 0) {
+            throw new Error('JSON解析后没有有效的数值对。');
+        }
+        
+        if (validPairs < minLength) {
+            console.warn(`JSON数据中有${minLength - validPairs}个无效的数值，已跳过。`);
+        }
+        
+        console.log(`成功从JSON文件中提取 ${validPairs} 个有效数据点`);
+        
+        return {
+            x: x.filter((_, i) => !isNaN(x[i]) && !isNaN(intensity[i])),
+            intensity: intensity.filter((_, i) => !isNaN(x[i]) && !isNaN(intensity[i]))
+        };
+    } catch (error) {
+        console.error('JSON解析错误:', error);
+        throw new Error(`JSON解析失败: ${error.message}`);
     }
-    
-    // 检查是否为对象格式: {"x": [...], "intensity": [...]}
-    if (!data.x || !data.intensity) {
-        throw new Error('JSON文件必须包含"x"和"intensity"字段。');
-    }
-    
-    if (!Array.isArray(data.x) || !Array.isArray(data.intensity)) {
-        throw new Error('JSON文件中的"x"和"intensity"必须是数组。');
-    }
-    
-    if (data.x.length !== data.intensity.length) {
-        throw new Error('JSON文件中的"x"和"intensity"数组长度必须相等。');
-    }
-    
-    return {
-        x: data.x.map(val => parseFloat(val)),
-        intensity: data.intensity.map(val => parseFloat(val))
-    };
 }
 
 // 初始化手动输入功能
@@ -11951,7 +13060,7 @@ function initManualInputFeature() {
         radio.addEventListener('change', handleManualMethodChange);
     });
     
-    // 预览和应用按钮
+    // 预览和卸载按钮
     const previewBtn = document.getElementById('preview-intensity-btn');
     const applyBtn = document.getElementById('apply-intensity-btn');
     
@@ -11961,6 +13070,8 @@ function initManualInputFeature() {
     
     if (applyBtn) {
         applyBtn.addEventListener('click', applyManualInput);
+        // 初始时禁用卸载按钮，直到有数据加载
+        applyBtn.disabled = !customIntensityData || !customIntensityData.loaded;
     }
     
     // 为手动输入框添加事件监听器，当数据改变时清空图表
@@ -11992,6 +13103,9 @@ function initManualInputFeature() {
     if (xRangeMax) {
         xRangeMax.addEventListener('input', handleInputChange);
     }
+    
+    // 初始化手动输入单位选择功能
+    initManualUnitSelection();
 }
 
 // 处理手动输入方式变化
@@ -12019,29 +13133,38 @@ function previewManualInput() {
             return;
         }
         
-        // 临时存储用于预览
-        const tempData = {
-            x: data.x,
-            intensity: data.intensity,
-            loaded: true,
-            source: 'manual-preview'
-        };
-        
-        // 显示预览
-        previewIntensityData(tempData);
-        
-        // 自动应用预览数据，使其可用于计算
+        // 存储数据
         customIntensityData = {
             x: data.x,
             intensity: data.intensity,
             loaded: true,
-            source: 'manual-preview-auto-applied'
+            source: 'manual',
+            x_unit: data.x_unit || 'mm',
+            unit_scale: data.unit_scale || 1.0
         };
+        
+        // 设置标志表示已点击预览按钮
+        window.isPreviewDataButtonClicked = true;
+        
+        // 确保数据状态容器可见
+        const dataStatusDiv = document.getElementById('intensity-data-status');
+        if (dataStatusDiv) {
+            dataStatusDiv.style.display = 'block';
+        }
         
         // 更新数据状态显示
         updateDataStatus();
         
-        showNotification(`预览成功，包含 ${data.x.length} 个数据点，已自动应用可用于计算`, 'success');
+        // 显示预览
+        previewIntensityData();
+        
+        // 启用"卸载数据"按钮
+        const applyBtn = document.getElementById('apply-intensity-btn');
+        if (applyBtn) {
+            applyBtn.disabled = false;
+        }
+        
+        showNotification(`预览成功，包含 ${data.x.length} 个数据点，单位: ${data.x_unit || 'mm'}，已应用可用于计算`, 'success');
         
     } catch (error) {
         console.error('❌ 手动输入解析错误:', error);
@@ -12049,43 +13172,40 @@ function previewManualInput() {
     }
 }
 
-// 应用手动输入数据
+// 卸载手动输入数据
 function applyManualInput() {
-    try {
-        const data = parseManualInput();
-        
-        // 验证数据
-        if (!validateIntensityData(data.x, data.intensity)) {
-            return;
-        }
-        
-        // 检查数据是否已经通过预览自动应用过了
-        if (customIntensityData.loaded && 
-            customIntensityData.source === 'manual-preview-auto-applied' &&
-            customIntensityData.x.length === data.x.length) {
-            // 数据已经通过预览应用过了，只需要更新source标识
-            customIntensityData.source = 'manual-confirmed';
-            showNotification(`数据已确认应用，包含 ${data.x.length} 个数据点`, 'info');
-            return;
-        }
-        
-        // 存储数据
-        customIntensityData = {
-            x: data.x,
-            intensity: data.intensity,
-            loaded: true,
-            source: 'manual'
-        };
-        
-        // 更新显示
-        updateDataStatus();
-        previewIntensityData();
-        
-        showNotification(`成功应用手动输入数据，包含 ${data.x.length} 个数据点`, 'success');
-        
-    } catch (error) {
-        console.error('❌ 手动输入应用错误:', error);
-        showNotification(`应用失败: ${error.message}`, 'error');
+    // 检查是否有数据需要卸载
+    if (!customIntensityData || !customIntensityData.loaded) {
+        showNotification('没有数据需要卸载', 'info');
+        return;
+    }
+    
+    // 清除数据
+    clearCustomIntensityData();
+    
+    // 清空图表
+    if (typeof clearAllCharts === 'function') {
+        clearAllCharts();
+    }
+    
+    // 隐藏数据状态
+    const statusDiv = document.getElementById('intensity-data-status');
+    if (statusDiv) {
+        statusDiv.style.display = 'none';
+    }
+    
+    // 清空预览图
+    const previewPlot = document.getElementById('intensity-preview-plot');
+    if (previewPlot) {
+        Plotly.purge(previewPlot);
+    }
+    
+    // 显示通知
+    showNotification('已卸载手动输入数据', 'info');
+    
+    // 更新单位选择UI显示
+    if (window.updateUnitSelectionUI) {
+        window.updateUnitSelectionUI();
     }
 }
 
@@ -12093,11 +13213,42 @@ function applyManualInput() {
 function parseManualInput() {
     const selectedMethod = document.querySelector('input[name="manual-method"]:checked').value;
     
+    let result;
     if (selectedMethod === 'coordinates') {
-        return parseCoordinatesInput();
+        result = parseCoordinatesInput();
     } else {
-        return parseIntensityOnlyInput();
+        result = parseIntensityOnlyInput();
     }
+    
+    // 应用用户选择的单位缩放比例
+    const unitSelect = document.getElementById('manual-data-unit');
+    const scaleFactor = document.getElementById('manual-scale-factor');
+    
+    if (unitSelect && scaleFactor && result.x) {
+        const selectedUnit = unitSelect.value;
+        let factor = parseFloat(scaleFactor.value);
+        
+        // 验证因子有效性
+        if (isNaN(factor) || factor <= 0) {
+            console.warn('⚠️ 缩放因子无效，使用默认值 1.0');
+            factor = 1.0;
+            scaleFactor.value = factor;
+        }
+        
+        // 设置单位信息
+        result.x_unit = selectedUnit === 'um' ? 'μm' : selectedUnit;
+        result.unit_scale = factor;
+        
+        console.log(`📏 手动输入数据应用单位转换: ${result.x_unit}, 比例因子: ${result.unit_scale}`);
+        
+        // 同步更新全局数据对象的单位信息
+        if (customIntensityData) {
+            customIntensityData.x_unit = result.x_unit;
+            customIntensityData.unit_scale = factor;
+        }
+    }
+    
+    return result;
 }
 
 // 解析坐标+强度输入
@@ -12224,6 +13375,47 @@ function validateIntensityData(x, intensity) {
         // showNotification('提示：检测到负强度值，在干涉条纹模拟中这是正常的', 'info');
     }
     
+    // 自动检测坐标范围和单位
+    const x_min = Math.min(...x);
+    const x_max = Math.max(...x);
+    
+    // 记录数据范围
+    if (!customIntensityData.x_range) {
+        customIntensityData.x_range = {min: x_min, max: x_max};
+    }
+    
+    // 仅当没有明确设置单位时才自动检测
+    if (!customIntensityData.x_unit) {
+        // 根据坐标范围推测单位
+        let detected_unit = 'mm'; // 默认单位
+        let unit_scale = 1.0; // 默认比例
+    
+        // 基于数据范围的简单推断单位
+        if (Math.abs(x_max) <= 10 && Math.abs(x_min) <= 10) {
+            // 小范围，可能就是毫米
+            detected_unit = 'mm';
+            unit_scale = 1.0;
+        } else if (Math.abs(x_max) <= 1000 && Math.abs(x_min) <= 1000) {
+            // 中等范围，可能是微米量级
+            detected_unit = 'μm';
+            unit_scale = 0.001; // 转换为毫米
+        } else {
+            // 大范围，可能是纳米量级
+            detected_unit = 'nm';
+            unit_scale = 0.000001; // 转换为毫米
+        }
+        
+        // 存储检测到的单位信息
+        customIntensityData.x_unit = detected_unit;
+        customIntensityData.unit_scale = unit_scale;
+        customIntensityData.auto_detected = true;
+        
+        console.log(`🔍 数据范围检测: ${x_min} 到 ${x_max} ${detected_unit}`);
+    } else {
+        console.log(`🔍 使用手动设置的单位: ${customIntensityData.x_unit}, 比例: ${customIntensityData.unit_scale}`);
+    }
+    
+    console.log(`🔍 光强范围: ${Math.min(...intensity)} 到 ${Math.max(...intensity)}`);
     console.log(`✅ 数据验证通过: ${x.length} 个有效数据点`);
     return true;
 }
@@ -12241,7 +13433,12 @@ function clearCustomIntensityData() {
     customIntensityData = {
         x: [],
         intensity: [],
-        loaded: false
+        loaded: false,
+        source: null,
+        fileName: null,
+        x_unit: 'mm', // 重置为默认单位
+        x_range: {min: 0, max: 0},
+        auto_detected: false
     };
     
     // 隐藏数据状态
@@ -12262,8 +13459,27 @@ function clearCustomIntensityData() {
     // 清空图表
     clearAllCharts();
     
-    showNotification('已清除自定义光强数据', 'info');
-    console.log('🗑️ 自定义光强数据已清除');
+    // 隐藏文件状态指示器
+    const statusIndicator = document.getElementById('file-status-indicator');
+    if (statusIndicator && statusIndicator.parentElement) {
+        statusIndicator.parentElement.removeChild(statusIndicator);
+    }
+    
+    // 隐藏卸载按钮
+    const clearFileBtn = document.getElementById('clear-file-btn');
+    if (clearFileBtn) {
+        clearFileBtn.style.display = 'none';
+    }
+    
+    // 隐藏预览图
+    const previewPlot = document.getElementById('intensity-preview-plot');
+    if (previewPlot) {
+        Plotly.purge(previewPlot);
+        previewPlot.innerHTML = '';
+    }
+    
+    showNotification('已卸载文件并清除自定义光强数据', 'info');
+    console.log('🗑️ 自定义光强数据已清除，文件已卸载');
 }
 
 // 更新数据状态显示（针对预览数据）
@@ -12276,6 +13492,7 @@ function updateDataStatusForPreview(data) {
     if (!statusDiv || !data || !data.x || !data.intensity) return;
     
     const { x, intensity } = data;
+    const unitLabel = data.x_unit || 'mm';
     
     // 计算统计信息
     const pointCount = x.length;
@@ -12286,8 +13503,11 @@ function updateDataStatusForPreview(data) {
     
     // 更新显示
     if (pointCountSpan) pointCountSpan.textContent = pointCount;
-    if (xRangeSpan) xRangeSpan.textContent = `${xMin.toFixed(3)} ~ ${xMax.toFixed(3)}`;
+    if (xRangeSpan) xRangeSpan.textContent = `${xMin.toFixed(3)} ~ ${xMax.toFixed(3)} ${unitLabel}`;
     if (valueRangeSpan) valueRangeSpan.textContent = `${intensityMin.toFixed(6)} ~ ${intensityMax.toFixed(6)}`;
+    
+    // 设置标志，表示预览按钮已点击
+    window.isPreviewDataButtonClicked = true;
     
     // 显示状态区域
     statusDiv.style.display = 'block';
@@ -12297,10 +13517,26 @@ function updateDataStatusForPreview(data) {
         const statusTitle = statusDiv.querySelector('.status-title');
         if (statusTitle) {
             statusTitle.textContent = '预览光强数据';
+            
+            // 添加单位信息
+            const unitInfo = document.createElement('span');
+            unitInfo.className = 'unit-info';
+            unitInfo.style.fontSize = '12px';
+            unitInfo.style.color = '#666';
+            unitInfo.style.marginLeft = '10px';
+            unitInfo.textContent = `(单位: ${unitLabel}, 比例: ×${data.unit_scale || 1.0})`;
+            
+            // 移除旧的单位信息
+            const oldUnitInfo = statusTitle.querySelector('.unit-info');
+            if (oldUnitInfo) {
+                oldUnitInfo.remove();
+            }
+            
+            statusTitle.appendChild(unitInfo);
         }
     }
     
-    console.log(`📊 数据状态更新: ${pointCount} 点, X[${xMin.toFixed(3)}, ${xMax.toFixed(3)}], I[${intensityMin.toFixed(6)}, ${intensityMax.toFixed(6)}]`);
+    console.log(`📊 数据状态更新: ${pointCount} 点, X[${xMin.toFixed(3)}, ${xMax.toFixed(3)}] ${unitLabel}, I[${intensityMin.toFixed(6)}, ${intensityMax.toFixed(6)}]`);
 }
 
 // 更新数据状态显示
@@ -12313,6 +13549,7 @@ function updateDataStatus() {
     if (!statusDiv || !customIntensityData.loaded) return;
     
     const { x, intensity } = customIntensityData;
+    const unitLabel = customIntensityData.x_unit || 'mm';
     
     // 计算统计信息
     const pointCount = x.length;
@@ -12323,7 +13560,7 @@ function updateDataStatus() {
     
     // 更新显示
     if (pointCountSpan) pointCountSpan.textContent = pointCount;
-    if (xRangeSpan) xRangeSpan.textContent = `${xMin.toFixed(3)} ~ ${xMax.toFixed(3)}`;
+    if (xRangeSpan) xRangeSpan.textContent = `${xMin.toFixed(3)} ~ ${xMax.toFixed(3)} ${unitLabel}`;
     if (valueRangeSpan) valueRangeSpan.textContent = `${intensityMin.toFixed(6)} ~ ${intensityMax.toFixed(6)}`;
     
     // 显示状态区域
@@ -12333,9 +13570,25 @@ function updateDataStatus() {
     const statusTitle = statusDiv.querySelector('.status-title');
     if (statusTitle) {
         statusTitle.textContent = '已加载的光强数据';
+        
+        // 添加单位信息
+        const unitInfo = document.createElement('span');
+        unitInfo.className = 'unit-info';
+        unitInfo.style.fontSize = '12px';
+        unitInfo.style.color = '#666';
+        unitInfo.style.marginLeft = '10px';
+        unitInfo.textContent = `(单位: ${unitLabel}, 比例: ×${customIntensityData.unit_scale || 1.0})`;
+        
+        // 移除旧的单位信息
+        const oldUnitInfo = statusTitle.querySelector('.unit-info');
+        if (oldUnitInfo) {
+            oldUnitInfo.remove();
+        }
+        
+        statusTitle.appendChild(unitInfo);
     }
     
-    console.log(`📊 数据状态更新: ${pointCount} 点, X[${xMin.toFixed(3)}, ${xMax.toFixed(3)}], I[${intensityMin.toFixed(6)}, ${intensityMax.toFixed(6)}]`);
+    console.log(`📊 数据状态更新: ${pointCount} 点, X[${xMin.toFixed(3)}, ${xMax.toFixed(3)}] ${unitLabel}, I[${intensityMin.toFixed(6)}, ${intensityMax.toFixed(6)}]`);
 }
 
 // 预览光强数据
@@ -12343,7 +13596,10 @@ function previewIntensityData(data = null) {
     const plotDiv = document.getElementById('intensity-preview-plot');
     if (!plotDiv) return;
     
-    // 确保数据状态容器可见
+    // 设置标志，表示预览按钮已被点击
+    window.isPreviewDataButtonClicked = true;
+    
+    // 确保数据状态容器可见（用户已点击预览按钮）
     const dataStatusDiv = document.getElementById('intensity-data-status');
     if (dataStatusDiv) {
         dataStatusDiv.style.display = 'block';
@@ -12372,10 +13628,14 @@ function previewIntensityData(data = null) {
             }
         };
         
+        // 获取单位信息
+        const unitName = dataToPlot.x_unit || 'mm';
+        const unitDisplay = unitName === 'μm' ? 'μm' : unitName;
+        
         const layout = {
             title: '光强分布预览',
             xaxis: {
-                title: '位置 (mm)',
+                title: `位置 (${unitDisplay})`,
                 gridcolor: '#f0f0f0'
             },
             yaxis: {
@@ -12395,7 +13655,28 @@ function previewIntensityData(data = null) {
         
         Plotly.newPlot(plotDiv, [trace], layout, config);
         
-        console.log('📈 光强分布预览图已更新');
+        // 如果有自动检测的单位，更新单位选择UI
+        if (dataToPlot.auto_detected && window.updateUnitSelectionUI) {
+            window.updateUnitSelectionUI();
+        }
+        
+        // 显示单位转换信息
+        const dataInfoElement = document.getElementById('custom-data-info');
+        if (dataInfoElement) {
+            const xMin = Math.min(...dataToPlot.x);
+            const xMax = Math.max(...dataToPlot.x);
+            const intensityMin = Math.min(...dataToPlot.intensity);
+            const intensityMax = Math.max(...dataToPlot.intensity);
+            
+            dataInfoElement.innerHTML = `
+                <strong>数据点数:</strong> ${dataToPlot.x.length} | 
+                <strong>X范围:</strong> ${xMin.toFixed(3)} - ${xMax.toFixed(3)} ${unitDisplay} | 
+                <strong>强度范围:</strong> ${intensityMin.toFixed(6)} - ${intensityMax.toFixed(6)} | 
+                <strong>转换比例:</strong> ×${dataToPlot.unit_scale || 1.0}
+            `;
+        }
+        
+        console.log(`📈 光强分布预览图已更新 (单位: ${unitDisplay})`);
         
     } catch (error) {
         console.error('❌ 预览图生成失败:', error);
@@ -12562,10 +13843,760 @@ function addNotificationStyles() {
 // 立即添加通知样式
 addNotificationStyles();
 
+// 初始化单位选择功能
+function initUnitSelection() {
+    const unitSelect = document.getElementById('custom-data-unit');
+    const customScaleContainer = document.getElementById('custom-scale-container');
+    const customScaleFactor = document.getElementById('custom-scale-factor');
+    
+    if (!unitSelect) {
+        console.log('单位选择控件未找到');
+        return;
+    }
+    
+    // 单位选择变化时的处理
+    unitSelect.addEventListener('change', function() {
+        const selectedUnit = this.value;
+        
+        // 清除当前预览图但保留数据
+        const previewPlot = document.getElementById('intensity-preview-plot');
+        if (previewPlot) {
+            Plotly.purge(previewPlot);
+            // 添加一个提示信息
+            previewPlot.innerHTML = '<div style="padding: 30px; text-align: center; color: #666; background: #f9f9f9; border-radius: 4px;"><i class="fas fa-sync" style="font-size: 24px; color: #2196F3; margin-bottom: 10px;"></i><p style="margin: 5px 0;">单位已更改，需要重新预览数据</p></div>';
+        }
+        
+        // 显示或隐藏自定义比例输入框
+        if (selectedUnit === 'custom') {
+            customScaleContainer.style.display = 'block';
+        } else {
+            customScaleContainer.style.display = 'none';
+            
+            // 设置预定义单位的比例
+            let scaleFactor = 1.0;
+            switch (selectedUnit) {
+                case 'nm':
+                    scaleFactor = 0.000001; // 纳米到毫米
+                    break;
+                case 'um':
+                    scaleFactor = 0.001; // 微米到毫米
+                    break;
+                case 'mm':
+                    scaleFactor = 1.0; // 毫米
+                    break;
+                default:
+                    scaleFactor = 1.0;
+            }
+            
+            // 只更新临时变量，不立即应用到数据和预览
+            const unitLabel = selectedUnit === 'um' ? 'μm' : selectedUnit;
+            
+            // 显示提示，建议用户应用变更
+            showNotification(`已选择坐标单位: ${unitLabel}，点击"预览数据"按钮应用此更改`, 'info');
+            
+            // 确保预览按钮存在并使其更醒目
+            const previewBtn = addPreviewButton();
+            if (previewBtn) {
+                // 添加闪烁动画以提醒用户点击
+                previewBtn.classList.add('highlight-btn');
+                setTimeout(() => {
+                    previewBtn.classList.remove('highlight-btn');
+                }, 2000);
+            }
+        }
+        
+        // 更新数据状态信息中的单位显示
+        updateUnitDisplayInStatus(selectedUnit);
+    });
+    
+    // 自定义比例因子变化时的处理
+    if (customScaleFactor) {
+        customScaleFactor.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (!isNaN(value) && value > 0) {
+                // 清除当前预览图但保留数据
+                const previewPlot = document.getElementById('intensity-preview-plot');
+                if (previewPlot) {
+                    Plotly.purge(previewPlot);
+                    // 添加一个提示信息
+                    previewPlot.innerHTML = '<div style="padding: 30px; text-align: center; color: #666; background: #f9f9f9; border-radius: 4px;"><i class="fas fa-sync" style="font-size: 24px; color: #2196F3; margin-bottom: 10px;"></i><p style="margin: 5px 0;">比例因子已更改，需要重新预览数据</p></div>';
+                }
+                
+                // 不立即应用到数据和预览
+                showNotification(`已设置自定义比例因子: ${value}，点击"预览数据"按钮应用此更改`, 'info');
+                
+                // 确保预览按钮存在并使其更醒目
+                const previewBtn = addPreviewButton();
+                if (previewBtn) {
+                    // 添加闪烁动画以提醒用户点击
+                    previewBtn.classList.add('highlight-btn');
+                    setTimeout(() => {
+                        previewBtn.classList.remove('highlight-btn');
+                    }, 2000);
+                }
+                
+                // 更新数据状态信息中的单位显示
+                updateUnitDisplayInStatus('custom', value);
+            }
+        });
+    }
+    
+    // 根据检测到的单位自动更新UI
+    function updateUnitSelectionUI() {
+        if (!customIntensityData.auto_detected) return;
+        
+        switch (customIntensityData.x_unit) {
+            case 'nm':
+                unitSelect.value = 'nm';
+                break;
+            case 'μm':
+                unitSelect.value = 'um';
+                break;
+            case 'mm':
+                unitSelect.value = 'mm';
+                break;
+            default:
+                // 如果是其他单位，使用自定义并设置比例
+                unitSelect.value = 'custom';
+                if (customScaleContainer) {
+                    customScaleContainer.style.display = 'block';
+                }
+                if (customScaleFactor) {
+                    customScaleFactor.value = customIntensityData.unit_scale || 1.0;
+                }
+        }
+    }
+    
+    // 暴露更新函数，以便在数据加载后调用
+    window.updateUnitSelectionUI = updateUnitSelectionUI;
+}
+
+// 初始化tooltip功能
+function initTooltips() {
+    // 查找所有带有title属性的help-icon元素
+    const helpIcons = document.querySelectorAll('.help-icon');
+    
+    if (helpIcons.length > 0) {
+        console.log(`找到 ${helpIcons.length} 个帮助图标，正在初始化tooltip...`);
+        
+        // 为每个帮助图标添加简单的原生tooltip功能
+        helpIcons.forEach(icon => {
+            // 保存原始title
+            const originalTitle = icon.getAttribute('title');
+            
+            // 创建tooltip元素
+            const tooltip = document.createElement('div');
+            tooltip.className = 'simple-tooltip';
+            tooltip.style.position = 'absolute';
+            tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            tooltip.style.color = '#fff';
+            tooltip.style.padding = '8px 12px';
+            tooltip.style.borderRadius = '4px';
+            tooltip.style.fontSize = '14px';
+            tooltip.style.maxWidth = '300px';
+            tooltip.style.zIndex = '1000';
+            tooltip.style.display = 'none';
+            tooltip.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+            tooltip.style.pointerEvents = 'none';
+            tooltip.textContent = originalTitle;
+            
+            // 添加到body
+            document.body.appendChild(tooltip);
+            
+            // 移除原始title以防止原生tooltip
+            icon.removeAttribute('title');
+            
+            // 鼠标悬停显示tooltip
+            icon.addEventListener('mouseenter', function(e) {
+                const rect = icon.getBoundingClientRect();
+                
+                // 定位tooltip到图标右侧
+                tooltip.style.left = (rect.right + 10) + 'px';
+                tooltip.style.top = (rect.top + window.scrollY - 5) + 'px';
+                
+                // 检查是否会超出视口右侧
+                const tooltipRect = tooltip.getBoundingClientRect();
+                if (tooltipRect.right > window.innerWidth) {
+                    // 如果会超出右侧，则放到图标左侧
+                    tooltip.style.left = (rect.left - tooltipRect.width - 10) + 'px';
+                }
+                
+                tooltip.style.display = 'block';
+            });
+            
+            // 鼠标离开隐藏tooltip
+            icon.addEventListener('mouseleave', function() {
+                tooltip.style.display = 'none';
+            });
+        });
+    }
+}
+
 // 在DOM加载完成后初始化功能
 document.addEventListener('DOMContentLoaded', function() {
     // 延迟初始化以确保其他组件已经加载
     setTimeout(() => {
         initCustomIntensityFeature();
+        // 初始化单位选择功能
+        initUnitSelection();
+        // 初始化tooltip功能
+        initTooltips();
     }, 500);
-});
+});// 初始化手动输入单位选择功能
+function initManualUnitSelection() {
+    const unitSelect = document.getElementById('manual-data-unit');
+    const scaleContainer = document.getElementById('manual-scale-container');
+    const scaleFactor = document.getElementById('manual-scale-factor');
+    
+    if (!unitSelect || !scaleContainer || !scaleFactor) {
+        console.log('手动输入单位选择控件未找到');
+        return;
+    }
+    
+    // 单位选择变化时的处理
+    unitSelect.addEventListener('change', function() {
+        const selectedUnit = this.value;
+        
+        // 清除当前预览图但保留数据
+        const previewPlot = document.getElementById('intensity-preview-plot');
+        if (previewPlot && customIntensityData.loaded) {
+            Plotly.purge(previewPlot);
+            // 添加一个提示信息
+            previewPlot.innerHTML = '<div style="padding: 30px; text-align: center; color: #666; background: #f9f9f9; border-radius: 4px;"><i class="fas fa-sync" style="font-size: 24px; color: #2196F3; margin-bottom: 10px;"></i><p style="margin: 5px 0;">单位已更改，需要重新预览数据</p></div>';
+        }
+        
+        // 显示或隐藏自定义比例输入框
+        if (selectedUnit === 'custom') {
+            scaleContainer.style.display = 'block';
+        } else {
+            scaleContainer.style.display = 'none';
+            
+            // 设置预定义单位的比例
+            let factor = 1.0;
+            switch (selectedUnit) {
+                case 'nm':
+                    factor = 0.000001; // 纳米到毫米
+                    break;
+                case 'um':
+                    factor = 0.001; // 微米到毫米
+                    break;
+                case 'mm':
+                    factor = 1.0; // 毫米
+                    break;
+                default:
+                    factor = 1.0;
+            }
+            
+            // 存储比例因子供手动输入解析时使用
+            scaleFactor.value = factor;
+            
+            // 不直接更新预览，而是提示用户应用更改
+            const unitLabel = selectedUnit === 'um' ? 'μm' : selectedUnit;
+            
+            // 如果已加载数据，显示提示并添加预览按钮
+            if (customIntensityData && customIntensityData.loaded) {
+                showNotification(`已选择坐标单位: ${unitLabel}，点击"预览数据"按钮应用此更改`, 'info');
+                
+                // 确保预览按钮存在并使其更醒目
+                const previewBtn = addManualPreviewButton();
+                if (previewBtn) {
+                    // 添加闪烁动画以提醒用户点击
+                    previewBtn.classList.add('highlight-btn');
+                    setTimeout(() => {
+                        previewBtn.classList.remove('highlight-btn');
+                    }, 2000);
+                }
+                
+                // 更新数据状态信息中的单位显示
+                updateManualUnitDisplayInStatus(selectedUnit);
+            }
+        }
+    });
+    
+    // 自定义缩放因子变化时处理
+    scaleFactor.addEventListener('change', function() {
+        if (unitSelect.value === 'custom') {
+            const factor = parseFloat(this.value);
+            if (!isNaN(factor) && factor > 0) {
+                // 清除当前预览图但保留数据
+                const previewPlot = document.getElementById('intensity-preview-plot');
+                if (previewPlot && customIntensityData.loaded) {
+                    Plotly.purge(previewPlot);
+                    // 添加一个提示信息
+                    previewPlot.innerHTML = '<div style="padding: 30px; text-align: center; color: #666; background: #f9f9f9; border-radius: 4px;"><i class="fas fa-sync" style="font-size: 24px; color: #2196F3; margin-bottom: 10px;"></i><p style="margin: 5px 0;">比例因子已更改，需要重新预览数据</p></div>';
+                }
+                
+                // 如果已加载数据，显示提示并添加预览按钮
+                if (customIntensityData && customIntensityData.loaded) {
+                    showNotification(`已设置自定义比例因子: ${factor}，点击"预览数据"按钮应用此更改`, 'info');
+                    
+                    // 确保预览按钮存在并使其更醒目
+                    const previewBtn = addManualPreviewButton();
+                    if (previewBtn) {
+                        // 添加闪烁动画以提醒用户点击
+                        previewBtn.classList.add('highlight-btn');
+                        setTimeout(() => {
+                            previewBtn.classList.remove('highlight-btn');
+                        }, 2000);
+                    }
+                    
+                    // 更新数据状态信息中的单位显示
+                    updateManualUnitDisplayInStatus('custom', factor);
+                }
+            } else {
+                // 无效值处理
+                console.warn('⚠️ 无效的缩放比例值:', this.value);
+                this.value = customIntensityData?.unit_scale || 1.0;
+            }
+        }
+    });
+    
+    // 初始化状态
+    const initialUnit = unitSelect.value;
+    if (initialUnit === 'custom') {
+        scaleContainer.style.display = 'block';
+    } else {
+        scaleContainer.style.display = 'none';
+        
+        // 设置默认单位信息
+        let factor = 1.0;
+        switch (initialUnit) {
+            case 'nm': factor = 0.000001; break;
+            case 'um': factor = 0.001; break;
+            case 'mm': factor = 1.0; break;
+        }
+        
+        // 确保缩放因子字段与选择的单位匹配
+        scaleFactor.value = factor;
+    }
+    
+    console.log('✅ 手动输入单位选择功能初始化完成');
+}
+
+// 添加手动输入预览按钮
+function addManualPreviewButton() {
+    // 检查是否已存在预览按钮
+    let previewBtn = document.getElementById('manual-preview-data-btn');
+    if (previewBtn) {
+        // 如果已存在，只需更新其显示状态
+        previewBtn.style.display = 'inline-block';
+        return previewBtn;
+    }
+    
+    // 获取手动输入区域
+    const inputArea = document.querySelector('.manual-input-area');
+    if (!inputArea) {
+        console.error('未找到手动输入区域');
+        return null;
+    }
+    
+    // 创建预览按钮
+    previewBtn = document.createElement('button');
+    previewBtn.id = 'manual-preview-data-btn';
+    previewBtn.className = 'preview-data-btn';
+    previewBtn.innerHTML = '<i class="fas fa-eye"></i> 预览数据';
+    previewBtn.style.cssText = `
+        display: inline-block;
+        margin-top: 15px;
+        padding: 8px 16px;
+        background-color: #2196F3;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+    `;
+    
+    // 悬停效果
+    previewBtn.onmouseover = function() {
+        this.style.backgroundColor = '#0b7dda';
+    };
+    previewBtn.onmouseout = function() {
+        this.style.backgroundColor = '#2196F3';
+    };
+    
+    // 添加预览按钮到手动输入区域
+    inputArea.appendChild(previewBtn);
+    
+    // 如果已经加载了数据，添加一个数据状态指示器
+    if (customIntensityData.loaded) {
+        const statusIndicator = document.createElement('div');
+        statusIndicator.className = 'file-status-indicator';
+        statusIndicator.innerHTML = `<i class="fas fa-check-circle"></i> 已加载 ${customIntensityData.x?.length || 0} 个数据点`;
+        
+        // 将状态指示器添加到按钮前面
+        inputArea.insertBefore(statusIndicator, previewBtn);
+    }
+    
+    // 绑定预览事件
+    previewBtn.addEventListener('click', function() {
+        // 预览数据前应用手动输入的单位设置
+        applyManualUnitSettings();
+        
+        // 预览数据
+        previewIntensityData();
+        
+        // 更新通知
+        showNotification(`已应用坐标单位: ${customIntensityData.x_unit || 'mm'}，比例系数: ${customIntensityData.unit_scale || 1.0}`, 'info');
+        
+        // 移除高亮效果（如果有）
+        this.classList.remove('highlight-btn');
+    });
+    
+    return previewBtn;
+}
+
+// 更新手动输入数据状态信息中的单位显示
+function updateManualUnitDisplayInStatus(unitType, customFactor = null) {
+    // 与文件上传版本类似，但针对手动输入区域
+    const statusDiv = document.getElementById('intensity-data-status');
+    if (!statusDiv) return;
+    
+    // 查找标题元素
+    const statusTitle = statusDiv.querySelector('.status-title');
+    if (!statusTitle) return;
+    
+    // 获取单位标签和比例因子
+    let unitLabel = 'mm';
+    let factor = 1.0;
+    
+    switch (unitType) {
+        case 'nm':
+            unitLabel = 'nm';
+            factor = 0.000001;
+            break;
+        case 'um':
+            unitLabel = 'μm';
+            factor = 0.001;
+            break;
+        case 'mm':
+            unitLabel = 'mm';
+            factor = 1.0;
+            break;
+        case 'custom':
+            unitLabel = 'custom';
+            factor = customFactor || 1.0;
+            break;
+    }
+    
+    // 更新单位信息显示
+    const unitInfo = statusTitle.querySelector('.unit-info');
+    if (unitInfo) {
+        unitInfo.textContent = `(单位: ${unitLabel}, 比例: ×${factor}) [待应用]`;
+        unitInfo.style.color = '#ff6b01'; // 使用橙色表示待应用状态
+    }
+}
+
+// 应用手动输入单位设置
+function applyManualUnitSettings() {
+    // 获取单位选择元素
+    const unitSelect = document.getElementById('manual-data-unit');
+    const customScaleFactor = document.getElementById('manual-scale-factor');
+    
+    if (!unitSelect) return;
+    
+    // 获取当前选择的单位
+    const selectedUnit = unitSelect.value;
+    
+    // 设置单位和比例因子
+    let unit = 'mm';  // 默认单位
+    let factor = 1.0; // 默认比例因子
+    
+    switch (selectedUnit) {
+        case 'nm':
+            unit = 'nm';
+            factor = 0.000001; // 纳米到毫米
+            break;
+        case 'um':
+            unit = 'μm';
+            factor = 0.001; // 微米到毫米
+            break;
+        case 'mm':
+            unit = 'mm';
+            factor = 1.0; // 毫米
+            break;
+        case 'custom':
+            unit = 'custom';
+            // 使用自定义比例因子
+            if (customScaleFactor && !isNaN(parseFloat(customScaleFactor.value))) {
+                factor = parseFloat(customScaleFactor.value);
+            }
+            break;
+    }
+    
+    // 更新全局数据对象
+    customIntensityData.x_unit = unit;
+    customIntensityData.unit_scale = factor;
+    
+    // 更新状态显示中的单位信息（已应用状态）
+    const statusDiv = document.getElementById('intensity-data-status');
+    if (statusDiv) {
+        const statusTitle = statusDiv.querySelector('.status-title');
+        if (statusTitle) {
+            const unitInfo = statusTitle.querySelector('.unit-info');
+            if (unitInfo) {
+                unitInfo.textContent = `(单位: ${unit}, 比例: ×${factor})`;
+                unitInfo.style.color = '#666'; // 恢复正常颜色
+            }
+        }
+    }
+    
+    console.log(`🔄 应用手动输入单位设置: ${unit}, 比例因子: ${factor}`);
+}
+
+// 添加预览按钮的函数
+function addPreviewButton() {
+    // 获取文件上传区域
+    const uploadArea = document.querySelector('.file-upload-area');
+    if (!uploadArea) {
+        console.error('未找到文件上传区域');
+        return null;
+    }
+    
+    // 检查是否已存在预览按钮
+    let previewBtn = document.getElementById('preview-data-btn');
+    if (previewBtn) {
+        // 如果已存在，只需更新其显示状态
+        previewBtn.style.display = 'inline-block';
+    } else {
+        // 创建预览按钮
+        previewBtn = document.createElement('button');
+        previewBtn.id = 'preview-data-btn';
+        previewBtn.className = 'preview-data-btn';
+        previewBtn.innerHTML = '<i class="fas fa-eye"></i> 预览数据';
+        previewBtn.style.cssText = `
+            display: inline-block;
+            margin-top: 15px;
+            margin-right: 10px;
+            padding: 8px 16px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        `;
+        
+        // 悬停效果
+        previewBtn.onmouseover = function() {
+            this.style.backgroundColor = '#0b7dda';
+        };
+        previewBtn.onmouseout = function() {
+            this.style.backgroundColor = '#2196F3';
+        };
+        
+        // 添加CSS样式以支持高亮动画
+        if (!document.getElementById('highlight-button-style')) {
+            const style = document.createElement('style');
+            style.id = 'highlight-button-style';
+            style.textContent = `
+                @keyframes pulse-highlight {
+                    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7); }
+                    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(33, 150, 243, 0); }
+                    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(33, 150, 243, 0); }
+                }
+                .highlight-btn {
+                    animation: pulse-highlight 1.5s infinite;
+                }
+                .file-status-indicator {
+                    display: inline-block;
+                    margin-right: 10px;
+                    font-size: 14px;
+                    color: #4CAF50;
+                    vertical-align: middle;
+                }
+                .file-status-indicator i {
+                    margin-right: 5px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // 添加预览按钮到文件上传区域
+        uploadArea.appendChild(previewBtn);
+        
+        // 绑定预览事件
+        previewBtn.addEventListener('click', function() {
+            // 预览数据前应用当前选择的单位设置
+            applyUnitSettings();
+            
+            // 预览数据
+            previewIntensityData();
+            
+            // 更新通知
+            showNotification(`已应用坐标单位: ${customIntensityData.x_unit || 'mm'}，比例系数: ${customIntensityData.unit_scale || 1.0}`, 'info');
+            
+            // 移除高亮效果（如果有）
+            this.classList.remove('highlight-btn');
+        });
+    }
+    
+    // 始终移除旧的文件状态指示器（如果存在）
+    const oldStatusIndicator = document.getElementById('file-status-indicator');
+    if (oldStatusIndicator) {
+        oldStatusIndicator.parentElement.removeChild(oldStatusIndicator);
+    }
+    
+    // 始终创建或更新卸载按钮（无论是否已存在）
+    let clearFileBtn = document.getElementById('clear-file-btn');
+    if (!clearFileBtn) {
+        // 如果卸载按钮不存在，创建一个新按钮
+        clearFileBtn = document.createElement('button');
+        clearFileBtn.id = 'clear-file-btn';
+        clearFileBtn.className = 'clear-file-btn';
+        clearFileBtn.style.cssText = `
+            margin-top: 15px;
+            padding: 8px 16px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        `;
+        
+        // 悬停效果
+        clearFileBtn.onmouseover = function() {
+            this.style.backgroundColor = '#c0392b';
+        };
+        clearFileBtn.onmouseout = function() {
+            this.style.backgroundColor = '#e74c3c';
+        };
+        
+        // 绑定文件卸载事件
+        clearFileBtn.addEventListener('click', function() {
+            clearCustomIntensityData();
+        });
+        
+        // 添加卸载按钮到文件上传区域
+        uploadArea.appendChild(clearFileBtn);
+    }
+    
+    // 更新卸载按钮的显示内容和状态
+    clearFileBtn.innerHTML = '<i class="fas fa-times"></i> 卸载文件';
+    clearFileBtn.style.display = customIntensityData.loaded ? 'inline-block' : 'none';
+    
+    // 创建新的文件状态指示器
+    if (customIntensityData.loaded) {
+        const statusIndicator = document.createElement('div');
+        statusIndicator.id = 'file-status-indicator';
+        statusIndicator.className = 'file-status-indicator';
+        statusIndicator.innerHTML = `<i class="fas fa-check-circle"></i> 已加载文件: ${customIntensityData.fileName || '自定义数据'}`;
+        
+        // 将状态指示器添加到按钮前面
+        uploadArea.insertBefore(statusIndicator, previewBtn);
+    }
+    
+    return previewBtn;
+}
+
+// 更新数据状态信息中的单位显示
+function updateUnitDisplayInStatus(unitType, customFactor = null) {
+    const statusDiv = document.getElementById('intensity-data-status');
+    if (!statusDiv) return;
+    
+    // 用户要求：当更改单位或没有点击预览数据时不显示数据信息
+    // 重置预览按钮点击标志，表示需要重新预览
+    window.isPreviewDataButtonClicked = false;
+    
+    // 隐藏数据状态区域，直到用户再次点击预览按钮
+    statusDiv.style.display = 'none';
+    
+    // 如果函数提前返回，以下代码不会执行
+    return;
+    
+    // 以下代码保留但不会执行 - 由预览函数负责显示数据状态
+    // 查找标题元素
+    const statusTitle = statusDiv.querySelector('.status-title');
+    if (!statusTitle) return;
+    
+    // 获取单位标签和比例因子
+    let unitLabel = 'mm';
+    let factor = 1.0;
+    
+    switch (unitType) {
+        case 'nm':
+            unitLabel = 'nm';
+            factor = 0.000001;
+            break;
+        case 'um':
+            unitLabel = 'μm';
+            factor = 0.001;
+            break;
+        case 'mm':
+            unitLabel = 'mm';
+            factor = 1.0;
+            break;
+        case 'custom':
+            unitLabel = 'custom';
+            factor = customFactor || 1.0;
+            break;
+    }
+    
+    // 更新单位信息显示
+    const unitInfo = statusTitle.querySelector('.unit-info');
+    if (unitInfo) {
+        unitInfo.textContent = `(单位: ${unitLabel}, 比例: ×${factor}) [待应用]`;
+        unitInfo.style.color = '#ff6b01'; // 使用橙色表示待应用状态
+    }
+}
+
+// 应用单位设置
+function applyUnitSettings() {
+    // 获取单位选择元素
+    const unitSelect = document.getElementById('custom-data-unit');
+    const customScaleFactor = document.getElementById('custom-scale-factor');
+    
+    if (!unitSelect) return;
+    
+    // 获取当前选择的单位
+    const selectedUnit = unitSelect.value;
+    
+    // 设置单位和比例因子
+    let unit = 'mm';  // 默认单位
+    let factor = 1.0; // 默认比例因子
+    
+    switch (selectedUnit) {
+        case 'nm':
+            unit = 'nm';
+            factor = 0.000001; // 纳米到毫米
+            break;
+        case 'um':
+            unit = 'μm';
+            factor = 0.001; // 微米到毫米
+            break;
+        case 'mm':
+            unit = 'mm';
+            factor = 1.0; // 毫米
+            break;
+        case 'custom':
+            unit = 'custom';
+            // 使用自定义比例因子
+            if (customScaleFactor && !isNaN(parseFloat(customScaleFactor.value))) {
+                factor = parseFloat(customScaleFactor.value);
+            }
+            break;
+    }
+    
+    // 更新全局数据对象
+    customIntensityData.x_unit = unit;
+    customIntensityData.unit_scale = factor;
+    
+    // 更新状态显示中的单位信息（已应用状态）
+    const statusDiv = document.getElementById('intensity-data-status');
+    if (statusDiv) {
+        const statusTitle = statusDiv.querySelector('.status-title');
+        if (statusTitle) {
+            const unitInfo = statusTitle.querySelector('.unit-info');
+            if (unitInfo) {
+                unitInfo.textContent = `(单位: ${unit}, 比例: ×${factor})`;
+                unitInfo.style.color = '#666'; // 恢复正常颜色
+            }
+        }
+    }
+    
+    console.log(`🔄 应用单位设置: ${unit}, 比例因子: ${factor}`);
+}

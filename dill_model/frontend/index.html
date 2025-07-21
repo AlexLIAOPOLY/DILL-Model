@@ -129,7 +129,9 @@
         }
     </style>
     <!-- 引入Plotly.js -->
-    <script src="https://cdn.plot.ly/plotly-2.25.2.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.25.2.min.js"></script>
+<!-- 引入Excel文件解析库 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- 引入系统化日志管理 -->
@@ -509,41 +511,101 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="upload-text">
-                                            <div class="upload-title">拖拽文件到此处或点击选择</div>
-                                            <div class="upload-subtitle">支持格式：TXT, CSV, JSON</div>
-                                        </div>
-                                        <input type="file" id="intensity-file-input" accept=".txt,.csv,.json" style="display:none;">
+                                                                        <div class="upload-text">
+                                    <div class="upload-title">拖拽文件到此处或点击选择</div>
+                                    <div class="upload-subtitle">支持格式：TXT, CSV, JSON, DAT, XLS, XLSX, MAT, PLI, LDF, MSK</div>                                    
+                                </div>
+                                        <input type="file" id="intensity-file-input" accept=".txt,.csv,.json,.dat,.xls,.xlsx,.mat,.pli,.ldf,.msk,.int,.pro,.sim,.tab,.tsv,.asc,.lis,.log,.out,.fdt,.slf" style="display:none;">
                                     </div>
-                                    <div class="file-format-help">
-                                        <details>
-                                            <summary>支持的文件格式说明</summary>
-                                            <div class="format-examples">
-                                                <div class="format-item">
-                                                    <strong>TXT格式:</strong>
-                                                    <code>
+                                    <!-- 添加单位选择下拉菜单 -->
+                                    <div class="unit-selection" style="margin-top: 15px;">
+                                        <label for="custom-data-unit" style="margin-right: 10px; font-weight: 500;">坐标单位:</label>
+                                        <select id="custom-data-unit" class="form-control custom-select" style="width: auto; display: inline-block;">
+                                            <option value="um">微米 (μm)</option>
+                                            <option value="mm" selected>毫米 (mm)</option>
+                                            <option value="nm">纳米 (nm)</option>
+                                            <option value="custom">自定义</option>
+                                        </select>
+                                        <span class="help-icon" style="display: inline-flex; margin-left: 8px; background-color: #e1f5fe; color: #0277bd; cursor: help; font-size: 16px; border-radius: 50%; width: 20px; height: 20px; justify-content: center; align-items: center; border: 1px solid #b3e5fc;" title="选择上传数据的坐标单位。系统会根据选择的单位进行适当的坐标转换，确保计算结果准确。选择'自定义'可以手动设置转换比例。"><i class="fas fa-question" style="display: block; line-height: 1;"></i></span>
+                                        <div id="custom-scale-container" style="display: none; margin-top: 10px;">
+                                            <label for="custom-scale-factor" style="margin-right: 10px;">自定义缩放比例:</label>
+                                            <input type="number" id="custom-scale-factor" class="form-control" style="width: 100px; display: inline-block;" value="1" min="0.000001" step="0.1">
+                                            <span style="margin-left: 5px; color: #666;">(相对于毫米)</span>
+                                            <span class="help-icon" style="display: inline-flex; margin-left: 8px; background-color: #e1f5fe; color: #0277bd; cursor: help; font-size: 16px; border-radius: 50%; width: 20px; height: 20px; justify-content: center; align-items: center; border: 1px solid #b3e5fc;" title="设置自定义单位到毫米(mm)的转换比例。例如：微米到毫米的比例为0.001，纳米到毫米的比例为0.000001。"><i class="fas fa-question" style="display: block; line-height: 1;"></i></span>
+                                        </div>
+                                    </div>
+                                                                <div class="file-format-help">
+                                <details>
+                                    <summary>支持的文件格式说明</summary>
+                                    <div class="format-examples">
+                                        <div class="format-item">
+                                            <strong>TXT格式:</strong>
+                                            <code>
 x1 intensity1<br>
 x2 intensity2<br>
 或纯强度值（每行一个）
-                                                    </code>
-                                                </div>
-                                                <div class="format-item">
-                                                    <strong>CSV格式:</strong>
-                                                    <code>
+                                            </code>
+                                        </div>
+                                        <div class="format-item">
+                                            <strong>CSV格式:</strong>
+                                            <code>
 x,intensity<br>
 -1.0,0.5<br>
 -0.9,0.52
-                                                    </code>
-                                                </div>
-                                                <div class="format-item">
-                                                    <strong>JSON格式:</strong>
-                                                    <code>
+                                            </code>
+                                        </div>
+                                        <div class="format-item">
+                                            <strong>JSON格式:</strong>
+                                            <code>
 {"x": [-1.0, -0.9, ...], "intensity": [0.5, 0.52, ...]}
-                                                    </code>
-                                                </div>
-                                            </div>
-                                        </details>
+                                            </code>
+                                        </div>
+                                        <div class="format-item">
+                                            <strong>DAT/TAB/TSV格式:</strong>
+                                            <code>
+# 支持带注释的数据文件<br>
+# x intensity<br>
+-1.0 0.5<br>
+-0.9 0.52
+                                            </code>
+                                        </div>
+                                        <div class="format-item">
+                                            <strong>Excel格式 (XLS/XLSX):</strong>
+                                            <code>
+支持Excel表格，请确保数据在第一个工作表<br>
+可包含标题行，如"Position"、"Intensity"等
+                                            </code>
+                                        </div>
+                                        <div class="format-item">
+                                            <strong>MATLAB格式 (MAT):</strong>
+                                            <code>
+支持包含x和intensity变量的MAT文件
+                                            </code>
+                                        </div>
+                                        <div class="format-item">
+                                            <strong>光刻仿真软件格式:</strong>
+                                            <code>
+PROLITH (.pli): 光刻模拟数据文件<br>
+Lithography (.ldf): 光刻数据格式<br>
+掩模文件 (.msk): 光刻掩模信息<br>
+强度文件 (.int): 光强分布数据<br>
+工艺文件 (.pro, .sim): 仿真工艺文件<br>
+其他常见格式: .lis, .log, .out, .asc, .fdt, .slf 等
+                                            </code>
+                                        </div>
+                                        <div class="format-item">
+                                            <strong>通用规则:</strong>
+                                            <code>
+• 可以使用空格、制表符、逗号、分号等作为分隔符<br>
+• 可以包含列标题行（如 "x intensity"）<br>
+• 支持注释行（以 #、//、! 开头）<br>
+• 通常第一列为位置(x)，第二列为光强值<br>
+• 如果只有一列数据，将使用行号作为x坐标
+                                            </code>
+                                        </div>
                                     </div>
+                                </details>
+                            </div>
                                 </div>
                             </div>
 
@@ -576,6 +638,24 @@ x,intensity<br>
                                         <label for="intensity-values-textarea">强度值（每行一个，按X坐标顺序）:</label>
                                         <textarea id="intensity-values-textarea" placeholder="例如：&#10;0.5&#10;0.52&#10;0.54&#10;..."></textarea>
                                     </div>
+
+                                    <!-- 添加单位选择区域 -->
+                                    <div class="unit-selection" style="margin-top: 15px;">
+            <label for="manual-data-unit" style="margin-right: 10px; font-weight: 500;">坐标单位:</label>
+            <select id="manual-data-unit" class="form-control custom-select" style="width: auto; display: inline-block;">
+                <option value="um">微米 (μm)</option>
+                <option value="mm" selected>毫米 (mm)</option>
+                <option value="nm">纳米 (nm)</option>
+                <option value="custom">自定义</option>
+            </select>
+            <span class="help-icon" style="display: inline-flex; margin-left: 8px; background-color: #e1f5fe; color: #0277bd; cursor: help; font-size: 16px; border-radius: 50%; width: 20px; height: 20px; justify-content: center; align-items: center; border: 1px solid #b3e5fc;" title="选择手动输入数据的坐标单位。系统会根据选择的单位进行适当的坐标转换，确保计算结果准确。选择'自定义'可以手动设置转换比例。"><i class="fas fa-question" style="display: block; line-height: 1;"></i></span>
+            <div id="manual-scale-container" style="display: none; margin-top: 10px;">
+                <label for="manual-scale-factor" style="margin-right: 10px;">自定义缩放比例:</label>
+                <input type="number" id="manual-scale-factor" class="form-control" style="width: 100px; display: inline-block;" value="1" min="0.000001" step="0.1">
+                <span style="margin-left: 5px; color: #666;">(相对于毫米)</span>
+                <span class="help-icon" style="display: inline-flex; margin-left: 8px; background-color: #e1f5fe; color: #0277bd; cursor: help; font-size: 16px; border-radius: 50%; width: 20px; height: 20px; justify-content: center; align-items: center; border: 1px solid #b3e5fc;" title="设置自定义单位到毫米(mm)的转换比例。例如：微米到毫米的比例为0.001，纳米到毫米的比例为0.000001。"><i class="fas fa-question" style="display: block; line-height: 1;"></i></span>
+            </div>
+        </div>
 
                                     <!-- 手动输入格式帮助 -->
                                     <div class="file-format-help">
@@ -637,11 +717,11 @@ intensity3
                                     </div>
                                     
                                     <div class="input-actions">
-                                        <button id="preview-intensity-btn" class="preview-btn">
-                                            <i class="fas fa-eye"></i> 预览分布
+                                        <button id="preview-intensity-btn" class="blue-btn action-btn">
+                                            <i class="fas fa-eye"></i> 预览数据
                                         </button>
-                                        <button id="apply-intensity-btn" class="apply-btn">
-                                            <i class="fas fa-check"></i> 应用数据
+                                        <button id="apply-intensity-btn" class="red-btn action-btn">
+                                            <i class="fas fa-times"></i> 卸载数据
                                         </button>
                                     </div>
                                 </div>
@@ -652,7 +732,7 @@ intensity3
                                 <div class="status-header">
                                     <span class="status-title">已加载的光强数据</span>
                                     <button id="clear-intensity-data" class="clear-btn">
-                                        <i class="fas fa-trash"></i> 清除
+                                        <i class="fas fa-trash-alt"></i> 清除
                                     </button>
                                 </div>
                                 <div class="status-info">
