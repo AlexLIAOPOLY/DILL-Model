@@ -6640,104 +6640,41 @@ function initSineWaveTypeSelectors() {
     }
 }
 
-// 坐标轴控制功能实现
+// 坐标轴控制功能已移除
 /**
- * 初始化坐标轴控制功能
+ * 初始化坐标轴控制功能 (已禁用)
  */
 function initAxisControlFeature() {
-    console.log('🎯 初始化坐标轴控制功能');
-    
-    // 绑定展开/收起按钮事件
-    bindAxisToggleEvents();
-    
-    // 绑定坐标轴控制按钮事件
-    bindAxisControlEvents();
-    
-    console.log('✅ 坐标轴控制功能初始化完成');
+    console.log('🎯 坐标轴控制功能已禁用');
+    // 功能已移除
 }
 
 /**
- * 绑定坐标轴面板展开/收起事件
+ * 绑定坐标轴面板展开/收起事件 (已禁用)
  */
 function bindAxisToggleEvents() {
-    // 曝光剂量图表
-    const exposureToggle = document.getElementById('exposure-axis-toggle');
-    const exposureContent = document.getElementById('exposure-axis-control-content');
-    
-    if (exposureToggle && exposureContent) {
-        exposureToggle.addEventListener('click', function() {
-            toggleAxisControlPanel('exposure', exposureToggle, exposureContent);
-        });
-    }
-    
-    // 光刻胶厚度图表
-    const thicknessToggle = document.getElementById('thickness-axis-toggle');
-    const thicknessContent = document.getElementById('thickness-axis-control-content');
-    
-    if (thicknessToggle && thicknessContent) {
-        thicknessToggle.addEventListener('click', function() {
-            toggleAxisControlPanel('thickness', thicknessToggle, thicknessContent);
-        });
-    }
+    // 功能已移除
 }
 
 /**
- * 切换坐标轴控制面板的显示状态
+ * 切换坐标轴控制面板的显示状态 (已禁用)
  */
 function toggleAxisControlPanel(plotType, toggleBtn, contentElement) {
-    const isExpanded = contentElement.style.display !== 'none';
-    
-    if (isExpanded) {
-        // 收起面板
-        contentElement.style.display = 'none';
-        toggleBtn.classList.remove('expanded');
-        toggleBtn.setAttribute('aria-expanded', 'false');
-    } else {
-        // 展开面板
-        contentElement.style.display = 'block';
-        toggleBtn.classList.add('expanded');
-        toggleBtn.setAttribute('aria-expanded', 'true');
-    }
+    // 功能已移除
 }
 
 /**
- * 绑定坐标轴控制按钮事件
+ * 绑定坐标轴控制按钮事件 (已禁用)
  */
 function bindAxisControlEvents() {
-    // 曝光剂量图表控制
-    bindPlotAxisControls('exposure');
-    
-    // 光刻胶厚度图表控制
-    bindPlotAxisControls('thickness');
+    // 功能已移除
 }
 
 /**
- * 为指定图表绑定坐标轴控制事件
+ * 为指定图表绑定坐标轴控制事件 (已禁用)
  */
 function bindPlotAxisControls(plotType) {
-    // 保存参考范围按钮
-    const saveBtn = document.getElementById(`${plotType}-save-reference`);
-    if (saveBtn) {
-        saveBtn.addEventListener('click', function() {
-            saveAxisReference(plotType);
-        });
-    }
-    
-    // 恢复参考范围按钮
-    const restoreBtn = document.getElementById(`${plotType}-restore-reference`);
-    if (restoreBtn) {
-        restoreBtn.addEventListener('click', function() {
-            restoreAxisReference(plotType);
-        });
-    }
-    
-    // 自动缩放按钮
-    const autoBtn = document.getElementById(`${plotType}-auto-scale`);
-    if (autoBtn) {
-        autoBtn.addEventListener('click', function() {
-            autoScaleAxis(plotType);
-        });
-    }
+    // 功能已移除
 }
 
 /**
@@ -6939,14 +6876,14 @@ function loadSavedAxisReferences() {
     });
 }
 
-// 在DOM加载完成后初始化坐标轴控制功能
-document.addEventListener('DOMContentLoaded', function() {
-    // 延迟初始化，确保其他组件已加载
-    setTimeout(() => {
-        initAxisControlFeature();
-        loadSavedAxisReferences();
-    }, 1000);
-});
+// 坐标轴控制功能已禁用
+// document.addEventListener('DOMContentLoaded', function() {
+//     // 延迟初始化，确保其他组件已加载
+//     setTimeout(() => {
+//         initAxisControlFeature();
+//         loadSavedAxisReferences();
+//     }, 1000);
+// });
 
 // Dill模型2D预览绘图函数
 function dillDrawPreviewPlot(scrollToPlot = false, t = 0) {
