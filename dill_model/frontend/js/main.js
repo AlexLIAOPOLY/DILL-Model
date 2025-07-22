@@ -5107,8 +5107,189 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
     const intensityMethodSelect = document.getElementById('intensity_input_method');
     const isUsingCustomData = intensityMethodSelect && intensityMethodSelect.value === 'custom' && customIntensityData.loaded;
     
+    // 检查是否使用多段曝光时间累积模式
+    const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+    const isCumulativeExposure = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+    
     if (plotType === 'exposure') {
-        if (isUsingCustomData) {
+        if (isCumulativeExposure) {
+            // 多段曝光时间累积模式的曝光剂量分布
+            valueLabel = '曝光剂量:';
+            valueUnit = 'mJ<span class="fraction"><span class="numerator">1</span><span class="denominator">cm²</span></span>';
+            formulaTitle = 'Dill模型 - 多段曝光时间累积模式：';
+            
+            // 根据时间模式显示不同公式
+            if (params.time_mode === 'fixed') {
+                formulaMath = 'D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>i</sub>(x) × Δt]';
+                formulaMath += '<br>I<sub>i</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))';
+            } else {
+                formulaMath = 'D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>i</sub>(x) × (t<sub>i+1</sub> - t<sub>i</sub>)]';
+                formulaMath += '<br>I<sub>i</sub>(x) = 各段光强值';
+            }
+            
+            // 获取多段曝光参数
+            const segmentCount = params.segment_count || 5;
+            const segmentIntensities = params.segment_intensities || new Array(segmentCount).fill(0.5);
+            const timeMode = params.time_mode || 'fixed';
+            const totalDose = params.total_exposure_dose || 0;
+            
+            // 构建段落信息表格
+            let segmentsTable = '<table class="segments-info-table"><thead><tr><th>段落</th><th>时间范围</th><th>光强值</th></tr></thead><tbody>';
+            
+            if (timeMode === 'fixed') {
+                const segmentDuration = params.segment_duration || 1;
+                
+                for (let i = 0; i < segmentCount; i++) {
+                    const startTime = (i * segmentDuration).toFixed(1);
+                    const endTime = ((i + 1) * segmentDuration).toFixed(1);
+                    const intensity = segmentIntensities[i] || 0.5;
+                    
+                    segmentsTable += `
+                        <tr>
+                            <td>段落 ${i + 1}</td>
+                            <td>${startTime}s - ${endTime}s</td>
+                            <td>${intensity.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
+            } else {
+                const customTimePoints = params.custom_time_points || [];
+                
+                for (let i = 0; i < segmentCount && i + 1 < customTimePoints.length; i++) {
+                    const startTime = customTimePoints[i].toFixed(1);
+                    const endTime = customTimePoints[i + 1].toFixed(1);
+                    const intensity = segmentIntensities[i] || 0.5;
+                    
+                    segmentsTable += `
+                        <tr>
+                            <td>段落 ${i + 1}</td>
+                            <td>${startTime}s - ${endTime}s</td>
+                            <td>${intensity.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
+            }
+            
+            segmentsTable += '</tbody></table>';
+            
+            // 计算当前点在各段的曝光剂量
+            let currentPointAnalysis = '';
+            let totalPointDose = 0;
+            
+            if (params.sine_type === 'multi') {
+                // 多维正弦波模式
+                currentPointAnalysis += '<div>• 多维正弦波模式下的多段曝光累积</div>';
+            } else if (params.sine_type === '3d') {
+                // 3D正弦波模式
+                currentPointAnalysis += '<div>• 3D正弦波模式下的多段曝光累积</div>';
+            } else {
+                // 标准1D模式
+                const K = params.K || 1;
+                const V = params.V || 0.8;
+                const phaseValue = K * x;
+                
+                currentPointAnalysis += '<div class="segments-analysis-title">当前点 x=' + x.toFixed(3) + 'mm 的各段曝光剂量计算:</div>';
+                currentPointAnalysis += '<table class="segments-analysis-table"><thead><tr><th>段落</th><th>光强 I<sub>i</sub>(x)</th><th>时间</th><th>剂量</th></tr></thead><tbody>';
+                
+                if (timeMode === 'fixed') {
+                    const segmentDuration = params.segment_duration || 1;
+                    
+                    for (let i = 0; i < segmentCount; i++) {
+                        const intensity = segmentIntensities[i] || 0.5;
+                        const baseIntensity = intensity * (1 + V * Math.cos(phaseValue));
+                        const segmentDose = baseIntensity * segmentDuration;
+                        totalPointDose += segmentDose;
+                        
+                        currentPointAnalysis += `
+                            <tr>
+                                <td>段落 ${i + 1}</td>
+                                <td>${baseIntensity.toFixed(3)}</td>
+                                <td>${segmentDuration.toFixed(1)}s</td>
+                                <td>${segmentDose.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    const customTimePoints = params.custom_time_points || [];
+                    
+                    for (let i = 0; i < segmentCount && i + 1 < customTimePoints.length; i++) {
+                        const intensity = segmentIntensities[i] || 0.5;
+                        const baseIntensity = intensity * (1 + V * Math.cos(phaseValue));
+                        const segmentDuration = customTimePoints[i + 1] - customTimePoints[i];
+                        const segmentDose = baseIntensity * segmentDuration;
+                        totalPointDose += segmentDose;
+                        
+                        currentPointAnalysis += `
+                            <tr>
+                                <td>段落 ${i + 1}</td>
+                                <td>${baseIntensity.toFixed(3)}</td>
+                                <td>${segmentDuration.toFixed(1)}s</td>
+                                <td>${segmentDose.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }
+                }
+                
+                currentPointAnalysis += `
+                    <tr class="total-row">
+                        <td>总计</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>${totalPointDose.toFixed(2)}</td>
+                    </tr>
+                </tbody></table>`;
+            }
+            
+            formulaExplanation = `
+                <div>🔧 <strong>多段曝光时间累积模式参数：</strong></div>
+                <div>• 时间模式: ${timeMode === 'fixed' ? '固定时间段' : '自定义时间点'}</div>
+                <div>• 段落数量: ${segmentCount}</div>
+                ${timeMode === 'fixed' ? `<div>• 单段时长: ${params.segment_duration || 1}s</div>` : ''}
+                <div>• 总曝光计量: ${totalDose.toFixed(2)} mJ/cm²</div>
+                <div class="formula-separator"></div>
+                <div>📊 <strong>段落信息：</strong></div>
+                ${segmentsTable}
+                <div class="formula-separator"></div>
+                <div>📍 <strong>当前点分析：</strong></div>
+                ${currentPointAnalysis}
+                <div class="formula-separator"></div>
+                <div>💡 <strong>计算说明：</strong></div>
+                <div>• 多段曝光时间累积模式下，总曝光剂量为各段曝光剂量之和</div>
+                <div>• 每段曝光剂量 = 该段光强 × 该段时长</div>
+                <div>• 各段使用不同的光强值，可模拟复杂的曝光过程</div>
+            `;
+            
+            // 添加CSS样式
+            additionalInfo = `
+                <style>
+                    .segments-info-table, .segments-analysis-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 8px 0;
+                        font-size: 12px;
+                    }
+                    .segments-info-table th, .segments-analysis-table th {
+                        background-color: rgba(52, 152, 219, 0.1);
+                        padding: 4px;
+                        text-align: left;
+                        border-bottom: 1px solid #ddd;
+                    }
+                    .segments-info-table td, .segments-analysis-table td {
+                        padding: 4px;
+                        border-bottom: 1px solid #eee;
+                    }
+                    .segments-analysis-title {
+                        font-weight: bold;
+                        margin: 8px 0;
+                    }
+                    .total-row {
+                        font-weight: bold;
+                        background-color: rgba(52, 152, 219, 0.05);
+                    }
+                </style>
+            `;
+        }
+        else if (isUsingCustomData) {
             // 自定义向量数据的光强分布
             valueLabel = '光强分布:';
             valueUnit = '(自定义单位)';
@@ -5231,7 +5412,205 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             }
         }
     } else if (plotType === 'thickness') {
-        if (isUsingCustomData) {
+        if (isCumulativeExposure) {
+            // 多段曝光时间累积模式的厚度分布
+            valueLabel = '蚀刻深度/厚度:';
+            valueUnit = '(归一化)';
+            formulaTitle = 'Dill模型 - 多段曝光时间累积模式蚀刻深度计算：';
+            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>i</sub>(x) × Δt<sub>i</sub>]</div>';
+            formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
+            formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
+            formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D(x) - c<sub>d</sub>)</sup></div>';
+            formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
+            
+            // 获取多段曝光参数
+            const segmentCount = params.segment_count || 5;
+            const segmentIntensities = params.segment_intensities || new Array(segmentCount).fill(0.5);
+            const timeMode = params.time_mode || 'fixed';
+            const totalDose = params.total_exposure_dose || 0;
+            const exposureConstant = params.C || 0.022;
+            const thresholdCd = params.exposure_threshold || 20;
+            
+            // 构建段落信息表格
+            let segmentsTable = '<table class="segments-info-table"><thead><tr><th>段落</th><th>时间范围</th><th>光强值</th></tr></thead><tbody>';
+            
+            if (timeMode === 'fixed') {
+                const segmentDuration = params.segment_duration || 1;
+                
+                for (let i = 0; i < segmentCount; i++) {
+                    const startTime = (i * segmentDuration).toFixed(1);
+                    const endTime = ((i + 1) * segmentDuration).toFixed(1);
+                    const intensity = segmentIntensities[i] || 0.5;
+                    
+                    segmentsTable += `
+                        <tr>
+                            <td>段落 ${i + 1}</td>
+                            <td>${startTime}s - ${endTime}s</td>
+                            <td>${intensity.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
+            } else {
+                const customTimePoints = params.custom_time_points || [];
+                
+                for (let i = 0; i < segmentCount && i + 1 < customTimePoints.length; i++) {
+                    const startTime = customTimePoints[i].toFixed(1);
+                    const endTime = customTimePoints[i + 1].toFixed(1);
+                    const intensity = segmentIntensities[i] || 0.5;
+                    
+                    segmentsTable += `
+                        <tr>
+                            <td>段落 ${i + 1}</td>
+                            <td>${startTime}s - ${endTime}s</td>
+                            <td>${intensity.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
+            }
+            
+            segmentsTable += '</tbody></table>';
+            
+            // 计算当前点在各段的曝光剂量和蚀刻深度
+            let currentPointAnalysis = '';
+            let totalPointDose = 0;
+            
+            if (params.sine_type === 'multi') {
+                // 多维正弦波模式
+                currentPointAnalysis += '<div>• 多维正弦波模式下的多段曝光累积蚀刻深度计算</div>';
+            } else if (params.sine_type === '3d') {
+                // 3D正弦波模式
+                currentPointAnalysis += '<div>• 3D正弦波模式下的多段曝光累积蚀刻深度计算</div>';
+            } else {
+                // 标准1D模式
+                const K = params.K || 1;
+                const V = params.V || 0.8;
+                const phaseValue = K * x;
+                
+                currentPointAnalysis += '<div class="segments-analysis-title">当前点 x=' + x.toFixed(3) + 'mm 的蚀刻深度计算:</div>';
+                currentPointAnalysis += '<table class="segments-analysis-table"><thead><tr><th>段落</th><th>光强 I<sub>i</sub>(x)</th><th>时间</th><th>剂量</th></tr></thead><tbody>';
+                
+                if (timeMode === 'fixed') {
+                    const segmentDuration = params.segment_duration || 1;
+                    
+                    for (let i = 0; i < segmentCount; i++) {
+                        const intensity = segmentIntensities[i] || 0.5;
+                        const baseIntensity = intensity * (1 + V * Math.cos(phaseValue));
+                        const segmentDose = baseIntensity * segmentDuration;
+                        totalPointDose += segmentDose;
+                        
+                        currentPointAnalysis += `
+                            <tr>
+                                <td>段落 ${i + 1}</td>
+                                <td>${baseIntensity.toFixed(3)}</td>
+                                <td>${segmentDuration.toFixed(1)}s</td>
+                                <td>${segmentDose.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    const customTimePoints = params.custom_time_points || [];
+                    
+                    for (let i = 0; i < segmentCount && i + 1 < customTimePoints.length; i++) {
+                        const intensity = segmentIntensities[i] || 0.5;
+                        const baseIntensity = intensity * (1 + V * Math.cos(phaseValue));
+                        const segmentDuration = customTimePoints[i + 1] - customTimePoints[i];
+                        const segmentDose = baseIntensity * segmentDuration;
+                        totalPointDose += segmentDose;
+                        
+                        currentPointAnalysis += `
+                            <tr>
+                                <td>段落 ${i + 1}</td>
+                                <td>${baseIntensity.toFixed(3)}</td>
+                                <td>${segmentDuration.toFixed(1)}s</td>
+                                <td>${segmentDose.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }
+                }
+                
+                currentPointAnalysis += `
+                    <tr class="total-row">
+                        <td>总计</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>${totalPointDose.toFixed(2)}</td>
+                    </tr>
+                </tbody></table>`;
+                
+                // 计算蚀刻深度
+                let M_value, H_value;
+                if (totalPointDose < thresholdCd) {
+                    M_value = 1;
+                    H_value = 0;
+                    currentPointAnalysis += `<div class="thickness-result">总曝光剂量 ${totalPointDose.toFixed(2)} < 阈值 ${thresholdCd}，未达到曝光阈值，M(x) = 1，蚀刻深度 H(x) = 0</div>`;
+                } else {
+                    M_value = Math.exp(-exposureConstant * (totalPointDose - thresholdCd));
+                    H_value = 1 - M_value;
+                    currentPointAnalysis += `<div class="thickness-result">总曝光剂量 ${totalPointDose.toFixed(2)} > 阈值 ${thresholdCd}，M(x) = e<sup>-${exposureConstant} × (${totalPointDose.toFixed(2)} - ${thresholdCd})</sup> = ${M_value.toFixed(4)}</div>`;
+                    currentPointAnalysis += `<div class="thickness-result">蚀刻深度 H(x) = 1 - ${M_value.toFixed(4)} = ${H_value.toFixed(4)}</div>`;
+                }
+            }
+            
+            formulaExplanation = `
+                <div>🔧 <strong>多段曝光时间累积模式参数：</strong></div>
+                <div>• 时间模式: ${timeMode === 'fixed' ? '固定时间段' : '自定义时间点'}</div>
+                <div>• 段落数量: ${segmentCount}</div>
+                ${timeMode === 'fixed' ? `<div>• 单段时长: ${params.segment_duration || 1}s</div>` : ''}
+                <div>• 总曝光计量: ${totalDose.toFixed(2)} mJ/cm²</div>
+                <div>• C: 光敏速率常数 (${exposureConstant} cm²/mJ)</div>
+                <div>• c<sub>d</sub>: 曝光阈值 (${thresholdCd} mJ/cm²)</div>
+                <div class="formula-separator"></div>
+                <div>📊 <strong>段落信息：</strong></div>
+                ${segmentsTable}
+                <div class="formula-separator"></div>
+                <div>📍 <strong>当前点分析：</strong></div>
+                ${currentPointAnalysis}
+                <div class="formula-separator"></div>
+                <div>💡 <strong>计算说明：</strong></div>
+                <div>• 多段曝光时间累积模式下，总曝光剂量为各段曝光剂量之和</div>
+                <div>• 每段曝光剂量 = 该段光强 × 该段时长</div>
+                <div>• 当总剂量超过阈值c<sub>d</sub>时，按指数规律计算蚀刻深度</div>
+                <div>• 蚀刻深度 H(x) = 1 - M(x)，其中M(x)为抗蚀效果</div>
+            `;
+            
+            // 添加CSS样式
+            additionalInfo = `
+                <style>
+                    .segments-info-table, .segments-analysis-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 8px 0;
+                        font-size: 12px;
+                    }
+                    .segments-info-table th, .segments-analysis-table th {
+                        background-color: rgba(52, 152, 219, 0.1);
+                        padding: 4px;
+                        text-align: left;
+                        border-bottom: 1px solid #ddd;
+                    }
+                    .segments-info-table td, .segments-analysis-table td {
+                        padding: 4px;
+                        border-bottom: 1px solid #eee;
+                    }
+                    .segments-analysis-title {
+                        font-weight: bold;
+                        margin: 8px 0;
+                    }
+                    .total-row {
+                        font-weight: bold;
+                        background-color: rgba(52, 152, 219, 0.05);
+                    }
+                    .thickness-result {
+                        margin: 8px 0;
+                        padding: 6px;
+                        background-color: rgba(52, 152, 219, 0.05);
+                        border-radius: 4px;
+                        font-weight: bold;
+                    }
+                </style>
+            `;
+        }
+        else if (isUsingCustomData) {
             // 自定义向量数据的厚度分布
             valueLabel = '蚀刻深度/厚度:';
             valueUnit = '(自定义单位)';
