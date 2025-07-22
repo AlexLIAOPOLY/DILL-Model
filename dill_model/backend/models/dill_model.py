@@ -245,25 +245,71 @@ class DillModel:
                 logger.info(f"   - 自定义数据范围: [{x_min_custom:.6f}, {x_max_custom:.6f}]")
                 logger.info(f"   - 目标范围: [{x_min_target:.6f}, {x_max_target:.6f}]")
                 
-                # 如果目标范围超出自定义数据范围，使用边界值进行扩展
+                # 获取数据范围外光强处理模式，默认为'zero'（零）
+                outside_range_mode = custom_intensity_data.get('outside_range_mode', 'zero')
+                logger.info(f"🔸 数据范围外光强处理模式: {outside_range_mode}")
+                
+                # 准备扩展后的数据
                 extended_x = custom_x.copy()
                 extended_intensity = custom_intensity.copy()
                 
-                if x_min_target < x_min_custom:
-                    logger.info(f"   - 扩展下限: {x_min_target} < {x_min_custom}")
-                    extended_x = np.concatenate([[x_min_target], extended_x])
-                    extended_intensity = np.concatenate([[custom_intensity[0]], extended_intensity])
+                # 根据模式处理范围外数据
+                if outside_range_mode == 'zero':
+                    # 'zero'模式：超出范围使用0值
+                    logger.info("   - 使用零值作为范围外光强")
+                    
+                    # 这里不需要扩展数据，因为interp1d的fill_value将设置为(0,0)
+                    # 但我们仍然需要确保插值函数能覆盖整个目标范围
+                    if x_min_target < x_min_custom or x_max_target > x_max_custom:
+                        logger.info("   - 目标范围超出数据范围，使用零值填充")
+                    
+                elif outside_range_mode == 'boundary':  # 'boundary'模式：超出范围使用边界值
+                    logger.info("   - 使用边界值作为范围外光强")
+                    
+                    # 如果目标范围超出自定义数据范围，使用边界值进行扩展
+                    if x_min_target < x_min_custom:
+                        logger.info(f"   - 扩展下限: {x_min_target} < {x_min_custom}")
+                        extended_x = np.concatenate([[x_min_target], extended_x])
+                        extended_intensity = np.concatenate([[custom_intensity[0]], extended_intensity])
+                    
+                    if x_max_target > x_max_custom:
+                        logger.info(f"   - 扩展上限: {x_max_target} > {x_max_custom}")
+                        extended_x = np.concatenate([extended_x, [x_max_target]])
+                        extended_intensity = np.concatenate([extended_intensity, [custom_intensity[-1]]])
+                        
+                elif outside_range_mode == 'custom':  # 'custom'模式：使用用户定义的固定值
+                    # 获取用户定义的光强值
+                    custom_intensity_value = float(custom_intensity_data.get('custom_intensity_value', 0.0))
+                    logger.info(f"   - 使用自定义值作为范围外光强: {custom_intensity_value}")
+                    
+                    # 仍然需要扩展坐标范围，但使用自定义值
+                    if x_min_target < x_min_custom:
+                        logger.info(f"   - 扩展下限: {x_min_target} < {x_min_custom}")
+                        extended_x = np.concatenate([[x_min_target], extended_x])
+                        extended_intensity = np.concatenate([[custom_intensity_value], extended_intensity])
+                    
+                    if x_max_target > x_max_custom:
+                        logger.info(f"   - 扩展上限: {x_max_target} > {x_max_custom}")
+                        extended_x = np.concatenate([extended_x, [x_max_target]])
+                        extended_intensity = np.concatenate([extended_intensity, [custom_intensity_value]])
                 
-                if x_max_target > x_max_custom:
-                    logger.info(f"   - 扩展上限: {x_max_target} > {x_max_custom}")
-                    extended_x = np.concatenate([extended_x, [x_max_target]])
-                    extended_intensity = np.concatenate([extended_intensity, [custom_intensity[-1]]])
+                # 设置插值函数的边界外行为 (已在上方处理了outside_range_mode)
+                if outside_range_mode == 'zero':
+                    # 超出范围使用0
+                    fill_value = (0, 0)
+                elif outside_range_mode == 'boundary':
+                    # 超出范围使用两端值
+                    fill_value = (custom_intensity[0], custom_intensity[-1])
+                else:  # custom模式
+                    # 超出范围使用自定义值
+                    custom_intensity_value = float(custom_intensity_data.get('custom_intensity_value', 0.0))
+                    fill_value = (custom_intensity_value, custom_intensity_value)
                 
                 # 创建线性插值函数
                 interp_func = interp1d(extended_x, extended_intensity, 
                                      kind='linear', 
                                      bounds_error=False, 
-                                     fill_value=(custom_intensity[0], custom_intensity[-1]))  # 超出范围使用两端值
+                                     fill_value=fill_value)
                 
                 # 将自定义数据插值到目标x坐标
                 result = interp_func(x)

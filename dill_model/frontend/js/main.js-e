@@ -1330,9 +1330,7 @@ function getParameterValues() {
                 x: x_data, // 使用可能经过单位转换的坐标
                 intensity: customIntensityData.intensity,
                 original_unit: customIntensityData.x_unit,
-                unit_scale: unit_scale,
-                outside_range_mode: customIntensityData.outside_range_mode || 'zero', // 数据范围外光强处理方式
-                custom_intensity_value: customIntensityData.outside_range_mode === 'custom' ? customIntensityData.custom_intensity_value || 0 : 0 // 自定义光强值
+                unit_scale: unit_scale
             };
             
             // === 🔍 前端调试自定义光强数据 ===
@@ -11476,8 +11474,7 @@ let customIntensityData = {
     x_unit: 'mm', // 默认单位为mm
     x_range: {min: 0, max: 0},
     auto_detected: false, // 是否已自动检测单位
-    outside_range_mode: 'zero', // 默认数据范围外光强为0
-    custom_intensity_value: 0 // 自定义光强值
+    boundaryFill: 'zero' // 默认边界外填充为零
 };
 
 // 初始化自定义光强分布功能
@@ -11502,109 +11499,7 @@ function initCustomIntensityFeature() {
     // 数据管理功能
     initDataManagementFeature();
     
-    // 初始化范围外光强模式切换事件
-    initOutsideRangeModeEvents();
-    
     console.log('✅ 自定义光强分布功能初始化完成');
-}
-
-// 初始化范围外光强模式切换事件
-function initOutsideRangeModeEvents() {
-    // 文件上传模式的范围外光强下拉框
-    const fileOutsideRangeSelect = document.getElementById('outside-range-mode-file');
-    const customIntensityFileContainer = document.getElementById('custom-intensity-value-file-container');
-    const customIntensityFileInput = document.getElementById('custom-intensity-value-file');
-    
-    if (fileOutsideRangeSelect) {
-        fileOutsideRangeSelect.addEventListener('change', function() {
-            // 处理自定义值输入框的显示与隐藏
-            if (this.value === 'custom') {
-                if (customIntensityFileContainer) {
-                    customIntensityFileContainer.style.display = 'block';
-                }
-            } else {
-                if (customIntensityFileContainer) {
-                    customIntensityFileContainer.style.display = 'none';
-                }
-            }
-            
-            // 如果有已加载的数据，更新模式并刷新显示
-            if (customIntensityData.loaded && customIntensityData.source === 'file') {
-                customIntensityData.outside_range_mode = this.value;
-                
-                // 如果是自定义模式，保存自定义值
-                if (this.value === 'custom' && customIntensityFileInput) {
-                    customIntensityData.custom_intensity_value = parseFloat(customIntensityFileInput.value) || 0;
-                }
-                
-                updateDataStatus();
-                // 重新预览以更新图表
-                previewIntensityData();
-                console.log(`🔄 已更新文件模式范围外光强处理为: ${this.value}${this.value === 'custom' ? ', 值: ' + customIntensityData.custom_intensity_value : ''}`);
-            }
-        });
-    }
-    
-    // 文件上传模式的自定义值输入框
-    if (customIntensityFileInput) {
-        customIntensityFileInput.addEventListener('input', function() {
-            if (customIntensityData.loaded && customIntensityData.source === 'file' && customIntensityData.outside_range_mode === 'custom') {
-                customIntensityData.custom_intensity_value = parseFloat(this.value) || 0;
-                updateDataStatus();
-                // 重新预览以更新图表
-                previewIntensityData();
-                console.log(`🔄 已更新文件模式自定义光强值: ${customIntensityData.custom_intensity_value}`);
-            }
-        });
-    }
-    
-    // 手动输入模式的范围外光强下拉框
-    const manualOutsideRangeSelect = document.getElementById('outside-range-mode-manual');
-    const customIntensityManualContainer = document.getElementById('custom-intensity-value-manual-container');
-    const customIntensityManualInput = document.getElementById('custom-intensity-value-manual');
-    
-    if (manualOutsideRangeSelect) {
-        manualOutsideRangeSelect.addEventListener('change', function() {
-            // 处理自定义值输入框的显示与隐藏
-            if (this.value === 'custom') {
-                if (customIntensityManualContainer) {
-                    customIntensityManualContainer.style.display = 'block';
-                }
-            } else {
-                if (customIntensityManualContainer) {
-                    customIntensityManualContainer.style.display = 'none';
-                }
-            }
-            
-            // 如果有已加载的数据，更新模式并刷新显示
-            if (customIntensityData.loaded && customIntensityData.source === 'manual') {
-                customIntensityData.outside_range_mode = this.value;
-                
-                // 如果是自定义模式，保存自定义值
-                if (this.value === 'custom' && customIntensityManualInput) {
-                    customIntensityData.custom_intensity_value = parseFloat(customIntensityManualInput.value) || 0;
-                }
-                
-                updateDataStatus();
-                // 重新预览以更新图表
-                previewIntensityData();
-                console.log(`🔄 已更新手动输入模式范围外光强处理为: ${this.value}${this.value === 'custom' ? ', 值: ' + customIntensityData.custom_intensity_value : ''}`);
-            }
-        });
-    }
-    
-    // 手动输入模式的自定义值输入框
-    if (customIntensityManualInput) {
-        customIntensityManualInput.addEventListener('input', function() {
-            if (customIntensityData.loaded && customIntensityData.source === 'manual' && customIntensityData.outside_range_mode === 'custom') {
-                customIntensityData.custom_intensity_value = parseFloat(this.value) || 0;
-                updateDataStatus();
-                // 重新预览以更新图表
-                previewIntensityData();
-                console.log(`🔄 已更新手动输入模式自定义光强值: ${customIntensityData.custom_intensity_value}`);
-            }
-        });
-    }
 }
 
 
@@ -11933,18 +11828,14 @@ function parseFileContent(content, fileExtension, fileName) {
             return;
         }
         
-            // 获取用户选择的数据范围外光强处理方式
-    const outsideRangeMode = document.getElementById('outside-range-mode-file').value;
-    
-    // 存储数据
+            // 存储数据
     customIntensityData = {
         ...customIntensityData, // 保留已有属性
         x: x,
         intensity: intensity,
         loaded: true,
         source: 'file',
-        fileName: fileName,
-        outside_range_mode: outsideRangeMode // 保存用户选择的数据范围外光强处理方式
+        fileName: fileName
     };
     
     // 设置标志表示未点击预览按钮
@@ -12453,18 +12344,13 @@ function parseLithographySimulationFile(content, fileExtension, fileName) {
         throw new Error(`未能从${fileExtension}文件中提取有效数据`);
     }
     
-    // 获取用户选择的数据范围外光强处理方式
-    const outsideRangeMode = document.getElementById('outside-range-mode-file').value;
-    console.log(`🔄 光刻仿真文件解析成功，使用范围外光强模式: ${outsideRangeMode}`);
-    
     // 提取成功，应用数据
     customIntensityData = {
         x: result.x,
         intensity: result.intensity,
         loaded: true,
         source: fileExtension.substring(1), // 去掉点号
-        fileName: fileName,
-        outside_range_mode: outsideRangeMode // 保存用户选择的数据范围外光强处理方式
+        fileName: fileName
     };
     
     // 更新UI
@@ -13248,9 +13134,6 @@ function previewManualInput() {
             return;
         }
         
-        // 获取用户选择的数据范围外光强处理方式
-        const outsideRangeMode = document.getElementById('outside-range-mode-manual').value;
-        
         // 存储数据
         customIntensityData = {
             x: data.x,
@@ -13258,8 +13141,7 @@ function previewManualInput() {
             loaded: true,
             source: 'manual',
             x_unit: data.x_unit || 'mm',
-            unit_scale: data.unit_scale || 1.0,
-            outside_range_mode: outsideRangeMode // 保存用户选择的数据范围外光强处理方式
+            unit_scale: data.unit_scale || 1.0
         };
         
         // 设置标志表示已点击预览按钮
@@ -13557,31 +13439,8 @@ function clearCustomIntensityData() {
         fileName: null,
         x_unit: 'mm', // 重置为默认单位
         x_range: {min: 0, max: 0},
-        auto_detected: false,
-        outside_range_mode: 'zero', // 重置为默认数据范围外光强模式
-        custom_intensity_value: 0 // 重置自定义光强值
+        auto_detected: false
     };
-    
-    // 重置下拉框为默认选项（零）
-    const fileOutsideRangeSelect = document.getElementById('outside-range-mode-file');
-    const manualOutsideRangeSelect = document.getElementById('outside-range-mode-manual');
-    
-    if (fileOutsideRangeSelect) fileOutsideRangeSelect.value = 'zero';
-    if (manualOutsideRangeSelect) manualOutsideRangeSelect.value = 'zero';
-    
-    // 隐藏自定义值输入框
-    const customIntensityFileContainer = document.getElementById('custom-intensity-value-file-container');
-    const customIntensityManualContainer = document.getElementById('custom-intensity-value-manual-container');
-    
-    if (customIntensityFileContainer) customIntensityFileContainer.style.display = 'none';
-    if (customIntensityManualContainer) customIntensityManualContainer.style.display = 'none';
-    
-    // 重置自定义值输入框
-    const customIntensityFileInput = document.getElementById('custom-intensity-value-file');
-    const customIntensityManualInput = document.getElementById('custom-intensity-value-manual');
-    
-    if (customIntensityFileInput) customIntensityFileInput.value = '0';
-    if (customIntensityManualInput) customIntensityManualInput.value = '0';
     
     // 隐藏数据状态
     const statusDiv = document.getElementById('intensity-data-status');
@@ -13630,13 +13489,11 @@ function updateDataStatusForPreview(data) {
     const pointCountSpan = document.getElementById('intensity-point-count');
     const xRangeSpan = document.getElementById('intensity-x-range');
     const valueRangeSpan = document.getElementById('intensity-value-range');
-    const outsideRangeModeSpan = document.getElementById('outside-range-mode');
     
     if (!statusDiv || !data || !data.x || !data.intensity) return;
     
     const { x, intensity } = data;
     const unitLabel = data.x_unit || 'mm';
-    const outsideRangeMode = data.outside_range_mode || 'zero';
     
     // 计算统计信息
     const pointCount = x.length;
@@ -13649,21 +13506,6 @@ function updateDataStatusForPreview(data) {
     if (pointCountSpan) pointCountSpan.textContent = pointCount;
     if (xRangeSpan) xRangeSpan.textContent = `${xMin.toFixed(3)} ~ ${xMax.toFixed(3)} ${unitLabel}`;
     if (valueRangeSpan) valueRangeSpan.textContent = `${intensityMin.toFixed(6)} ~ ${intensityMax.toFixed(6)}`;
-    
-    // 更新范围外光强模式显示
-    if (outsideRangeModeSpan) {
-        if (outsideRangeMode === 'zero') {
-            outsideRangeModeSpan.textContent = '范围外为零';
-            outsideRangeModeSpan.className = 'info-value mode-zero';
-        } else if (outsideRangeMode === 'boundary') {
-            outsideRangeModeSpan.textContent = '范围外与边界相同';
-            outsideRangeModeSpan.className = 'info-value mode-boundary';
-        } else if (outsideRangeMode === 'custom') {
-            const customValue = data.custom_intensity_value || 0;
-            outsideRangeModeSpan.textContent = `范围外为 ${customValue}`;
-            outsideRangeModeSpan.className = 'info-value mode-custom';
-        }
-    }
     
     // 设置标志，表示预览按钮已点击
     window.isPreviewDataButtonClicked = true;
@@ -13704,13 +13546,11 @@ function updateDataStatus() {
     const pointCountSpan = document.getElementById('intensity-point-count');
     const xRangeSpan = document.getElementById('intensity-x-range');
     const valueRangeSpan = document.getElementById('intensity-value-range');
-    const outsideRangeModeSpan = document.getElementById('outside-range-mode');
     
     if (!statusDiv || !customIntensityData.loaded) return;
     
     const { x, intensity } = customIntensityData;
     const unitLabel = customIntensityData.x_unit || 'mm';
-    const outsideRangeMode = customIntensityData.outside_range_mode || 'zero';
     
     // 计算统计信息
     const pointCount = x.length;
@@ -13723,21 +13563,6 @@ function updateDataStatus() {
     if (pointCountSpan) pointCountSpan.textContent = pointCount;
     if (xRangeSpan) xRangeSpan.textContent = `${xMin.toFixed(3)} ~ ${xMax.toFixed(3)} ${unitLabel}`;
     if (valueRangeSpan) valueRangeSpan.textContent = `${intensityMin.toFixed(6)} ~ ${intensityMax.toFixed(6)}`;
-    
-    // 更新范围外光强模式显示
-    if (outsideRangeModeSpan) {
-        if (outsideRangeMode === 'zero') {
-            outsideRangeModeSpan.textContent = '范围外为零';
-            outsideRangeModeSpan.className = 'info-value mode-zero';
-        } else if (outsideRangeMode === 'boundary') {
-            outsideRangeModeSpan.textContent = '范围外与边界相同';
-            outsideRangeModeSpan.className = 'info-value mode-boundary';
-        } else if (outsideRangeMode === 'custom') {
-            const customValue = customIntensityData.custom_intensity_value || 0;
-            outsideRangeModeSpan.textContent = `范围外为 ${customValue}`;
-            outsideRangeModeSpan.className = 'info-value mode-custom';
-        }
-    }
     
     // 显示状态区域
     statusDiv.style.display = 'block';

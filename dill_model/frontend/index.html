@@ -526,12 +526,28 @@
                                             <option value="nm">纳米 (nm)</option>
                                             <option value="custom">自定义</option>
                                         </select>
-                                        <span class="help-icon" style="display: inline-flex; margin-left: 8px; background-color: #e1f5fe; color: #0277bd; cursor: help; font-size: 16px; border-radius: 50%; width: 20px; height: 20px; justify-content: center; align-items: center; border: 1px solid #b3e5fc;" title="选择上传数据的坐标单位。系统会根据选择的单位进行适当的坐标转换，确保计算结果准确。选择'自定义'可以手动设置转换比例。"><i class="fas fa-question" style="display: block; line-height: 1;"></i></span>
+                                        <span class="help-icon" style="display: inline-flex; margin-left: 8px; color: #0277bd; cursor: help; font-size: 16px;" title="选择上传数据的坐标单位。系统会根据选择的单位进行适当的坐标转换，确保计算结果准确。选择'自定义'可以手动设置转换比例。"><i class="fas fa-info-circle"></i></span>
                                         <div id="custom-scale-container" style="display: none; margin-top: 10px;">
                                             <label for="custom-scale-factor" style="margin-right: 10px;">自定义缩放比例:</label>
                                             <input type="number" id="custom-scale-factor" class="form-control" style="width: 100px; display: inline-block;" value="1" min="0.000001" step="0.1">
                                             <span style="margin-left: 5px; color: #666;">(相对于毫米)</span>
-                                            <span class="help-icon" style="display: inline-flex; margin-left: 8px; background-color: #e1f5fe; color: #0277bd; cursor: help; font-size: 16px; border-radius: 50%; width: 20px; height: 20px; justify-content: center; align-items: center; border: 1px solid #b3e5fc;" title="设置自定义单位到毫米(mm)的转换比例。例如：微米到毫米的比例为0.001，纳米到毫米的比例为0.000001。"><i class="fas fa-question" style="display: block; line-height: 1;"></i></span>
+                                            <span class="help-icon" style="display: inline-flex; margin-left: 8px; color: #0277bd; cursor: help; font-size: 16px;" title="设置自定义单位到毫米(mm)的转换比例。例如：微米到毫米的比例为0.001，纳米到毫米的比例为0.000001。"><i class="fas fa-info-circle"></i></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 添加数据范围外光强选项 -->
+                                    <div class="outside-range-setting" style="margin-top: 15px;">
+                                        <label for="outside-range-mode-file" style="margin-right: 10px; font-weight: 500;">数据范围外光强:</label>
+                                        <select id="outside-range-mode-file" class="form-control custom-select" style="width: auto; display: inline-block;">
+                                            <option value="zero" selected>零</option>
+                                            <option value="boundary">与边界值相同</option>
+                                            <option value="custom">自定义值</option>
+                                        </select>
+                                        <span class="help-icon" style="display: inline-flex; margin-left: 8px; color: #0277bd; cursor: help; font-size: 16px;" title="设置X坐标范围外区域的光强值。默认为0，也可选择与边界值相同或自定义值。"><i class="fas fa-info-circle"></i></span>
+                                        <div id="custom-intensity-value-file-container" style="display: none; margin-top: 10px;">
+                                            <label for="custom-intensity-value-file" style="margin-right: 10px;">自定义光强值:</label>
+                                            <input type="number" id="custom-intensity-value-file" class="form-control" style="width: 100px; display: inline-block;" value="0" min="0" step="0.1">
+                                            <span style="margin-left: 5px; color: #666;">(mW/cm²)</span>
                                         </div>
                                     </div>
                                                                 <div class="file-format-help">
@@ -648,12 +664,28 @@ Lithography (.ldf): 光刻数据格式<br>
                 <option value="nm">纳米 (nm)</option>
                 <option value="custom">自定义</option>
             </select>
-            <span class="help-icon" style="display: inline-flex; margin-left: 8px; background-color: #e1f5fe; color: #0277bd; cursor: help; font-size: 16px; border-radius: 50%; width: 20px; height: 20px; justify-content: center; align-items: center; border: 1px solid #b3e5fc;" title="选择手动输入数据的坐标单位。系统会根据选择的单位进行适当的坐标转换，确保计算结果准确。选择'自定义'可以手动设置转换比例。"><i class="fas fa-question" style="display: block; line-height: 1;"></i></span>
+            <span class="help-icon" style="display: inline-flex; margin-left: 8px; color: #0277bd; cursor: help; font-size: 16px;" title="选择手动输入数据的坐标单位。系统会根据选择的单位进行适当的坐标转换，确保计算结果准确。选择'自定义'可以手动设置转换比例。"><i class="fas fa-info-circle"></i></span>
             <div id="manual-scale-container" style="display: none; margin-top: 10px;">
                 <label for="manual-scale-factor" style="margin-right: 10px;">自定义缩放比例:</label>
                 <input type="number" id="manual-scale-factor" class="form-control" style="width: 100px; display: inline-block;" value="1" min="0.000001" step="0.1">
                 <span style="margin-left: 5px; color: #666;">(相对于毫米)</span>
-                <span class="help-icon" style="display: inline-flex; margin-left: 8px; background-color: #e1f5fe; color: #0277bd; cursor: help; font-size: 16px; border-radius: 50%; width: 20px; height: 20px; justify-content: center; align-items: center; border: 1px solid #b3e5fc;" title="设置自定义单位到毫米(mm)的转换比例。例如：微米到毫米的比例为0.001，纳米到毫米的比例为0.000001。"><i class="fas fa-question" style="display: block; line-height: 1;"></i></span>
+                <span class="help-icon" style="display: inline-flex; margin-left: 8px; color: #0277bd; cursor: help; font-size: 16px;" title="设置自定义单位到毫米(mm)的转换比例。例如：微米到毫米的比例为0.001，纳米到毫米的比例为0.000001。"><i class="fas fa-info-circle"></i></span>
+            </div>
+        </div>
+        
+        <!-- 添加数据范围外光强选项 -->
+        <div class="outside-range-setting" style="margin-top: 15px;">
+            <label for="outside-range-mode-manual" style="margin-right: 10px; font-weight: 500;">数据范围外光强:</label>
+            <select id="outside-range-mode-manual" class="form-control custom-select" style="width: auto; display: inline-block;">
+                <option value="zero" selected>零</option>
+                <option value="boundary">与边界值相同</option>
+                <option value="custom">自定义值</option>
+            </select>
+            <span class="help-icon" style="display: inline-flex; margin-left: 8px; color: #0277bd; cursor: help; font-size: 16px;" title="设置X坐标范围外区域的光强值。默认为0，也可选择与边界值相同或自定义值。"><i class="fas fa-info-circle"></i></span>
+            <div id="custom-intensity-value-manual-container" style="display: none; margin-top: 10px;">
+                <label for="custom-intensity-value-manual" style="margin-right: 10px;">自定义光强值:</label>
+                <input type="number" id="custom-intensity-value-manual" class="form-control" style="width: 100px; display: inline-block;" value="0" min="0" step="0.1">
+                <span style="margin-left: 5px; color: #666;">(mW/cm²)</span>
             </div>
         </div>
 
@@ -748,7 +780,34 @@ intensity3
                                         <span class="info-label">强度范围:</span>
                                         <span id="intensity-value-range">-</span>
                                     </div>
+                                    <div class="info-item">
+                                        <span class="info-label">范围外模式:</span>
+                                        <span id="outside-range-mode" class="info-value mode-zero">范围外为零</span>
+                                    </div>
                                 </div>
+                                <style>
+                                    .mode-zero {
+                                        color: #0066cc;
+                                        background: #e6f2ff;
+                                        padding: 2px 6px;
+                                        border-radius: 4px;
+                                        font-size: 0.9em;
+                                    }
+                                    .mode-boundary {
+                                        color: #996600;
+                                        background: #fff5e6;
+                                        padding: 2px 6px;
+                                        border-radius: 4px;
+                                        font-size: 0.9em;
+                                    }
+                                    .mode-custom {
+                                        color: #006600;
+                                        background: #e6ffea;
+                                        padding: 2px 6px;
+                                        border-radius: 4px;
+                                        font-size: 0.9em;
+                                    }
+                                </style>
                                 <div id="intensity-preview-plot" class="preview-plot"></div>
                             </div>
                         </div>
