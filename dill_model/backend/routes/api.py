@@ -167,28 +167,64 @@ def calculate():
             else:
                 K = float(data['K'])
                 
-                # 检查是否启用曝光时间窗口
-                enable_exposure_time_window = data.get('enable_exposure_time_window', False)
-                custom_exposure_times = data.get('custom_exposure_times', None)
+                # 检查曝光计量计算方式
+                exposure_calculation_method = data.get('exposure_calculation_method', 'standard')
                 
-                # 根据曝光时间窗口开关状态选择计算模式
-                if enable_exposure_time_window and custom_exposure_times is not None and len(custom_exposure_times) > 0:
-                    # 启用曝光时间窗口：使用自定义曝光时间生成数据
-                    add_progress_log('dill', f"启用曝光时间窗口 (自定义时间: {custom_exposure_times})", dimension='1d')
+                # 处理多段曝光时间累积模式
+                if exposure_calculation_method == 'cumulative':
+                    # 获取多段曝光时间累积参数
+                    segment_duration = float(data.get('segment_duration', 1))
+                    segment_count = int(data.get('segment_count', 5))
+                    segment_intensities = data.get('segment_intensities', [])
+                    
+                    # 参数验证
+                    if segment_count <= 0:
+                        return jsonify(format_response(False, message="段数必须为正整数")), 400
+                    if segment_duration <= 0:
+                        return jsonify(format_response(False, message="单段时间长度必须为正数")), 400
+                    if not segment_intensities or len(segment_intensities) == 0:
+                        return jsonify(format_response(False, message="多段曝光时间累积模式需要提供光强值列表")), 400
+                    
+                    # 记录日志
+                    add_progress_log('dill', f"使用多段曝光时间累积模式 (段数: {segment_count}, 单段时间: {segment_duration}s)", dimension='1d')
+                    
+                    # 扩展调用generate_plots函数时的参数
                     plots = model.generate_plots(I_avg, V, K, t_exp, C, sine_type=sine_type, 
                                                angle_a=angle_a, exposure_threshold=exposure_threshold, 
-                                               contrast_ctr=contrast_ctr, wavelength=wavelength, 
-                                               custom_exposure_times=custom_exposure_times,
-                                               custom_intensity_data=custom_intensity_data)
-                    add_success_log('dill', f"曝光时间窗口数据生成完成 ({len(custom_exposure_times)}组时间)", dimension='1d')
+                                               contrast_ctr=contrast_ctr, wavelength=wavelength,
+                                               custom_intensity_data=custom_intensity_data,
+                                               exposure_calculation_method='cumulative',
+                                               segment_duration=segment_duration,
+                                               segment_count=segment_count, 
+                                               segment_intensities=segment_intensities)
+                    
+                    add_success_log('dill', f"多段曝光时间累积模式计算完成 (总时间: {segment_duration * segment_count}s)", dimension='1d')
+                    
+                # 检查是否启用曝光时间窗口
+                elif data.get('enable_exposure_time_window', False):
+                    custom_exposure_times = data.get('custom_exposure_times', None)
+                    
+                    if custom_exposure_times is not None and len(custom_exposure_times) > 0:
+                        # 启用曝光时间窗口：使用自定义曝光时间生成数据
+                        add_progress_log('dill', f"启用曝光时间窗口 (自定义时间: {custom_exposure_times})", dimension='1d')
+                        plots = model.generate_plots(I_avg, V, K, t_exp, C, sine_type=sine_type, 
+                                                   angle_a=angle_a, exposure_threshold=exposure_threshold, 
+                                                   contrast_ctr=contrast_ctr, wavelength=wavelength, 
+                                                   custom_exposure_times=custom_exposure_times,
+                                                   custom_intensity_data=custom_intensity_data)
+                        add_success_log('dill', f"曝光时间窗口数据生成完成 ({len(custom_exposure_times)}组时间)", dimension='1d')
+                    else:
+                        # 未提供有效的自定义时间
+                        add_error_log('dill', f"启用曝光时间窗口但未提供有效的自定义时间", dimension='1d')
+                        return jsonify(format_response(False, message="启用曝光时间窗口需要提供有效的自定义时间")), 400
                 else:
-                    # 未启用曝光时间窗口：生成基于用户当前输入t_exp的单一时间数据
-                    add_progress_log('dill', f"使用单一曝光时间 (t_exp: {t_exp}s)", dimension='1d')
+                    # 标准模式：生成基于用户当前输入t_exp的单一时间数据
+                    add_progress_log('dill', f"使用标准曝光模式 (t_exp: {t_exp}s)", dimension='1d')
                     plots = model.generate_plots(I_avg, V, K, t_exp, C, sine_type=sine_type, 
                                             angle_a=angle_a, exposure_threshold=exposure_threshold, 
                                             contrast_ctr=contrast_ctr, wavelength=wavelength,
                                             custom_intensity_data=custom_intensity_data)
-                    add_success_log('dill', f"单一曝光时间数据生成完成 (t_exp: {t_exp}s)", dimension='1d')
+                    add_success_log('dill', f"标准曝光模式计算完成 (t_exp: {t_exp}s)", dimension='1d')
                 
                 # 检查是否启用1D动画
                 enable_1d_animation = data.get('enable_1d_animation', False)

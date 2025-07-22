@@ -49,6 +49,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化曝光时间窗口选择器
     initExposureTimeWindowSelector();
     
+    // 初始化曝光计量计算方式选择器
+    initExposureCalculationMethodSelector();
+    
     // 初始化自定义向量控制框状态
     initCustomVectorControlsState();
     

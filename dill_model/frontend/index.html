@@ -136,6 +136,9 @@
     
     <!-- 引入系统化日志管理 -->
     <script src="js/systematic-logs.js?v=1.0"></script>
+    
+    <!-- 引入多段曝光时间累积模式 -->
+    <script src="js/cumulative-exposure.js?v=1.0"></script>
 </head>
 <body>
     <!-- 加载动画 -->
@@ -953,8 +956,22 @@ intensity3
 
                     <!-- 曝光时间窗口参数容器 -->
                     <div class="parameter-group-container" id="dill-exposure-time-params-container" data-title="曝光时间窗口参数" data-i18n-title="dill_exposure_time_params">
+                        <!-- 曝光计量计算选项 -->
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span class="parameter-name">曝光计量计算方式</span>
+                            </div>
+                            <div class="parameter-input">
+                                <select id="exposure_calculation_method" class="method-select" title="选择曝光计量计算方式" aria-label="曝光计量计算方式选择">
+                                    <option value="standard">标准模式</option>
+                                    <option value="cumulative">多段曝光时间累积</option>
+                                </select>
+                            </div>
+                            <div class="parameter-description">选择曝光计量计算方式：标准模式(单一时间)或多段曝光时间累积模式</div>
+                        </div>
+
                         <!-- 单一曝光时间参数 -->
-                        <div class="parameter-item slider-fill">
+                        <div class="parameter-item slider-fill" id="standard_exposure_time_container">
                             <div class="parameter-label">
                                 <span class="parameter-name">曝光时间 (t<sub>exp</sub>)</span>
                                 
@@ -965,6 +982,105 @@ intensity3
                                 <input type="number" class="number-input" value="100" min="0.1" max="1000" step="0.1" title="曝光时间数值输入" aria-label="曝光时间数值">
                             </div>
                             <div class="parameter-description" data-i18n="param_desc_t_exp">决定曝光剂量，时间长=剂量大=反应充分，时间短=剂量小=反应不足</div>
+                        </div>
+                        
+                        <!-- 多段曝光时间累积参数 -->
+                        <div class="parameter-item" id="cumulative_exposure_container" style="display: none;">
+                            <div class="parameter-label">
+                                <span class="parameter-name">多段曝光时间累积设置</span>
+                            </div>
+                            <div class="parameter-input">
+                                <!-- 多段曝光时间累积设置 - 新布局 -->
+                                <div class="exposure-config-wrapper">
+                                    <!-- 顶部设置区域 -->
+                                    <div class="exposure-settings-section">
+                                        <!-- 时间模式选择 -->
+                                        <div class="setting-item">
+                                            <label for="time_mode">时间段设置方式:</label>
+                                            <div class="setting-field">
+                                                <select id="time_mode">
+                                                    <option value="fixed">固定时间段</option>
+                                                    <option value="custom">自定义时间点</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 单段时间长度设置 -->
+                                        <div id="fixed-time-settings" class="setting-item">
+                                            <label for="segment_duration">单段时间长度:</label>
+                                            <div class="setting-field">
+                                                <input type="number" id="segment_duration" value="1" min="0.1" max="10" step="0.1">
+                                                <span class="unit">秒</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 总段数设置 -->
+                                        <div class="setting-item">
+                                            <label for="segment_count">总段数:</label>
+                                            <div class="setting-field">
+                                                <input type="number" id="segment_count" value="5" min="1" max="50" step="1">
+                                                <span class="unit">段</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 总曝光时间显示 -->
+                                        <div class="setting-item">
+                                            <label>总曝光时间:</label>
+                                            <div class="result-value-wrapper">
+                                                <span id="total_exposure_time" class="result-value">5</span>
+                                                <span class="unit">秒</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 总曝光计量显示 -->
+                                        <div class="setting-item">
+                                            <label>总曝光计量:</label>
+                                            <div class="result-value-wrapper">
+                                                <span id="total_exposure_dose" class="result-value">2.5</span>
+                                                <span class="unit">mJ/cm²</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 生成按钮 -->
+                                        <div class="setting-item">
+                                            <label>&nbsp;</label>
+                                            <button id="generate_segments_btn" class="generate-button">
+                                                <i class="fas fa-sync-alt"></i> 生成段落设置
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 底部表格区域 -->
+                                <div class="segments-table-section">
+                                    <div class="section-header">
+                                        <h3 class="section-title">曝光段落光强设置</h3>
+                                        <div class="section-meta">光强单位: mW/cm²</div>
+                                    </div>
+                                    
+                                    <div class="segments-table-container">
+                                        <div id="cumulative_segment_container">
+                                            <!-- 段落会通过JS动态生成 -->
+                                            <div class="placeholder-message">
+                                                <div class="placeholder-icon"><i class="fas fa-table"></i></div>
+                                                <p>请设置段数后点击生成按钮创建曝光段落表格</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 曝光参数说明 -->
+                                    <div class="exposure-help-panel">
+                                        <div class="help-icon"><i class="fas fa-lightbulb"></i></div>
+                                        <div class="help-text">
+                                            在多段曝光时间累积模式中，每段时间使用不同的光强值，最终曝光计量为各段累加结果。这有助于模拟实际光刻过程中的曝光变化。
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="parameter-description" style="margin-top: 20px; padding: 18px; background: #fafafa; border: 1px solid #eee; border-radius: 4px; color: #555; font-size: 14px; line-height: 1.5;">
+                                <i class="fas fa-info-circle" style="color: #666; margin-right: 10px; font-size: 16px;"></i>
+                                <span>在多段曝光时间累积模式中，每段时间使用不同的光强值，最终曝光计量为各段累加结果。这有助于模拟实际光刻过程中的曝光变化。</span>
+                            </div>
                         </div>
                         
                         <!-- 曝光时间窗口控制 -->

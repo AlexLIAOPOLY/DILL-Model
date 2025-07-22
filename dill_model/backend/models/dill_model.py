@@ -420,7 +420,7 @@ class DillModel:
             
             return result
     
-    def calculate_exposure_dose(self, x, I_avg, V, K=None, t_exp=1, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, custom_intensity_data=None):
+    def calculate_exposure_dose(self, x, I_avg, V, K=None, t_exp=1, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None):
         """
         计算曝光剂量分布，支持一维、二维和三维正弦波，以及自定义光强分布
         
@@ -438,6 +438,10 @@ class DillModel:
             y: y坐标
             z: z坐标（三维模式使用）
             custom_intensity_data: 自定义光强分布数据 {'x': [], 'intensity': []}
+            exposure_calculation_method: 曝光计量计算方式 ('standard'或'cumulative')
+            segment_duration: 多段曝光时间累积模式下的单段时间长度
+            segment_count: 多段曝光时间累积模式下的段数
+            segment_intensities: 多段曝光时间累积模式下各段的光强值列表
             
         返回:
             曝光剂量分布数组
@@ -445,17 +449,58 @@ class DillModel:
         logger.info("=" * 60)
         logger.info("【Dill模型 - 曝光剂量计算】")
         logger.info("=" * 60)
-        logger.info("🔸 使用公式: D(x) = I(x) * t_exp")
-        logger.info(f"🔸 输入变量值:")
-        logger.info(f"   - t_exp (曝光时间) = {t_exp}")
         
-        # 只支持t=0时的phi_expr，后续可扩展为时变
-        intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0, custom_intensity_data=custom_intensity_data)
-        exposure_dose = intensity * t_exp
-        
-        logger.info(f"🔸 计算结果:")
-        logger.info(f"   - 曝光剂量范围: [{np.min(exposure_dose):.6f}, {np.max(exposure_dose):.6f}]")
-        logger.info(f"   - 曝光剂量平均值: {np.mean(exposure_dose):.6f}")
+        # 检查是否使用多段曝光时间累积模式
+        if exposure_calculation_method == 'cumulative' and segment_intensities is not None and segment_count is not None and segment_duration is not None:
+            logger.info("🔸 使用多段曝光时间累积模式计算曝光剂量")
+            logger.info(f"🔸 多段曝光时间参数:")
+            logger.info(f"   - 段数 = {segment_count}")
+            logger.info(f"   - 单段时间 = {segment_duration}秒")
+            logger.info(f"   - 总曝光时间 = {segment_count * segment_duration}秒")
+            logger.info(f"   - 各段光强值 = {segment_intensities[:5]}... (共{len(segment_intensities)}段)")
+            
+            # 获取基准光强分布
+            # 由于多段曝光时间累积模式下，各段使用不同的光强值，
+            # 这里计算的基准强度分布仅用于得到空间分布形状
+            base_intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0, custom_intensity_data=custom_intensity_data)
+            
+            # 归一化基准光强分布，使其均值为1
+            if np.mean(base_intensity) != 0:
+                normalized_intensity = base_intensity / np.mean(base_intensity)
+            else:
+                normalized_intensity = np.ones_like(base_intensity)
+            
+            # 累积各段曝光剂量
+            exposure_dose = np.zeros_like(x, dtype=np.float64)
+            
+            for i in range(segment_count):
+                if i < len(segment_intensities):
+                    segment_intensity = segment_intensities[i] * normalized_intensity
+                    segment_exposure = segment_intensity * segment_duration
+                    exposure_dose += segment_exposure
+                    
+                    # 记录日志（仅显示前3段和最后1段）
+                    if i < 3 or i == segment_count - 1:
+                        logger.info(f"   - 段{i+1}: 光强均值={np.mean(segment_intensity):.4f}, 曝光剂量均值={np.mean(segment_exposure):.4f}")
+            
+            logger.info(f"🔸 计算结果:")
+            logger.info(f"   - 总曝光剂量范围: [{np.min(exposure_dose):.6f}, {np.max(exposure_dose):.6f}]")
+            logger.info(f"   - 总曝光剂量平均值: {np.mean(exposure_dose):.6f}")
+            
+        else:
+            # 标准模式计算
+            logger.info("🔸 使用标准模式计算曝光剂量")
+            logger.info("🔸 使用公式: D(x) = I(x) * t_exp")
+            logger.info(f"🔸 输入变量值:")
+            logger.info(f"   - t_exp (曝光时间) = {t_exp}")
+            
+            # 只支持t=0时的phi_expr，后续可扩展为时变
+            intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0, custom_intensity_data=custom_intensity_data)
+            exposure_dose = intensity * t_exp
+            
+            logger.info(f"🔸 计算结果:")
+            logger.info(f"   - 曝光剂量范围: [{np.min(exposure_dose):.6f}, {np.max(exposure_dose):.6f}]")
+            logger.info(f"   - 曝光剂量平均值: {np.mean(exposure_dose):.6f}")
         
         return exposure_dose
     
@@ -625,7 +670,7 @@ class DillModel:
         
         return result
 
-    def generate_data(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None):
+    def generate_data(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None):
         """
         生成数据，支持一维、二维、三维正弦波和4D动画
         
@@ -652,6 +697,11 @@ class DillModel:
             exposure_threshold: 理想曝光模型曝光阈值
             contrast_ctr: 理想曝光模型对比度参数
             custom_exposure_times: 自定义曝光时间列表（用于曝光时间窗口功能）
+            custom_intensity_data: 自定义光强分布数据
+            exposure_calculation_method: 曝光计量计算方式 ('standard'或'cumulative')
+            segment_duration: 多段曝光时间累积模式下的单段时间长度
+            segment_count: 多段曝光时间累积模式下的段数
+            segment_intensities: 多段曝光时间累积模式下各段的光强值列表
             
         返回:
             包含曝光剂量和厚度数据的字典
@@ -1025,7 +1075,11 @@ class DillModel:
                     # 使用自定义光强分布计算曝光剂量
                     exposure_dose = self.calculate_exposure_dose(
                         x_coords, I_avg, V, K, t_exp, '1d', 
-                        custom_intensity_data=custom_intensity_data
+                        custom_intensity_data=custom_intensity_data,
+                        exposure_calculation_method=exposure_calculation_method,
+                        segment_duration=segment_duration,
+                        segment_count=segment_count,
+                        segment_intensities=segment_intensities
                     )
                     
                     # 获取光强分布
@@ -1179,7 +1233,7 @@ class DillModel:
                 
                 return enhanced_ideal_data
 
-    def generate_plots(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None):
+    def generate_plots(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None):
         """
         生成图表数据的包装器方法
         
@@ -1201,6 +1255,11 @@ class DillModel:
             exposure_threshold: 理想曝光模型曝光阈值
             contrast_ctr: 理想曝光模型对比度参数
             custom_exposure_times: 自定义曝光时间列表
+            custom_intensity_data: 自定义光强分布数据
+            exposure_calculation_method: 曝光计量计算方式 ('standard'或'cumulative')
+            segment_duration: 多段曝光时间累积模式下的单段时间长度
+            segment_count: 多段曝光时间累积模式下的段数
+            segment_intensities: 多段曝光时间累积模式下各段的光强值列表
             
         返回:
             包含图表数据的字典
@@ -1208,7 +1267,30 @@ class DillModel:
         logger.info("🎯 调用DillModel.generate_plots方法")
         logger.info(f"🎯 generate_plots收到的custom_exposure_times = {custom_exposure_times}")
         logger.info(f"🎯 generate_plots收到的custom_intensity_data = {custom_intensity_data is not None}")
-        return self.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type, Kx=Kx, Ky=Ky, Kz=Kz, phi_expr=phi_expr, y_range=y_range, z_range=z_range, enable_4d_animation=enable_4d_animation, t_start=t_start, t_end=t_end, time_steps=time_steps, x_min=x_min, x_max=x_max, angle_a=angle_a, exposure_threshold=exposure_threshold, contrast_ctr=contrast_ctr, wavelength=wavelength, custom_exposure_times=custom_exposure_times, custom_intensity_data=custom_intensity_data)
+        
+        # 记录多段曝光时间累积模式参数
+        if exposure_calculation_method == 'cumulative':
+            logger.info(f"🎯 多段曝光时间累积模式参数:")
+            logger.info(f"   - segment_duration = {segment_duration}")
+            logger.info(f"   - segment_count = {segment_count}")
+            logger.info(f"   - segment_intensities = {segment_intensities[:5]}... (共{len(segment_intensities)}段)")
+        
+        return self.generate_data(
+            I_avg, V, K, t_exp, C, sine_type=sine_type, 
+            Kx=Kx, Ky=Ky, Kz=Kz, phi_expr=phi_expr, 
+            y_range=y_range, z_range=z_range, 
+            enable_4d_animation=enable_4d_animation, 
+            t_start=t_start, t_end=t_end, time_steps=time_steps, 
+            x_min=x_min, x_max=x_max, 
+            angle_a=angle_a, exposure_threshold=exposure_threshold, 
+            contrast_ctr=contrast_ctr, wavelength=wavelength, 
+            custom_exposure_times=custom_exposure_times, 
+            custom_intensity_data=custom_intensity_data,
+            exposure_calculation_method=exposure_calculation_method,
+            segment_duration=segment_duration,
+            segment_count=segment_count,
+            segment_intensities=segment_intensities
+        )
 
     def generate_1d_animation_data(self, I_avg, V, K, t_exp_start, t_exp_end, time_steps, C, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405):
         """
