@@ -229,13 +229,52 @@ class DillModel:
             
             # 创建插值函数，处理边界外的值
             try:
-                # 检查是否有单位信息
+                # 检查是否有单位信息并进行单位转换
                 unit_scale = custom_intensity_data.get('unit_scale', 1.0)
                 original_unit = custom_intensity_data.get('original_unit', 'mm')
                 
                 logger.info(f"🔸 单位信息检测:")
                 logger.info(f"   - 原始单位: {original_unit}")
                 logger.info(f"   - 单位比例: {unit_scale}")
+                
+                # 🔥 修复：智能单位转换逻辑
+                x_min_target, x_max_target = np.min(x), np.max(x)
+                target_range = x_max_target - x_min_target
+                
+                # 判断目标坐标轴的单位（基于范围大小）
+                # 标准模式: 0-10 (范围=10), 多段模式: -1000到1000 (范围=2000)
+                if target_range > 1000:  # 目标范围很大，可能是微米单位
+                    target_is_um = True
+                    logger.info(f"🔸 目标坐标轴范围较大 ({target_range:.1f})，推测为微米(μm)单位")
+                else:  # 目标范围较小，可能是毫米单位
+                    target_is_um = False
+                    logger.info(f"🔸 目标坐标轴范围较小 ({target_range:.1f})，推测为毫米(mm)单位")
+                
+                # 关键修复：前端已经将所有数据转换为毫米单位
+                # unit_scale != 1.0 表示前端进行了单位转换
+                if unit_scale != 1.0:
+                    logger.info(f"🔸 前端已进行单位转换: {original_unit} → mm (比例: {unit_scale})")
+                    logger.info(f"🔸 后端接收的数据已是毫米单位，无需根据original_unit再次转换")
+                    
+                    # 只需判断目标坐标系是否为微米，决定是否转换
+                    if target_is_um:
+                        # 目标是微米，需要将毫米转微米
+                        custom_x = custom_x * 1000.0
+                        logger.info(f"🔸 目标单位转换: 毫米(mm) → 微米(μm)，坐标乘以1000")
+                    else:
+                        # 目标是毫米，无需转换
+                        logger.info(f"🔸 单位确认: 数据和目标都是毫米(mm)单位，无需转换")
+                else:
+                    # unit_scale == 1.0，前端未转换，数据本身就是mm单位
+                    logger.info(f"🔸 前端未进行单位转换，数据本身为毫米(mm)单位")
+                    
+                    if target_is_um:
+                        # 目标是微米，需要转换
+                        custom_x = custom_x * 1000.0
+                        logger.info(f"🔸 目标单位转换: 毫米(mm) → 微米(μm)，坐标乘以1000")
+                    else:
+                        # 目标是毫米，无需转换
+                        logger.info(f"🔸 单位确认: 数据和目标都是毫米(mm)单位，无需转换")
                 
                 # 扩展自定义数据范围以覆盖目标范围
                 x_min_target, x_max_target = np.min(x), np.max(x)
@@ -1046,16 +1085,32 @@ class DillModel:
                     # 创建坐标轴
                     x_coords = np.linspace(-1000, 1000, 2001)
                     
-                    # 🔥 计算基准光强分布（使用理想曝光模型公式，保持与正常模式一致）
-                    # 使用理想曝光模型公式而非普通Dill模型，确保周期数合理
-                    angle_a_rad = angle_a * np.pi / 180
-                    spatial_freq = 4 * np.pi * np.sin(angle_a_rad) / wavelength
-                    base_intensity = I_avg * (1 + V * np.cos(spatial_freq * x_coords))
                     
-                    logger.info(f"🔥 使用理想曝光模型公式计算基准光强:")
-                    logger.info(f"   - 空间频率: 4π×sin({angle_a}°)/{wavelength} = {spatial_freq:.6f} rad/μm")
-                    logger.info(f"   - 波长: {2*np.pi/spatial_freq:.1f} μm")
-                    logger.info(f"   - 预期周期数: {2000/(2*np.pi/spatial_freq):.1f}个")
+                    # 🔥 计算基准光强分布（使用正确的光强分布计算方法，支持自定义光强数据）
+                    # 修复：使用calculate_intensity_distribution方法来正确处理custom_intensity_data
+                    base_intensity = self.calculate_intensity_distribution(
+                        x_coords, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, 
+                        y=0, z=0, t=0, custom_intensity_data=custom_intensity_data
+                    )
+                    
+                    # 如果没有自定义数据，使用理想曝光模型公式作为备选
+                    if custom_intensity_data is None:
+                        angle_a_rad = angle_a * np.pi / 180
+                        spatial_freq = 4 * np.pi * np.sin(angle_a_rad) / wavelength
+                        base_intensity = I_avg * (1 + V * np.cos(spatial_freq * x_coords))
+                    
+                    # 记录光强分布计算信息
+                    if custom_intensity_data is not None:
+                        logger.info(f"🔥 使用自定义光强数据计算基准光强:")
+                        logger.info(f"   - 自定义数据点数: {len(custom_intensity_data.get('x', []))}")
+                        logger.info(f"   - 光强范围: [{np.min(base_intensity):.6f}, {np.max(base_intensity):.6f}]")
+                    else:
+                        logger.info(f"🔥 使用理想曝光模型公式计算基准光强:")
+                        angle_a_rad = angle_a * np.pi / 180
+                        spatial_freq = 4 * np.pi * np.sin(angle_a_rad) / wavelength
+                        logger.info(f"   - 空间频率: 4π×sin({angle_a}°)/{wavelength} = {spatial_freq:.6f} rad/μm")
+                        logger.info(f"   - 波长: {2*np.pi/spatial_freq:.1f} μm")
+                        logger.info(f"   - 预期周期数: {2000/(2*np.pi/spatial_freq):.1f}个")
                     
                     # 🔥 累积计算多段曝光剂量 - 修复：使用实际光强值而非归一化
                     cumulative_exposure_dose = np.zeros_like(x_coords, dtype=np.float64)

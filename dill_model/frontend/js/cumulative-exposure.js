@@ -18,6 +18,12 @@ let cumulativeExposureSegments = {
  * 初始化曝光计量计算方式选择器
  */
 function initExposureCalculationMethodSelector() {
+    // 防止重复初始化
+    if (window.cumulativeExposureInitialized) {
+        console.log('曝光计量计算方式选择器已初始化，跳过');
+        return;
+    }
+    
     const methodSelect = document.getElementById('exposure_calculation_method');
     const standardContainer = document.getElementById('standard_exposure_time_container');
     const cumulativeContainer = document.getElementById('cumulative_exposure_container');
@@ -34,6 +40,10 @@ function initExposureCalculationMethodSelector() {
         console.warn('曝光计量计算方式相关DOM元素未找到');
         return;
     }
+    
+    // 设置初始化标志
+    window.cumulativeExposureInitialized = true;
+    console.log('✅ 曝光计量计算方式选择器初始化');
     
     // 初始化时间模式选择器
     initTimeModeSwitcher();
@@ -88,6 +98,11 @@ function initExposureCalculationMethodSelector() {
                 vEvaluationControl.style.display = 'block';
             }
             
+            // 显示切换到标准模式的通知（使用蓝色样式）
+            if (typeof showNotification === 'function') {
+                showNotification('已切换到标准模式，所有控制框已恢复显示', 'info');
+            }
+            
         } else if (method === 'cumulative') {
             // 多段曝光时间累积模式
             standardContainer.style.display = 'none';
@@ -110,6 +125,11 @@ function initExposureCalculationMethodSelector() {
             // 检查是否需要初始化段落输入框
             if (cumulativeExposureSegments.intensities.length === 0) {
                 generateSegmentInputs();
+            }
+            
+            // 显示切换到多段曝光时间累计模式的通知
+            if (typeof showNotification === 'function') {
+                showNotification('已切换到多段曝光时间累计模式，请设置段落参数', 'info');
             }
         }
     });
@@ -675,8 +695,8 @@ function calculateTotalExposureDoseFromParams(intensities, timeMode, segmentDura
 
 // 在页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
-    // 初始化曝光计量计算方式选择器
-    initExposureCalculationMethodSelector();
+    // 不在这里初始化，避免重复注册事件
+    // initExposureCalculationMethodSelector() 由 main.js 统一调用
     
     // 添加CSS样式
     const style = document.createElement('style');
@@ -758,3 +778,5 @@ window.extendParametersWithCumulative = function(params) {
     
     return params;
 }; 
+
+ 

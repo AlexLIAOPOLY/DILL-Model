@@ -130,6 +130,7 @@ def check_dependencies():
     for package in required_packages:
         try:
             if package == 'flask_cors':
+                # flask_cors包安装后的实际模块名是flask_cors
                 import flask_cors
             else:
                 __import__(package)
