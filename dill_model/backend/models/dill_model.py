@@ -1032,7 +1032,16 @@ class DillModel:
                 logger.info(f"🔸 正在使用理想曝光模型计算一维分布...")
                 
                 # 确定要使用的曝光时间序列
-                if custom_exposure_times is not None and len(custom_exposure_times) > 0:
+                if exposure_calculation_method == 'cumulative' and segment_count is not None and segment_duration is not None:
+                    # 使用多段曝光时间累积模式
+                    total_time = segment_count * segment_duration
+                    exposure_times_to_use = [total_time]
+                    logger.info(f"🔸 使用多段曝光时间累积模式:")
+                    logger.info(f"   - 段数: {segment_count}")
+                    logger.info(f"   - 单段时长: {segment_duration}s")
+                    logger.info(f"   - 总曝光时间: {total_time}s")
+                    logger.info(f"   - 光强数组: {segment_intensities}")
+                elif custom_exposure_times is not None and len(custom_exposure_times) > 0:
                     # 使用自定义曝光时间（启用曝光时间窗口模式）
                     exposure_times_to_use = custom_exposure_times
                     logger.info(f"🔸 使用自定义曝光时间序列: {exposure_times_to_use}")

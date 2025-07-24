@@ -1724,6 +1724,12 @@ function getParameterValues() {
             params.K = params.Kx;
         }
     }
+    
+    // 调用多段曝光时间累积模式的参数扩展函数
+    if (typeof window.extendParametersWithCumulative === 'function') {
+        params = window.extendParametersWithCumulative(params);
+    }
+    
     return params;
 }
 
@@ -3518,8 +3524,24 @@ function createThicknessPlot(container, data) {
                 return;
             }
             
+            // 检查是否使用多段曝光时间累积模式
+            const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+            const isCumulativeExposure = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+            
+            let titleText = 'DILL模型 - 蚀刻深度分布 (多曝光时间)';
+            if (isCumulativeExposure) {
+                // 获取多段曝光的总时间
+                const segmentCountInput = document.getElementById('segment_count');
+                const segmentDurationInput = document.getElementById('segment_duration');
+                const segmentCount = segmentCountInput ? parseInt(segmentCountInput.value) || 5 : 5;
+                const segmentDuration = segmentDurationInput ? parseFloat(segmentDurationInput.value) || 1 : 1;
+                const totalTime = segmentCount * segmentDuration;
+                
+                titleText = `DILL模型 - 刻蚀深度分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
+            }
+            
             const layout = {
-                title: 'DILL模型 - 蚀刻深度分布 (多曝光时间)',
+                title: titleText,
                 xaxis: { title: '位置 (mm)' },
                 yaxis: { title: '蚀刻深度' },
                 margin: { l: 70, r: 20, t: 80, b: 60 },
@@ -3570,6 +3592,22 @@ function createThicknessPlot(container, data) {
     }
 
     try {
+        // 检查是否使用多段曝光时间累积模式
+        const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+        const isCumulativeExposure = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+        
+        let traceName = (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].thickness_trace_name) || '相对厚度';
+        if (isCumulativeExposure) {
+            // 获取多段曝光的总时间
+            const segmentCountInput = document.getElementById('segment_count');
+            const segmentDurationInput = document.getElementById('segment_duration');
+            const segmentCount = segmentCountInput ? parseInt(segmentCountInput.value) || 5 : 5;
+            const segmentDuration = segmentDurationInput ? parseFloat(segmentDurationInput.value) || 1 : 1;
+            const totalTime = segmentCount * segmentDuration;
+            
+            traceName = `刻蚀深度分布 t=${totalTime.toFixed(1)}s`;
+        }
+        
         const trace = {
             x: xCoords,
             y: yData,
@@ -3577,7 +3615,7 @@ function createThicknessPlot(container, data) {
             mode: 'lines+markers',
             line: { color: '#ff7f0e', width: 2 },
             marker: { size: 4, color: '#ff7f0e' },
-            name: (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].thickness_trace_name) || '相对厚度',
+            name: traceName,
             hovertemplate: `位置: %{x}<br>${(window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].hover_thickness_value) || '相对厚度值'}: %{y}<extra></extra>`
         };
 
@@ -3589,12 +3627,19 @@ function createThicknessPlot(container, data) {
             xAxisTitle = (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].x_position) || 'X 位置 (μm)';
         }
 
+        let titleText = '刻蚀深度分布 (1D)';
+        if (isCumulativeExposure) {
+            // 使用前面计算的总时间
+            const totalTime = (segmentCount * segmentDuration);
+            titleText = `刻蚀深度分布 (1D) - 多段曝光时间累积 t=${totalTime.toFixed(1)}s`;
+        }
+        
         const layout = {
-            title: '刻蚀深度分布 (1D)',
+            title: titleText,
             xaxis: { title: xAxisTitle },
             yaxis: { title: (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].thickness_trace_name) || '相对厚度' },
             margin: { l: 60, r: 20, t: 60, b: 60 },
-            showlegend: false
+            showlegend: isCumulativeExposure // 只在多段曝光模式下显示图例
         };
         
         Plotly.newPlot(container, [trace], layout, {responsive: true});

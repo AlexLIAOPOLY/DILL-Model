@@ -579,6 +579,7 @@ def calculate_data():
                     raise
                     
             else: # 1D Dill
+                print(f"🎯 DEBUG: 进入1D Dill分支，sine_type = '{sine_type}'")
                 K = float(data['K'])
                 
                 # 检查启用的功能
@@ -606,8 +607,33 @@ def calculate_data():
                 
                 calc_start = time.time()
                 
+                # 检查曝光计量计算方式 - 这里是真正的计算调用点
+                exposure_calculation_method = data.get('exposure_calculation_method', 'standard')
+                print(f"🔍 真实调用点调试: exposure_calculation_method = '{exposure_calculation_method}'")
+                
+                # 处理多段曝光时间累积模式
+                if exposure_calculation_method == 'cumulative':
+                    # 获取多段曝光时间累积参数
+                    segment_duration = float(data.get('segment_duration', 1))
+                    segment_count = int(data.get('segment_count', 5))
+                    segment_intensities = data.get('segment_intensities', [])
+                    total_exposure_dose = data.get('total_exposure_dose', segment_count * segment_duration)
+                    
+                    print(f"🔥 真实调用点: 进入多段曝光时间累积模式")
+                    print(f"🔥 参数: segment_count={segment_count}, segment_duration={segment_duration}")
+                    print(f"🔥 参数: segment_intensities={segment_intensities}, total_dose={total_exposure_dose}")
+                    
+                    # 使用多段曝光时间累积模式生成数据
+                    plot_data = model.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type,
+                                                   angle_a=angle_a, exposure_threshold=exposure_threshold, 
+                                                   contrast_ctr=contrast_ctr, wavelength=wavelength,
+                                                   custom_intensity_data=custom_intensity_data,
+                                                   exposure_calculation_method='cumulative',
+                                                   segment_duration=segment_duration,
+                                                   segment_count=segment_count,
+                                                   segment_intensities=segment_intensities)
                 # 根据曝光时间窗口开关状态选择计算模式
-                if enable_exposure_time_window and custom_exposure_times is not None and len(custom_exposure_times) > 0:
+                elif enable_exposure_time_window and custom_exposure_times is not None and len(custom_exposure_times) > 0:
                     print(f"🎯 calculate_data端点: 启用曝光时间窗口，使用自定义曝光时间 {custom_exposure_times}")
                     # 启用曝光时间窗口：使用自定义曝光时间生成数据
                     plot_data = model.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type, 
@@ -615,8 +641,8 @@ def calculate_data():
                                                    contrast_ctr=contrast_ctr, wavelength=wavelength, custom_exposure_times=custom_exposure_times,
                                                    custom_intensity_data=custom_intensity_data)
                 else:
-                    print(f"🎯 calculate_data端点: 未启用曝光时间窗口，使用单一曝光时间 {t_exp}s")
-                    # 未启用曝光时间窗口：使用单一曝光时间生成数据
+                    print(f"🎯 calculate_data端点: 使用标准曝光模式，单一曝光时间 {t_exp}s")
+                    # 标准模式：使用单一曝光时间生成数据
                     plot_data = model.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type,
                                                    angle_a=angle_a, exposure_threshold=exposure_threshold, 
                                                    contrast_ctr=contrast_ctr, wavelength=wavelength,

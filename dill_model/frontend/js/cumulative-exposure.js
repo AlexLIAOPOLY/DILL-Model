@@ -120,26 +120,72 @@ function initExposureCalculationMethodSelector() {
     
     if (segmentCountInput) {
         segmentCountInput.addEventListener('change', function() {
-            cumulativeExposureSegments.segmentCount = parseInt(this.value) || 5;
+            const newCount = parseInt(this.value) || 5;
+            cumulativeExposureSegments.segmentCount = newCount;
+            
+            // 如果段数发生变化，需要重新生成段落输入框
+            if (newCount !== cumulativeExposureSegments.intensities.length) {
+                console.log(`🔄 段数从 ${cumulativeExposureSegments.intensities.length} 更改为 ${newCount}，重新生成段落`);
+                generateSegmentInputs();
+            }
             
             // 计算并更新总曝光时间和计量
             updateTotalValues();
+            
+            // 清空计算结果，与滑块行为一致
+            if (typeof clearAllCharts === 'function') {
+                clearAllCharts();
+            }
+            if (typeof showRecalculationNotice === 'function') {
+                showRecalculationNotice();
+            }
         });
         
         // 添加输入事件以实时更新总曝光时间
-        segmentCountInput.addEventListener('input', updateTotalValues);
+        segmentCountInput.addEventListener('input', function() {
+            updateTotalValues();
+            
+            // 清空计算结果，与滑块行为一致
+            if (typeof clearAllCharts === 'function') {
+                clearAllCharts();
+            }
+            if (typeof showRecalculationNotice === 'function') {
+                showRecalculationNotice();
+            }
+        });
     }
     
     if (segmentDurationInput) {
         segmentDurationInput.addEventListener('change', function() {
-            cumulativeExposureSegments.segmentDuration = parseFloat(this.value) || 1;
+            const newDuration = parseFloat(this.value) || 1;
+            cumulativeExposureSegments.segmentDuration = newDuration;
+            
+            console.log(`🔄 单段时间长度更新为: ${newDuration}秒`);
             
             // 计算并更新总曝光时间和计量
             updateTotalValues();
+            
+            // 清空计算结果，与滑块行为一致
+            if (typeof clearAllCharts === 'function') {
+                clearAllCharts();
+            }
+            if (typeof showRecalculationNotice === 'function') {
+                showRecalculationNotice();
+            }
         });
         
         // 添加输入事件以实时更新总曝光时间
-        segmentDurationInput.addEventListener('input', updateTotalValues);
+        segmentDurationInput.addEventListener('input', function() {
+            updateTotalValues();
+            
+            // 清空计算结果，与滑块行为一致
+            if (typeof clearAllCharts === 'function') {
+                clearAllCharts();
+            }
+            if (typeof showRecalculationNotice === 'function') {
+                showRecalculationNotice();
+            }
+        });
     }
     
     // 生成段落按钮点击事件
@@ -383,10 +429,26 @@ function generateSegmentInputs() {
             // 时间点输入事件
             startTimeInput.addEventListener('change', function() {
                 updateCustomTimePoint(parseInt(this.dataset.index), parseFloat(this.value));
+                
+                // 清空计算结果，与滑块行为一致
+                if (typeof clearAllCharts === 'function') {
+                    clearAllCharts();
+                }
+                if (typeof showRecalculationNotice === 'function') {
+                    showRecalculationNotice();
+                }
             });
             
             endTimeInput.addEventListener('change', function() {
                 updateCustomTimePoint(parseInt(this.dataset.index), parseFloat(this.value));
+                
+                // 清空计算结果，与滑块行为一致
+                if (typeof clearAllCharts === 'function') {
+                    clearAllCharts();
+                }
+                if (typeof showRecalculationNotice === 'function') {
+                    showRecalculationNotice();
+                }
             });
             
             // 将输入框添加到组中
@@ -415,10 +477,27 @@ function generateSegmentInputs() {
         input.addEventListener('input', function() {
             const index = parseInt(this.dataset.index);
             const value = parseFloat(this.value) || 0;
+            
+            // 确保数组长度足够
+            if (cumulativeExposureSegments.intensities.length <= index) {
+                cumulativeExposureSegments.intensities = new Array(index + 1).fill(0.5);
+            }
+            
             cumulativeExposureSegments.intensities[index] = value;
             
             // 重新计算总曝光计量
             calculateTotalExposureDose();
+            
+            // 清空计算结果，与滑块行为一致
+            if (typeof clearAllCharts === 'function') {
+                clearAllCharts();
+            }
+            if (typeof showRecalculationNotice === 'function') {
+                showRecalculationNotice();
+            }
+            
+            // 输出调试信息
+            console.log(`🔄 段落${index + 1}光强值更新为: ${value}, 当前所有光强值:`, cumulativeExposureSegments.intensities);
         });
         
         // 添加焦点事件处理
@@ -518,21 +597,75 @@ function highlightActiveSegment(index) {
  * 获取多段曝光时间累积模式的参数
  */
 function getCumulativeExposureParams() {
+    // 实时获取页面上的最新值，而不是依赖全局变量
+    const segmentCountInput = document.getElementById('segment_count');
+    const segmentDurationInput = document.getElementById('segment_duration');
+    const timeModeSelect = document.getElementById('time_mode');
+    
+    // 获取当前实际输入值
+    const currentSegmentCount = segmentCountInput ? parseInt(segmentCountInput.value) || 5 : 5;
+    const currentSegmentDuration = segmentDurationInput ? parseFloat(segmentDurationInput.value) || 1 : 1;
+    const currentTimeMode = timeModeSelect ? timeModeSelect.value : 'fixed';
+    
+    // 获取当前实际的光强值数组
+    const currentIntensities = [];
+    for (let i = 0; i < currentSegmentCount; i++) {
+        const input = document.getElementById(`segment_intensity_${i}`);
+        if (input) {
+            currentIntensities.push(parseFloat(input.value) || 0.5);
+        } else {
+            currentIntensities.push(0.5); // 默认值
+        }
+    }
+    
+    // 更新全局变量以保持同步
+    cumulativeExposureSegments.segmentCount = currentSegmentCount;
+    cumulativeExposureSegments.segmentDuration = currentSegmentDuration;
+    cumulativeExposureSegments.timeMode = currentTimeMode;
+    cumulativeExposureSegments.intensities = currentIntensities;
+    
+    // 重新计算总曝光计量
+    const totalDose = calculateTotalExposureDoseFromParams(currentIntensities, currentTimeMode, currentSegmentDuration);
+    cumulativeExposureSegments.totalExposureDose = totalDose;
+    
     let params = {
         exposure_calculation_method: 'cumulative',
-        segment_count: cumulativeExposureSegments.segmentCount,
-        segment_intensities: cumulativeExposureSegments.intensities,
-        time_mode: cumulativeExposureSegments.timeMode,
-        total_exposure_dose: cumulativeExposureSegments.totalExposureDose
+        segment_count: currentSegmentCount,
+        segment_intensities: currentIntensities,
+        time_mode: currentTimeMode,
+        total_exposure_dose: totalDose
     };
     
-    if (cumulativeExposureSegments.timeMode === 'fixed') {
-        params.segment_duration = cumulativeExposureSegments.segmentDuration;
+    if (currentTimeMode === 'fixed') {
+        params.segment_duration = currentSegmentDuration;
     } else {
         params.custom_time_points = cumulativeExposureSegments.customTimePoints;
     }
     
     return params;
+}
+
+/**
+ * 根据参数计算总曝光计量（不依赖UI更新）
+ */
+function calculateTotalExposureDoseFromParams(intensities, timeMode, segmentDuration) {
+    let totalDose = 0;
+    
+    if (timeMode === 'fixed') {
+        // 固定时间段模式
+        for (let i = 0; i < intensities.length; i++) {
+            totalDose += intensities[i] * segmentDuration;
+        }
+    } else {
+        // 自定义时间点模式
+        const timePoints = cumulativeExposureSegments.customTimePoints;
+        for (let i = 0; i < intensities.length && i + 1 < timePoints.length; i++) {
+            const duration = timePoints[i + 1] - timePoints[i];
+            totalDose += intensities[i] * duration;
+        }
+    }
+    
+    return totalDose;
 }
 
 // 在页面加载完成后初始化
@@ -561,34 +694,40 @@ document.addEventListener('DOMContentLoaded', function() {
     document.head.appendChild(style);
 });
 
-// 扩展getParameterValues函数
-// 使用setTimeout确保在原始函数定义后执行
-setTimeout(function() {
-    // 保存原始函数
-    if (typeof window.originalGetParameterValues === 'undefined') {
-        window.originalGetParameterValues = window.getParameterValues;
+// 全局函数：扩展参数获取
+window.extendParametersWithCumulative = function(params) {
+    // 检查是否使用多段曝光时间累积模式
+    const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+    if (exposureMethodSelect && exposureMethodSelect.value === 'cumulative') {
+        // 获取最新的多段曝光参数
+        const cumulativeParams = getCumulativeExposureParams();
         
-        // 替换为新函数
-        window.getParameterValues = function() {
-            const params = window.originalGetParameterValues();
-            
-            // 检查是否使用多段曝光时间累积模式
-            const exposureMethodSelect = document.getElementById('exposure_calculation_method');
-            if (exposureMethodSelect && exposureMethodSelect.value === 'cumulative') {
-                // 添加多段曝光时间累积参数
-                Object.assign(params, getCumulativeExposureParams());
-                
-                console.log('🔄 使用多段曝光时间累积模式计算，参数：', {
-                    time_mode: params.time_mode,
-                    segment_count: params.segment_count,
-                    total_exposure_dose: params.total_exposure_dose,
-                    segment_intensities: params.segment_intensities.slice(0, 5) // 只显示前5个值
-                });
-            } else {
-                params.exposure_calculation_method = 'standard';
-            }
-            
-            return params;
-        };
+        // 添加多段曝光时间累积参数
+        Object.assign(params, cumulativeParams);
+        
+        console.log('🔄 使用多段曝光时间累积模式计算，参数：', {
+            exposure_calculation_method: params.exposure_calculation_method,
+            time_mode: params.time_mode,
+            segment_count: params.segment_count,
+            segment_duration: params.segment_duration,
+            total_exposure_dose: params.total_exposure_dose,
+            segment_intensities: params.segment_intensities ? params.segment_intensities.slice(0, 5) : [], // 只显示前5个值
+            segment_intensities_full: params.segment_intensities // 完整数组用于调试
+        });
+        
+        // 额外的验证日志
+        console.log('🔍 多段曝光参数验证:');
+        console.log('   - 段数输入框值:', document.getElementById('segment_count')?.value);
+        console.log('   - 时长输入框值:', document.getElementById('segment_duration')?.value);
+        console.log('   - 计算的总时间:', params.segment_count * params.segment_duration);
+        console.log('   - 光强输入框实际值:');
+        for (let i = 0; i < params.segment_count; i++) {
+            const input = document.getElementById(`segment_intensity_${i}`);
+            console.log(`     段${i+1}: ${input ? input.value : '未找到输入框'}`);
+        }
+    } else {
+        params.exposure_calculation_method = 'standard';
     }
-}, 1000); // 延迟1秒执行，确保原始函数已加载 
+    
+    return params;
+}; 
