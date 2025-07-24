@@ -1741,6 +1741,20 @@ function getParameterValues() {
  */
 async function calculateDillModel(params) {
     try {
+        console.log('🚀 API请求参数:', params);
+        
+        // 🔥 多段曝光模式的详细调试
+        if (params.exposure_calculation_method === 'cumulative') {
+            console.log('🔥 发送多段曝光请求到后端:');
+            console.log('   - exposure_calculation_method:', params.exposure_calculation_method);
+            console.log('   - segment_count:', params.segment_count);
+            console.log('   - segment_duration:', params.segment_duration);
+            console.log('   - segment_intensities:', params.segment_intensities);
+            console.log('   - total_exposure_dose:', params.total_exposure_dose);
+            console.log('   - is_ideal_exposure_model:', params.is_ideal_exposure_model);
+            console.log('   - sine_type:', params.sine_type);
+        }
+        
         const response = await fetch('/api/calculate', {
             method: 'POST',
             headers: {
@@ -1750,6 +1764,20 @@ async function calculateDillModel(params) {
         });
         
         const result = await response.json();
+        
+        console.log('🔥 API响应:', result);
+        
+        // 🔥 多段曝光模式的响应调试
+        if (result.success && result.data && result.data.exposure_calculation_method === 'cumulative') {
+            console.log('🔥 收到多段曝光响应:');
+            console.log('   - exposure_calculation_method:', result.data.exposure_calculation_method);
+            console.log('   - segment_count:', result.data.segment_count);
+            console.log('   - segment_duration:', result.data.segment_duration);
+            console.log('   - segment_intensities:', result.data.segment_intensities);
+            console.log('   - is_ideal_exposure_model:', result.data.is_ideal_exposure_model);
+            console.log('   - intensity_distribution存在:', !!result.data.intensity_distribution);
+            console.log('   - intensity_distribution长度:', result.data.intensity_distribution ? result.data.intensity_distribution.length : 'N/A');
+        }
         
         if (!result.success) {
             throw new Error(result.message || '计算失败');
@@ -3359,9 +3387,21 @@ function createExposurePlot(container, data) {
     const modelSelect = document.getElementById('model-select');
     const currentModelType = modelSelect ? modelSelect.value : 'dill';
     
-    // 检查是否是理想曝光模型数据
-    if (data.is_ideal_exposure_model && data.intensity_distribution && Array.isArray(data.intensity_distribution)) {
-        console.log('🎨 渲染DILL模型的强度分布');
+    // 🔥 检查是否是理想曝光模型数据或多段曝光模式
+    if ((data.is_ideal_exposure_model || data.exposure_calculation_method === 'cumulative') && 
+        data.intensity_distribution && Array.isArray(data.intensity_distribution)) {
+        
+        const isCumulativeMode = data.exposure_calculation_method === 'cumulative';
+        console.log(`🎨 渲染DILL模型的强度分布 (${isCumulativeMode ? '多段曝光模式' : '理想曝光模式'})`);
+        
+        if (isCumulativeMode) {
+            console.log('🔥 多段曝光模式详细信息:', {
+                segment_count: data.segment_count,
+                segment_duration: data.segment_duration,
+                segment_intensities: data.segment_intensities,
+                total_time: data.segment_count * data.segment_duration
+            });
+        }
         
         try {
             let xCoords = data.x || data.x_coords;
@@ -3382,8 +3422,15 @@ function createExposurePlot(container, data) {
                 hovertemplate: `位置: %{x:.3f} mm<br>光强: %{y:.6f}<extra></extra>`
             };
             
+            // 🔥 多段曝光模式下的标题
+            let titleText = 'DILL模型 - 光强分布';
+            if (isCumulativeMode) {
+                const totalTime = data.segment_count * data.segment_duration;
+                titleText = `DILL模型 - 光强分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
+            }
+            
             const layout = {
-                title: 'DILL模型 - 光强分布',
+                title: titleText,
                 xaxis: { title: '位置 (mm)' },
                 yaxis: { title: '归一化光强' },
                 margin: { l: 60, r: 20, t: 60, b: 60 },

@@ -1032,8 +1032,8 @@ class DillModel:
                 logger.info(f"🔸 正在使用理想曝光模型计算一维分布...")
                 
                 # 确定要使用的曝光时间序列
-                if exposure_calculation_method == 'cumulative' and segment_count is not None and segment_duration is not None:
-                    # 使用多段曝光时间累积模式
+                if exposure_calculation_method == 'cumulative' and segment_count is not None and segment_duration is not None and segment_intensities is not None:
+                    # 🔥 使用多段曝光时间累积模式 - 特殊处理
                     total_time = segment_count * segment_duration
                     exposure_times_to_use = [total_time]
                     logger.info(f"🔸 使用多段曝光时间累积模式:")
@@ -1041,6 +1041,83 @@ class DillModel:
                     logger.info(f"   - 单段时长: {segment_duration}s")
                     logger.info(f"   - 总曝光时间: {total_time}s")
                     logger.info(f"   - 光强数组: {segment_intensities}")
+                    
+                    # 🔥 多段曝光模式的专用计算逻辑
+                    # 创建坐标轴
+                    x_coords = np.linspace(-1000, 1000, 2001)
+                    
+                    # 🔥 计算基准光强分布（使用理想曝光模型公式，保持与正常模式一致）
+                    # 使用理想曝光模型公式而非普通Dill模型，确保周期数合理
+                    angle_a_rad = angle_a * np.pi / 180
+                    spatial_freq = 4 * np.pi * np.sin(angle_a_rad) / wavelength
+                    base_intensity = I_avg * (1 + V * np.cos(spatial_freq * x_coords))
+                    
+                    logger.info(f"🔥 使用理想曝光模型公式计算基准光强:")
+                    logger.info(f"   - 空间频率: 4π×sin({angle_a}°)/{wavelength} = {spatial_freq:.6f} rad/μm")
+                    logger.info(f"   - 波长: {2*np.pi/spatial_freq:.1f} μm")
+                    logger.info(f"   - 预期周期数: {2000/(2*np.pi/spatial_freq):.1f}个")
+                    
+                    # 🔥 累积计算多段曝光剂量 - 修复：使用实际光强值而非归一化
+                    cumulative_exposure_dose = np.zeros_like(x_coords, dtype=np.float64)
+                    for i in range(segment_count):
+                        if i < len(segment_intensities):
+                            # 🔥 修复：segment_intensities[i] 作为光强系数，与基准光强相乘
+                            # 这样可以保持物理意义：实际光强 = 系数 × 基准光强
+                            segment_intensity_distribution = segment_intensities[i] * base_intensity
+                            segment_exposure = segment_intensity_distribution * segment_duration
+                            cumulative_exposure_dose += segment_exposure
+                            logger.info(f"   - 段{i+1}: 光强系数={segment_intensities[i]}, 实际光强均值={np.mean(segment_intensity_distribution):.4f}, 贡献曝光剂量均值={np.mean(segment_exposure):.4f}")
+                    
+                    logger.info(f"   - 🔥 多段累积曝光剂量范围: [{np.min(cumulative_exposure_dose):.6f}, {np.max(cumulative_exposure_dose):.6f}]")
+                    
+                    # 🔥 计算厚度分布（使用理想模型阈值机制）
+                    M_values = np.zeros_like(cumulative_exposure_dose)
+                    for i in range(len(cumulative_exposure_dose)):
+                        if cumulative_exposure_dose[i] < exposure_threshold:
+                            M_values[i] = 1.0  # 未达阈值，完全抗蚀
+                        else:
+                            M_values[i] = np.exp(-C * (cumulative_exposure_dose[i] - exposure_threshold))
+                    
+                    thickness_values = M_values
+                    
+                    # 🔥 计算用户实际设定的平均光强分布（用于前端显示）
+                    # 在多段曝光模式下，显示的光强应该是各段光强系数的加权平均
+                    average_intensity_coefficient = np.mean(segment_intensities)
+                    actual_intensity_distribution = average_intensity_coefficient * base_intensity
+                    
+                    logger.info(f"   - 🔥 显示用光强分布（平均系数 {average_intensity_coefficient}）: [{np.min(actual_intensity_distribution):.6f}, {np.max(actual_intensity_distribution):.6f}]")
+                    
+                    # 🔥 返回多段曝光专用数据结构
+                    return {
+                        'x': (x_coords / 1000.0).tolist(),  # 转换为mm
+                        'x_coords': (x_coords / 1000.0).tolist(),
+                        'exposure_dose': cumulative_exposure_dose.tolist(),
+                        'thickness': thickness_values.tolist(),
+                        'intensity_distribution': actual_intensity_distribution.tolist(),  # 🔥 修复：返回实际光强分布
+                        'M_values': M_values.tolist(),
+                        'H_values': (1 - M_values).tolist(),
+                        'etch_depths_data': [{
+                            'time': total_time,
+                            'etch_depth': (-(1 - M_values)).tolist(),
+                            'M_values': M_values.tolist(),
+                            'D0_values': cumulative_exposure_dose.tolist()
+                        }],
+                        'exposure_times': [total_time],
+                        'sine_type': '1d',
+                        'is_1d': True,
+                        'is_ideal_exposure_model': True,  # 🔥 关键：标记为理想曝光模型
+                        'exposure_calculation_method': 'cumulative',  # 🔥 标记多段曝光模式
+                        'segment_count': segment_count,
+                        'segment_duration': segment_duration,
+                        'segment_intensities': segment_intensities,
+                        'parameters': {
+                            'C': C,
+                            'cd': exposure_threshold,
+                            't_exp': total_time,
+                            'model_type': 'cumulative_exposure'
+                        }
+                    }
+                    
                 elif custom_exposure_times is not None and len(custom_exposure_times) > 0:
                     # 使用自定义曝光时间（启用曝光时间窗口模式）
                     exposure_times_to_use = custom_exposure_times

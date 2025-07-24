@@ -123,6 +123,8 @@ function initExposureCalculationMethodSelector() {
             const newCount = parseInt(this.value) || 5;
             cumulativeExposureSegments.segmentCount = newCount;
             
+            console.log(`🔥 DEBUG: 段数变更 - 从 ${cumulativeExposureSegments.intensities.length} 到 ${newCount}`);
+            
             // 如果段数发生变化，需要重新生成段落输入框
             if (newCount !== cumulativeExposureSegments.intensities.length) {
                 console.log(`🔄 段数从 ${cumulativeExposureSegments.intensities.length} 更改为 ${newCount}，重新生成段落`);
@@ -160,7 +162,8 @@ function initExposureCalculationMethodSelector() {
             const newDuration = parseFloat(this.value) || 1;
             cumulativeExposureSegments.segmentDuration = newDuration;
             
-            console.log(`🔄 单段时间长度更新为: ${newDuration}秒`);
+            console.log(`🔥 DEBUG: 单段时间长度更新为: ${newDuration}秒`);
+            console.log(`🔥 DEBUG: 新的总时间: ${cumulativeExposureSegments.segmentCount * newDuration}秒`);
             
             // 计算并更新总曝光时间和计量
             updateTotalValues();
@@ -336,7 +339,7 @@ function generateSegmentInputs() {
     container.innerHTML = '';
     
     // 重置强度数组
-    cumulativeExposureSegments.intensities = new Array(count).fill(0.5); // 默认值0.5
+    cumulativeExposureSegments.intensities = new Array(count).fill(10); // 默认值10
     cumulativeExposureSegments.segmentCount = count;
     cumulativeExposureSegments.segmentDuration = duration;
     cumulativeExposureSegments.activeSegmentIndex = -1; // 重置活跃段落索引
@@ -464,7 +467,7 @@ function generateSegmentInputs() {
         
         const input = document.createElement('input');
         input.type = 'number';
-        input.value = '0.5';
+        input.value = '10';
         input.min = '0';
         input.max = '100';
         input.step = '0.1';
@@ -480,7 +483,7 @@ function generateSegmentInputs() {
             
             // 确保数组长度足够
             if (cumulativeExposureSegments.intensities.length <= index) {
-                cumulativeExposureSegments.intensities = new Array(index + 1).fill(0.5);
+                cumulativeExposureSegments.intensities = new Array(index + 1).fill(10);
             }
             
             cumulativeExposureSegments.intensities[index] = value;
@@ -497,7 +500,9 @@ function generateSegmentInputs() {
             }
             
             // 输出调试信息
-            console.log(`🔄 段落${index + 1}光强值更新为: ${value}, 当前所有光强值:`, cumulativeExposureSegments.intensities);
+            console.log(`🔥 DEBUG: 段落${index + 1}光强值更新为: ${value}`);
+            console.log(`🔥 DEBUG: 当前所有光强值:`, cumulativeExposureSegments.intensities);
+            console.log(`🔥 DEBUG: 总曝光计量:`, cumulativeExposureSegments.totalExposureDose);
         });
         
         // 添加焦点事件处理
@@ -612,9 +617,9 @@ function getCumulativeExposureParams() {
     for (let i = 0; i < currentSegmentCount; i++) {
         const input = document.getElementById(`segment_intensity_${i}`);
         if (input) {
-            currentIntensities.push(parseFloat(input.value) || 0.5);
+            currentIntensities.push(parseFloat(input.value) || 10);
         } else {
-            currentIntensities.push(0.5); // 默认值
+            currentIntensities.push(10); // 默认值
         }
     }
     
@@ -705,14 +710,19 @@ window.extendParametersWithCumulative = function(params) {
         // 添加多段曝光时间累积参数
         Object.assign(params, cumulativeParams);
         
-        console.log('🔄 使用多段曝光时间累积模式计算，参数：', {
+        console.log('🔥 DEBUG: 多段曝光参数完整传递检查:', {
             exposure_calculation_method: params.exposure_calculation_method,
             time_mode: params.time_mode,
             segment_count: params.segment_count,
             segment_duration: params.segment_duration,
             total_exposure_dose: params.total_exposure_dose,
-            segment_intensities: params.segment_intensities ? params.segment_intensities.slice(0, 5) : [], // 只显示前5个值
-            segment_intensities_full: params.segment_intensities // 完整数组用于调试
+            segment_intensities: params.segment_intensities,
+            segment_intensities_length: params.segment_intensities ? params.segment_intensities.length : 0,
+            I_avg: params.I_avg,
+            V: params.V,
+            K: params.K,
+            t_exp: params.t_exp,
+            C: params.C
         });
         
         // 额外的验证日志
@@ -725,6 +735,23 @@ window.extendParametersWithCumulative = function(params) {
             const input = document.getElementById(`segment_intensity_${i}`);
             console.log(`     段${i+1}: ${input ? input.value : '未找到输入框'}`);
         }
+        
+        // 🔥 新增：确保理想曝光模型标记
+        console.log('🔥 DEBUG: 确保理想曝光模型标记传递:');
+        console.log('   - 原始 is_ideal_exposure_model:', params.is_ideal_exposure_model);
+        console.log('   - 原始 sine_type:', params.sine_type);
+        
+        // 多段曝光时间模式下，确保设置理想曝光模型标记
+        if (!params.is_ideal_exposure_model) {
+            params.is_ideal_exposure_model = true;
+            console.log('   - 🔥 强制设置 is_ideal_exposure_model = true');
+        }
+        
+        if (params.sine_type !== 'single') {
+            params.sine_type = 'single';
+            console.log('   - 🔥 强制设置 sine_type = single');
+        }
+        
     } else {
         params.exposure_calculation_method = 'standard';
     }
