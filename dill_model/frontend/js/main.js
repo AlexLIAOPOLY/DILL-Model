@@ -5204,7 +5204,214 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
     const isCumulativeExposure = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
     
     if (plotType === 'exposure') {
-        if (isCumulativeExposure) {
+        if (isUsingCustomData && isCumulativeExposure) {
+            // 自定义向量数据 + 多段曝光时间累积模式的光强分布 (最具体的条件放在前面)
+            valueLabel = '光强分布:';
+            valueUnit = '(自定义单位)';
+            formulaTitle = '1D DILL模型 - 自定义向量 + 多段曝光时间累积模式：';
+            formulaMath = '💾 <strong>基于用户自定义数据的多段曝光时间累积</strong><br/>' +
+                          'I<sub>segment</sub>(x) = 用户提供的光强向量数据 × 段落权重<br/>' +
+                          'D<sub>total</sub>(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>base</sub>(x) × w<sub>i</sub> × t<sub>i</sub>]';
+            
+            // 获取自定义数据的信息
+            const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
+            const xRange = customIntensityData.x ? [Math.min(...customIntensityData.x), Math.max(...customIntensityData.x)] : [0, 0];
+            const intensityRange = customIntensityData.intensity ? [Math.min(...customIntensityData.intensity), Math.max(...customIntensityData.intensity)] : [0, 0];
+            
+            // 找到当前点在自定义数据中的索引
+            let nearestIndex = 0;
+            let minDistance = Infinity;
+            if (customIntensityData.x) {
+                for (let i = 0; i < customIntensityData.x.length; i++) {
+                    const distance = Math.abs(customIntensityData.x[i] - x);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestIndex = i;
+                    }
+                }
+            }
+            
+            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
+            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : y;
+            
+            // 获取多段曝光时间参数
+            const segmentCount = params.segment_count || 5;
+            const segmentDuration = params.segment_duration || 1;
+            const segmentIntensities = params.segment_intensities || [];
+            const timeMode = params.time_mode || 'fixed';
+            
+            // 计算总曝光剂量（基于自定义向量的基础光强）
+            let totalDose = 0;
+            let segmentsTable = '<table class="segments-info-table"><thead><tr><th>段号</th><th>光强权重</th><th>时长(s)</th><th>有效光强</th><th>该点剂量</th></tr></thead><tbody>';
+            
+            for (let i = 0; i < segmentCount; i++) {
+                const intensityWeight = segmentIntensities[i] || 1.0;
+                const effectiveIntensity = nearestIntensity * intensityWeight;
+                const segmentDose = effectiveIntensity * segmentDuration;
+                totalDose += segmentDose;
+                
+                segmentsTable += `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${intensityWeight.toFixed(3)}</td>
+                        <td>${segmentDuration}</td>
+                        <td>${effectiveIntensity.toFixed(3)}</td>
+                        <td>${segmentDose.toFixed(3)}</td>
+                    </tr>
+                `;
+            }
+            
+            // 添加总计行
+            segmentsTable += `
+                <tr class="total-row">
+                    <td colspan="3">总计</td>
+                    <td>-</td>
+                    <td>${totalDose.toFixed(3)}</td>
+                </tr>
+            `;
+            
+            segmentsTable += '</tbody></table>';
+            
+            // 添加计算过程步骤说明
+            const calculationSteps = `
+                <div class="calculation-steps">
+                    <div class="step-title">📊 详细计算过程:</div>
+                    <ol>
+                        <li>
+                            <strong>步骤1: 定位最近数据点</strong>
+                            <div class="step-detail">• 用户点击位置: x = ${x.toFixed(3)} mm</div>
+                            <div class="step-detail">• 查找最近的自定义数据点: x = ${nearestX.toFixed(3)} mm</div>
+                            <div class="step-detail">• 对应基础光强值: I<sub>base</sub> = ${nearestIntensity.toFixed(6)}</div>
+                            <div class="step-detail">• 距离差: |Δx| = ${Math.abs(nearestX - x).toFixed(6)} mm</div>
+                            <div class="step-note">💡 系统自动选择距离点击位置最近的数据点作为基础光强</div>
+                        </li>
+                        <li>
+                            <strong>步骤2: 计算各段有效光强</strong>
+                            <div class="step-detail">• 计算公式: I<sub>effective,i</sub> = I<sub>base</sub> × w<sub>i</sub></div>
+                            <div class="step-detail">• 基础光强: I<sub>base</sub> = ${nearestIntensity.toFixed(6)}</div>
+                            <div class="step-detail">• 各段权重 w<sub>i</sub>: [${segmentIntensities.map(w => w.toFixed(3)).join(', ')}]</div>
+                            <div class="step-note">💡 权重值控制每段相对于基础光强的强度</div>
+                        </li>
+                        <li>
+                            <strong>步骤3: 计算各段曝光剂量</strong>
+                            <div class="step-detail">• 计算公式: D<sub>i</sub> = I<sub>effective,i</sub> × t<sub>i</sub></div>
+                            <div class="step-detail">• 时间模式: ${timeMode === 'fixed' ? '固定时间段' : '自定义时间点'}</div>
+                            <div class="step-detail">• 单段时长: t<sub>i</sub> = ${segmentDuration}s</div>
+                            <div class="step-note">💡 每段的剂量 = 该段有效光强 × 该段时长</div>
+                        </li>
+                        <li>
+                            <strong>步骤4: 计算总曝光剂量</strong>
+                            <div class="step-detail">• 计算公式: D<sub>total</sub> = ∑<sub>i=1</sub><sup>${segmentCount}</sup> D<sub>i</sub></div>
+                            <div class="step-detail">• 展开式: D<sub>total</sub> = ${segmentIntensities.map((w, i) => `D<sub>${i+1}</sub>`).join(' + ')}</div>
+                            <div class="step-detail">• 计算结果: D<sub>total</sub> = ${totalDose.toFixed(6)} (单位取决于自定义数据)</div>
+                            <div class="step-note">💡 多段累积效应：总剂量为所有段落剂量之和</div>
+                        </li>
+                    </ol>
+                </div>
+            `;
+            
+            formulaExplanation = `
+                <div>🔧 <strong>自定义向量 + 多段曝光时间累积模式：</strong></div>
+                <div>• 基础数据: 用户自定义向量</div>
+                <div>• 数据点总数: ${totalDataPoints} 个</div>
+                <div>• X坐标范围: [${xRange[0].toFixed(3)}, ${xRange[1].toFixed(3)}]</div>
+                <div>• 基础光强范围: [${intensityRange[0].toFixed(6)}, ${intensityRange[1].toFixed(6)}]</div>
+                <div class="formula-separator"></div>
+                <div>⏱️ <strong>多段曝光时间参数：</strong></div>
+                <div>• 时间模式: ${timeMode === 'fixed' ? '固定时间段' : '自定义时间点'}</div>
+                <div>• 段落数量: ${segmentCount}</div>
+                <div>• 单段时长: ${segmentDuration}s</div>
+                <div>• 总曝光时间: ${(segmentCount * segmentDuration)}s</div>
+                <div class="formula-separator"></div>
+                <div>📊 <strong>段落信息：</strong></div>
+                ${segmentsTable}
+                <div class="formula-separator"></div>
+                ${calculationSteps}
+                <div class="formula-separator"></div>
+                <div>📍 <strong>当前位置详细分析：</strong></div>
+                <div>• 点击位置: x = ${x.toFixed(3)}</div>
+                <div>• 显示光强: ${y.toFixed(6)}</div>
+                <div>• 最近数据点: x = ${nearestX.toFixed(3)}, I_base = ${nearestIntensity.toFixed(6)}</div>
+                <div>• 距离差: ${Math.abs(nearestX - x).toFixed(6)}</div>
+                <div>• 总累积剂量: ${totalDose.toFixed(3)}</div>
+                <div class="formula-separator"></div>
+                <div>💡 <strong>计算说明：</strong></div>
+                <div>• 每段有效光强 = 基础光强 × 段落权重</div>
+                <div>• 每段曝光剂量 = 有效光强 × 段落时长</div>
+                <div>• 总曝光剂量 = Σ(各段曝光剂量)</div>
+                <div>• 系统结合了自定义光强分布和多段时间控制</div>
+            `;
+            
+            // 为自定义向量 + 多段曝光时间累积模式添加CSS样式
+            additionalInfo = `
+                <style>
+                    .segments-info-table, .segments-analysis-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 8px 0;
+                        font-size: 12px;
+                        background-color: #f8f9fa;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    .segments-info-table th, .segments-analysis-table th,
+                    .segments-info-table td, .segments-analysis-table td {
+                        border: 1px solid #dee2e6;
+                        padding: 6px 8px;
+                        text-align: center;
+                    }
+                    .segments-info-table th, .segments-analysis-table th {
+                        background-color: #e9ecef;
+                        font-weight: bold;
+                        color: #495057;
+                    }
+                    .calculation-steps {
+                        margin: 10px 0;
+                        padding: 12px;
+                        background-color: #f8f9fa;
+                        border-radius: 6px;
+                        border-left: 4px solid #007bff;
+                    }
+                    .step-title {
+                        font-weight: bold;
+                        margin-bottom: 8px;
+                        color: #495057;
+                    }
+                    .calculation-steps ol {
+                        margin: 0;
+                        padding-left: 20px;
+                    }
+                    .calculation-steps li {
+                        margin-bottom: 12px;
+                        line-height: 1.4;
+                    }
+                    .step-detail {
+                        margin: 2px 0;
+                        padding-left: 8px;
+                        font-size: 11px;
+                        color: #666;
+                    }
+                    .step-note {
+                        margin: 4px 0;
+                        padding: 4px 8px;
+                        background-color: #e7f3ff;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        color: #0066cc;
+                        font-style: italic;
+                    }
+                    .total-row {
+                        background-color: #fff3cd !important;
+                        font-weight: bold;
+                    }
+                    .formula-separator {
+                        height: 1px;
+                        background-color: #dee2e6;
+                        margin: 8px 0;
+                    }
+                </style>
+            `;
+        }
+        else if (isCumulativeExposure) {
             // 多段曝光时间累积模式的曝光剂量分布
             valueLabel = '曝光剂量:';
             valueUnit = 'mJ<span class="fraction"><span class="numerator">1</span><span class="denominator">cm²</span></span>';
@@ -5455,26 +5662,33 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                     <div class="step-title">📊 详细计算过程:</div>
                     <ol>
                         <li>
-                            <strong>定位最近数据点</strong>
-                            <div>用户点击位置 x = ${x.toFixed(3)}</div>
-                            <div>查找最近的自定义数据点: x = ${nearestX.toFixed(3)}</div>
-                            <div>对应基础光强值: I<sub>base</sub> = ${nearestIntensity.toFixed(6)}</div>
-                            <div>距离差: |Δx| = ${Math.abs(nearestX - x).toFixed(6)}</div>
+                            <strong>步骤1: 定位最近数据点</strong>
+                            <div class="step-detail">• 用户点击位置: x = ${x.toFixed(3)} mm</div>
+                            <div class="step-detail">• 查找最近的自定义数据点: x = ${nearestX.toFixed(3)} mm</div>
+                            <div class="step-detail">• 对应基础光强值: I<sub>base</sub> = ${nearestIntensity.toFixed(6)}</div>
+                            <div class="step-detail">• 距离差: |Δx| = ${Math.abs(nearestX - x).toFixed(6)} mm</div>
+                            <div class="step-note">💡 系统自动选择距离点击位置最近的数据点作为基础光强</div>
                         </li>
                         <li>
-                            <strong>计算各段有效光强</strong>
-                            <div>公式: I<sub>effective,i</sub> = I<sub>base</sub> × w<sub>i</sub></div>
-                            <div>其中 I<sub>base</sub> = ${nearestIntensity.toFixed(6)}，w<sub>i</sub>为各段权重</div>
+                            <strong>步骤2: 计算各段有效光强</strong>
+                            <div class="step-detail">• 计算公式: I<sub>effective,i</sub> = I<sub>base</sub> × w<sub>i</sub></div>
+                            <div class="step-detail">• 基础光强: I<sub>base</sub> = ${nearestIntensity.toFixed(6)}</div>
+                            <div class="step-detail">• 各段权重 w<sub>i</sub>: [${segmentIntensities.map(w => w.toFixed(3)).join(', ')}]</div>
+                            <div class="step-note">💡 权重值控制每段相对于基础光强的强度</div>
                         </li>
                         <li>
-                            <strong>计算各段曝光剂量</strong>
-                            <div>公式: D<sub>i</sub> = I<sub>effective,i</sub> × t<sub>i</sub></div>
-                            <div>其中 t<sub>i</sub> = ${segmentDuration}s（固定时间段模式）</div>
+                            <strong>步骤3: 计算各段曝光剂量</strong>
+                            <div class="step-detail">• 计算公式: D<sub>i</sub> = I<sub>effective,i</sub> × t<sub>i</sub></div>
+                            <div class="step-detail">• 时间模式: ${timeMode === 'fixed' ? '固定时间段' : '自定义时间点'}</div>
+                            <div class="step-detail">• 单段时长: t<sub>i</sub> = ${segmentDuration}s</div>
+                            <div class="step-note">💡 每段的剂量 = 该段有效光强 × 该段时长</div>
                         </li>
                         <li>
-                            <strong>计算总曝光剂量</strong>
-                            <div>公式: D<sub>total</sub> = ∑<sub>i=1</sub><sup>n</sup> D<sub>i</sub></div>
-                            <div>总剂量: D<sub>total</sub> = ${totalDose.toFixed(3)}</div>
+                            <strong>步骤4: 计算总曝光剂量</strong>
+                            <div class="step-detail">• 计算公式: D<sub>total</sub> = ∑<sub>i=1</sub><sup>${segmentCount}</sup> D<sub>i</sub></div>
+                            <div class="step-detail">• 展开式: D<sub>total</sub> = ${segmentIntensities.map((w, i) => `D<sub>${i+1}</sub>`).join(' + ')}</div>
+                            <div class="step-detail">• 计算结果: D<sub>total</sub> = ${totalDose.toFixed(6)} (单位取决于自定义数据)</div>
+                            <div class="step-note">💡 多段累积效应：总剂量为所有段落剂量之和</div>
                         </li>
                     </ol>
                 </div>
@@ -5521,17 +5735,62 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                         margin: 8px 0;
                         font-size: 12px;
                         background-color: #f8f9fa;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                     }
                     .segments-info-table th, .segments-analysis-table th,
                     .segments-info-table td, .segments-analysis-table td {
                         border: 1px solid #dee2e6;
-                        padding: 4px 6px;
+                        padding: 6px 8px;
                         text-align: center;
                     }
                     .segments-info-table th, .segments-analysis-table th {
                         background-color: #e9ecef;
                         font-weight: bold;
                         color: #495057;
+                    }
+                    .calculation-steps {
+                        margin: 10px 0;
+                        padding: 12px;
+                        background-color: #f8f9fa;
+                        border-radius: 6px;
+                        border-left: 4px solid #007bff;
+                    }
+                    .step-title {
+                        font-weight: bold;
+                        margin-bottom: 8px;
+                        color: #495057;
+                    }
+                    .calculation-steps ol {
+                        margin: 0;
+                        padding-left: 20px;
+                    }
+                    .calculation-steps li {
+                        margin-bottom: 12px;
+                        line-height: 1.4;
+                    }
+                    .step-detail {
+                        margin: 2px 0;
+                        padding-left: 8px;
+                        font-size: 11px;
+                        color: #666;
+                    }
+                    .step-note {
+                        margin: 4px 0;
+                        padding: 4px 8px;
+                        background-color: #e7f3ff;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        color: #0066cc;
+                        font-style: italic;
+                    }
+                    .total-row {
+                        background-color: #fff3cd !important;
+                        font-weight: bold;
+                    }
+                    .formula-separator {
+                        height: 1px;
+                        background-color: #dee2e6;
+                        margin: 8px 0;
                     }
                     .segments-info-table tbody tr:nth-child(even),
                     .segments-analysis-table tbody tr:nth-child(even) {
@@ -5697,206 +5956,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             }
         }
     } else if (plotType === 'thickness') {
-        if (isCumulativeExposure) {
-            // 多段曝光时间累积模式的厚度分布
-            valueLabel = '蚀刻深度/厚度:';
-            valueUnit = '(归一化)';
-            formulaTitle = 'Dill模型 - 多段曝光时间累积模式蚀刻深度计算：';
-            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>i</sub>(x) × Δt<sub>i</sub>]</div>';
-            formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
-            formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
-            formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D(x) - c<sub>d</sub>)</sup></div>';
-            formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
-            
-            // 获取多段曝光参数
-            const segmentCount = params.segment_count || 5;
-            const segmentIntensities = params.segment_intensities || new Array(segmentCount).fill(0.5);
-            const timeMode = params.time_mode || 'fixed';
-            const totalDose = params.total_exposure_dose || 0;
-            const exposureConstant = params.C || 0.022;
-            const thresholdCd = params.exposure_threshold || 20;
-            
-            // 构建段落信息表格
-            let segmentsTable = '<table class="segments-info-table"><thead><tr><th>段落</th><th>时间范围</th><th>光强值</th></tr></thead><tbody>';
-            
-            if (timeMode === 'fixed') {
-                const segmentDuration = params.segment_duration || 1;
-                
-                for (let i = 0; i < segmentCount; i++) {
-                    const startTime = (i * segmentDuration).toFixed(1);
-                    const endTime = ((i + 1) * segmentDuration).toFixed(1);
-                    const intensity = segmentIntensities[i] || 0.5;
-                    
-                    segmentsTable += `
-                        <tr>
-                            <td>段落 ${i + 1}</td>
-                            <td>${startTime}s - ${endTime}s</td>
-                            <td>${intensity.toFixed(2)}</td>
-                        </tr>
-                    `;
-                }
-            } else {
-                const customTimePoints = params.custom_time_points || [];
-                
-                for (let i = 0; i < segmentCount && i + 1 < customTimePoints.length; i++) {
-                    const startTime = customTimePoints[i].toFixed(1);
-                    const endTime = customTimePoints[i + 1].toFixed(1);
-                    const intensity = segmentIntensities[i] || 0.5;
-                    
-                    segmentsTable += `
-                        <tr>
-                            <td>段落 ${i + 1}</td>
-                            <td>${startTime}s - ${endTime}s</td>
-                            <td>${intensity.toFixed(2)}</td>
-                        </tr>
-                    `;
-                }
-            }
-            
-            segmentsTable += '</tbody></table>';
-            
-            // 计算当前点在各段的曝光剂量和蚀刻深度
-            let currentPointAnalysis = '';
-            let totalPointDose = 0;
-            
-            if (params.sine_type === 'multi') {
-                // 多维正弦波模式
-                currentPointAnalysis += '<div>• 多维正弦波模式下的多段曝光累积蚀刻深度计算</div>';
-            } else if (params.sine_type === '3d') {
-                // 3D正弦波模式
-                currentPointAnalysis += '<div>• 3D正弦波模式下的多段曝光累积蚀刻深度计算</div>';
-            } else {
-                // 标准1D模式
-                const K = params.K || 1;
-                const V = params.V || 0.8;
-                const phaseValue = K * x;
-                
-                currentPointAnalysis += '<div class="segments-analysis-title">当前点 x=' + x.toFixed(3) + 'mm 的蚀刻深度计算:</div>';
-                currentPointAnalysis += '<table class="segments-analysis-table"><thead><tr><th>段落</th><th>光强 I<sub>i</sub>(x)</th><th>时间</th><th>剂量</th></tr></thead><tbody>';
-                
-                if (timeMode === 'fixed') {
-                    const segmentDuration = params.segment_duration || 1;
-                    
-                    for (let i = 0; i < segmentCount; i++) {
-                        const intensity = segmentIntensities[i] || 0.5;
-                        const baseIntensity = intensity * (1 + V * Math.cos(phaseValue));
-                        const segmentDose = baseIntensity * segmentDuration;
-                        totalPointDose += segmentDose;
-                        
-                        currentPointAnalysis += `
-                            <tr>
-                                <td>段落 ${i + 1}</td>
-                                <td>${baseIntensity.toFixed(3)}</td>
-                                <td>${segmentDuration.toFixed(1)}s</td>
-                                <td>${segmentDose.toFixed(2)}</td>
-                            </tr>
-                        `;
-                    }
-                } else {
-                    const customTimePoints = params.custom_time_points || [];
-                    
-                    for (let i = 0; i < segmentCount && i + 1 < customTimePoints.length; i++) {
-                        const intensity = segmentIntensities[i] || 0.5;
-                        const baseIntensity = intensity * (1 + V * Math.cos(phaseValue));
-                        const segmentDuration = customTimePoints[i + 1] - customTimePoints[i];
-                        const segmentDose = baseIntensity * segmentDuration;
-                        totalPointDose += segmentDose;
-                        
-                        currentPointAnalysis += `
-                            <tr>
-                                <td>段落 ${i + 1}</td>
-                                <td>${baseIntensity.toFixed(3)}</td>
-                                <td>${segmentDuration.toFixed(1)}s</td>
-                                <td>${segmentDose.toFixed(2)}</td>
-                            </tr>
-                        `;
-                    }
-                }
-                
-                currentPointAnalysis += `
-                    <tr class="total-row">
-                        <td>总计</td>
-                        <td>-</td>
-                        <td>-</td>
-                        <td>${totalPointDose.toFixed(2)}</td>
-                    </tr>
-                </tbody></table>`;
-                
-                // 计算蚀刻深度
-                let M_value, H_value;
-                if (totalPointDose < thresholdCd) {
-                    M_value = 1;
-                    H_value = 0;
-                    currentPointAnalysis += `<div class="thickness-result">总曝光剂量 ${totalPointDose.toFixed(2)} < 阈值 ${thresholdCd}，未达到曝光阈值，M(x) = 1，蚀刻深度 H(x) = 0</div>`;
-                } else {
-                    M_value = Math.exp(-exposureConstant * (totalPointDose - thresholdCd));
-                    H_value = 1 - M_value;
-                    currentPointAnalysis += `<div class="thickness-result">总曝光剂量 ${totalPointDose.toFixed(2)} > 阈值 ${thresholdCd}，M(x) = e<sup>-${exposureConstant} × (${totalPointDose.toFixed(2)} - ${thresholdCd})</sup> = ${M_value.toFixed(4)}</div>`;
-                    currentPointAnalysis += `<div class="thickness-result">蚀刻深度 H(x) = 1 - ${M_value.toFixed(4)} = ${H_value.toFixed(4)}</div>`;
-                }
-            }
-            
-            formulaExplanation = `
-                <div>🔧 <strong>多段曝光时间累积模式参数：</strong></div>
-                <div>• 时间模式: ${timeMode === 'fixed' ? '固定时间段' : '自定义时间点'}</div>
-                <div>• 段落数量: ${segmentCount}</div>
-                ${timeMode === 'fixed' ? `<div>• 单段时长: ${params.segment_duration || 1}s</div>` : ''}
-                <div>• 总曝光计量: ${totalDose.toFixed(2)} mJ/cm²</div>
-                <div>• C: 光敏速率常数 (${exposureConstant} cm²/mJ)</div>
-                <div>• c<sub>d</sub>: 曝光阈值 (${thresholdCd} mJ/cm²)</div>
-                <div class="formula-separator"></div>
-                <div>📊 <strong>段落信息：</strong></div>
-                ${segmentsTable}
-                <div class="formula-separator"></div>
-                <div>📍 <strong>当前点分析：</strong></div>
-                ${currentPointAnalysis}
-                <div class="formula-separator"></div>
-                <div>💡 <strong>计算说明：</strong></div>
-                <div>• 多段曝光时间累积模式下，总曝光剂量为各段曝光剂量之和</div>
-                <div>• 每段曝光剂量 = 该段光强 × 该段时长</div>
-                <div>• 当总剂量超过阈值c<sub>d</sub>时，按指数规律计算蚀刻深度</div>
-                <div>• 蚀刻深度 H(x) = 1 - M(x)，其中M(x)为抗蚀效果</div>
-            `;
-            
-            // 添加CSS样式
-            additionalInfo = `
-                <style>
-                    .segments-info-table, .segments-analysis-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin: 8px 0;
-                        font-size: 12px;
-                    }
-                    .segments-info-table th, .segments-analysis-table th {
-                        background-color: rgba(52, 152, 219, 0.1);
-                        padding: 4px;
-                        text-align: left;
-                        border-bottom: 1px solid #ddd;
-                    }
-                    .segments-info-table td, .segments-analysis-table td {
-                        padding: 4px;
-                        border-bottom: 1px solid #eee;
-                    }
-                    .segments-analysis-title {
-                        font-weight: bold;
-                        margin: 8px 0;
-                    }
-                    .total-row {
-                        font-weight: bold;
-                        background-color: rgba(52, 152, 219, 0.05);
-                    }
-                    .thickness-result {
-                        margin: 8px 0;
-                        padding: 6px;
-                        background-color: rgba(52, 152, 219, 0.05);
-                        border-radius: 4px;
-                        font-weight: bold;
-                    }
-                </style>
-            `;
-        }
-        else if (isUsingCustomData && isCumulativeExposure) {
-            // 自定义向量数据 + 多段曝光时间累积模式的厚度分布
+        if (isUsingCustomData && isCumulativeExposure) {
+            // 自定义向量数据 + 多段曝光时间累积模式的厚度分布 (最具体的条件放在前面)
             valueLabel = '蚀刻深度/厚度:';
             valueUnit = '(归一化)';
             formulaTitle = '1D DILL模型 - 自定义向量 + 多段曝光时间累积蚀刻深度：';
@@ -6007,40 +6068,47 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                     <div class="step-title">📊 详细计算过程:</div>
                     <ol>
                         <li>
-                            <strong>定位最近数据点</strong>
-                            <div>用户点击位置 x = ${x.toFixed(3)}</div>
-                            <div>查找最近的自定义数据点: x = ${nearestX.toFixed(3)}</div>
-                            <div>对应基础光强值: I<sub>base</sub> = ${nearestIntensity.toFixed(6)}</div>
-                            <div>距离差: |Δx| = ${Math.abs(nearestX - x).toFixed(6)}</div>
+                            <strong>步骤1: 定位最近数据点</strong>
+                            <div class="step-detail">• 用户点击位置: x = ${x.toFixed(3)} mm</div>
+                            <div class="step-detail">• 查找最近的自定义数据点: x = ${nearestX.toFixed(3)} mm</div>
+                            <div class="step-detail">• 对应基础光强值: I<sub>base</sub> = ${nearestIntensity.toFixed(6)}</div>
+                            <div class="step-detail">• 距离差: |Δx| = ${Math.abs(nearestX - x).toFixed(6)} mm</div>
+                            <div class="step-note">💡 基于用户自定义向量数据进行插值定位</div>
                         </li>
                         <li>
-                            <strong>计算各段有效光强和剂量</strong>
-                            <div>公式: I<sub>effective,i</sub> = I<sub>base</sub> × w<sub>i</sub></div>
-                            <div>各段剂量: D<sub>i</sub> = I<sub>effective,i</sub> × t<sub>i</sub></div>
-                            <div>总曝光剂量: D<sub>total</sub> = Σ D<sub>i</sub> = ${totalExposureDose.toFixed(3)}</div>
+                            <strong>步骤2: 多段曝光剂量累积计算</strong>
+                            <div class="step-detail">• 各段有效光强公式: I<sub>effective,i</sub> = I<sub>base</sub> × w<sub>i</sub></div>
+                            <div class="step-detail">• 各段剂量公式: D<sub>i</sub> = I<sub>effective,i</sub> × t<sub>i</sub></div>
+                            <div class="step-detail">• 累积剂量公式: D<sub>total</sub> = ∑<sub>i=1</sub><sup>${segmentCount}</sup> D<sub>i</sub></div>
+                            <div class="step-detail">• 计算结果: D<sub>total</sub> = ${totalExposureDose.toFixed(6)}</div>
+                            <div class="step-note">💡 ${segmentCount}段时间累积，总时长 ${(segmentCount * segmentDuration)}s</div>
                         </li>
                         <li>
-                            <strong>阈值判断</strong>
-                            <div>阈值c<sub>d</sub> = ${thresholdCd}</div>
-                            <div>判断: D<sub>total</sub> ${totalExposureDose < thresholdCd ? '<' : '≥'} c<sub>d</sub></div>
-                            <div>结果: ${totalExposureDose < thresholdCd ? '未达阈值，不发生反应' : '超过阈值，发生反应'}</div>
+                            <strong>步骤3: DILL模型阈值判断</strong>
+                            <div class="step-detail">• 曝光阈值: c<sub>d</sub> = ${thresholdCd} mJ/cm²</div>
+                            <div class="step-detail">• 比较结果: D<sub>total</sub> ${totalExposureDose < thresholdCd ? '<' : '≥'} c<sub>d</sub></div>
+                            <div class="step-detail">• 物理意义: ${totalExposureDose < thresholdCd ? '曝光不足，抗蚀剂不发生反应' : '曝光充分，抗蚀剂发生反应'}</div>
+                            <div class="step-note">💡 阈值决定是否开始产生显影效应</div>
                         </li>
                         <li>
-                            <strong>计算抗蚀剂值M</strong>
+                            <strong>步骤4: 计算抗蚀剂值 M(x)</strong>
                             ${totalExposureDose < thresholdCd ? 
-                              '<div>D<sub>total</sub> < c<sub>d</sub>，所以 M = 1（完全抗蚀）</div>' : 
-                              `<div>公式: M = e<sup>-C × (D<sub>total</sub> - c<sub>d</sub>)</sup></div>
-                               <div>   = e<sup>-${exposureConstant} × (${totalExposureDose.toFixed(3)} - ${thresholdCd})</sup></div>
-                               <div>   = e<sup>-${exposureConstant} × ${(totalExposureDose-thresholdCd).toFixed(3)}</sup></div>
-                               <div>   = e<sup>-${(exposureConstant*(totalExposureDose-thresholdCd)).toFixed(3)}</sup></div>
-                               <div>   = ${M_value.toFixed(6)}</div>`
+                              '<div class="step-detail">• 未达阈值情况: M = 1（完全抗蚀，无溶解）</div><div class="step-note">💡 抗蚀剂保持完整，厚度不变</div>' : 
+                              `<div class="step-detail">• DILL模型公式: M = e<sup>-C × (D<sub>total</sub> - c<sub>d</sub>)</sup></div>
+                               <div class="step-detail">• 参数代入: M = e<sup>-${exposureConstant} × (${totalExposureDose.toFixed(3)} - ${thresholdCd})</sup></div>
+                               <div class="step-detail">• 简化计算: M = e<sup>-${exposureConstant} × ${(totalExposureDose-thresholdCd).toFixed(3)}</sup></div>
+                               <div class="step-detail">• 指数计算: M = e<sup>${(exposureConstant*(totalExposureDose-thresholdCd)).toFixed(3)}</sup></div>
+                               <div class="step-detail">• 最终结果: M = ${M_value.toFixed(6)}</div>
+                               <div class="step-note">💡 M值越小，抗蚀剂溶解越多</div>`
                             }
                         </li>
                         <li>
-                            <strong>计算最终蚀刻厚度H</strong>
-                            <div>公式: H = 1 - M</div>
-                            <div>   = 1 - ${M_value.toFixed(6)}</div>
-                            <div>   = ${theoreticalThickness.toFixed(6)}</div>
+                            <strong>步骤5: 计算蚀刻深度 H(x)</strong>
+                            <div class="step-detail">• 蚀刻深度公式: H = 1 - M</div>
+                            <div class="step-detail">• 数值代入: H = 1 - ${M_value.toFixed(6)}</div>
+                            <div class="step-detail">• 最终结果: H = ${theoreticalThickness.toFixed(6)}</div>
+                            <div class="step-detail">• 归一化范围: [0, 1]，其中0表示无蚀刻，1表示完全蚀刻</div>
+                            <div class="step-note">💡 结合了自定义光强分布和多段时间累积的综合效应</div>
                         </li>
                     </ol>
                 </div>
@@ -6097,17 +6165,371 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                         margin: 8px 0;
                         font-size: 12px;
                         background-color: #f8f9fa;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                     }
                     .segments-info-table th, .segments-analysis-table th,
                     .segments-info-table td, .segments-analysis-table td {
                         border: 1px solid #dee2e6;
-                        padding: 4px 6px;
+                        padding: 6px 8px;
                         text-align: center;
                     }
                     .segments-info-table th, .segments-analysis-table th {
                         background-color: #e9ecef;
                         font-weight: bold;
                         color: #495057;
+                    }
+                    .calculation-steps {
+                        margin: 10px 0;
+                        padding: 12px;
+                        background-color: #f8f9fa;
+                        border-radius: 6px;
+                        border-left: 4px solid #007bff;
+                    }
+                    .step-title {
+                        font-weight: bold;
+                        margin-bottom: 8px;
+                        color: #495057;
+                    }
+                    .calculation-steps ol {
+                        margin: 0;
+                        padding-left: 20px;
+                    }
+                    .calculation-steps li {
+                        margin-bottom: 12px;
+                        line-height: 1.4;
+                    }
+                    .step-detail {
+                        margin: 2px 0;
+                        padding-left: 8px;
+                        font-size: 11px;
+                        color: #666;
+                    }
+                    .step-note {
+                        margin: 4px 0;
+                        padding: 4px 8px;
+                        background-color: #e7f3ff;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        color: #0066cc;
+                        font-style: italic;
+                    }
+                    .total-row {
+                        background-color: #fff3cd !important;
+                        font-weight: bold;
+                    }
+                    .formula-separator {
+                        height: 1px;
+                        background-color: #dee2e6;
+                        margin: 8px 0;
+                    }
+                    .thickness-comparison {
+                        margin: 10px 0;
+                        padding: 8px;
+                        background-color: #f8f9fa;
+                        border-radius: 4px;
+                        border: 1px solid #dee2e6;
+                    }
+                    .comparison-title {
+                        font-weight: bold;
+                        margin-bottom: 8px;
+                        color: #495057;
+                    }
+                    .comparison-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        font-size: 12px;
+                    }
+                    .comparison-table th, .comparison-table td {
+                        border: 1px solid #dee2e6;
+                        padding: 6px 8px;
+                        text-align: left;
+                    }
+                    .comparison-table th {
+                        background-color: #e9ecef;
+                        font-weight: bold;
+                    }
+                    .resist-state {
+                        padding: 2px 6px;
+                        border-radius: 3px;
+                        font-size: 11px;
+                        font-weight: bold;
+                    }
+                    .resist-state.unexposed {
+                        background-color: #ffeaa7;
+                        color: #d63031;
+                    }
+                    .resist-state.exposed {
+                        background-color: #55a3ff;
+                        color: white;
+                    }
+                </style>
+            `;
+        }
+        else if (isCumulativeExposure) {
+            // 多段曝光时间累积模式的厚度分布
+            valueLabel = '蚀刻深度/厚度:';
+            valueUnit = '(归一化)';
+            formulaTitle = 'Dill模型 - 多段曝光时间累积模式蚀刻深度计算：';
+            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>i</sub>(x) × Δt<sub>i</sub>]</div>';
+            formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
+            formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>total</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
+            formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>total</sub>(x) - c<sub>d</sub>)</sup></div>';
+            formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
+            
+            // 获取自定义数据的信息
+            const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
+            const xRange = customIntensityData.x ? [Math.min(...customIntensityData.x), Math.max(...customIntensityData.x)] : [0, 0];
+            const intensityRange = customIntensityData.intensity ? [Math.min(...customIntensityData.intensity), Math.max(...customIntensityData.intensity)] : [0, 0];
+            
+            // 找到当前点在自定义数据中的对应光强值
+            let nearestIndex = 0;
+            let minDistance = Infinity;
+            if (customIntensityData.x) {
+                for (let i = 0; i < customIntensityData.x.length; i++) {
+                    const distance = Math.abs(customIntensityData.x[i] - x);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestIndex = i;
+                    }
+                }
+            }
+            
+            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
+            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : 0;
+            
+            // 获取DILL参数
+            const exposureConstant = params.C || 0.022;
+            const thresholdCd = params.exposure_threshold || 20;
+            
+            // 获取多段曝光时间参数
+            const segmentCount = params.segment_count || 5;
+            const segmentDuration = params.segment_duration || 1;
+            const segmentIntensities = params.segment_intensities || [];
+            const timeMode = params.time_mode || 'fixed';
+            
+            // 计算总曝光剂量（基于自定义向量的基础光强和多段时间）
+            let totalExposureDose = 0;
+            let segmentsTable = '<table class="segments-analysis-table"><thead><tr><th>段号</th><th>基础光强</th><th>权重</th><th>有效光强</th><th>时长(s)</th><th>段剂量</th></tr></thead><tbody>';
+            
+            for (let i = 0; i < segmentCount; i++) {
+                const intensityWeight = segmentIntensities[i] || 1.0;
+                const effectiveIntensity = nearestIntensity * intensityWeight;
+                const segmentDose = effectiveIntensity * segmentDuration;
+                totalExposureDose += segmentDose;
+                
+                segmentsTable += `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${nearestIntensity.toFixed(3)}</td>
+                        <td>${intensityWeight.toFixed(3)}</td>
+                        <td>${effectiveIntensity.toFixed(3)}</td>
+                        <td>${segmentDuration}</td>
+                        <td>${segmentDose.toFixed(3)}</td>
+                    </tr>
+                `;
+            }
+            // 添加总计行
+            segmentsTable += `
+                <tr class="total-row">
+                    <td colspan="5">总剂量</td>
+                    <td>${totalExposureDose.toFixed(3)}</td>
+                </tr>
+            `;
+            
+            segmentsTable += '</tbody></table>';
+            
+            // 计算理论厚度
+            let theoreticalThickness;
+            let M_value; // M值（抗蚀剂值）
+            
+            if (totalExposureDose < thresholdCd) {
+                M_value = 1.0; // 未达阈值，完全抗蚀
+                theoreticalThickness = 0; // 无蚀刻
+            } else {
+                M_value = Math.exp(-exposureConstant * (totalExposureDose - thresholdCd));
+                theoreticalThickness = 1 - M_value; // 蚀刻深度
+            }
+            
+            formulaExplanation = `
+                <div>🔧 <strong>自定义向量 + 多段曝光时间累积蚀刻：</strong></div>
+                <div>• 基础数据: 用户自定义向量</div>
+                <div>• 数据点总数: ${totalDataPoints} 个</div>
+                <div>• X坐标范围: [${xRange[0].toFixed(3)}, ${xRange[1].toFixed(3)}]</div>
+                <div>• 基础光强范围: [${intensityRange[0].toFixed(6)}, ${intensityRange[1].toFixed(6)}]</div>
+                <div class="formula-separator"></div>
+                <div>⏱️ <strong>多段曝光时间参数：</strong></div>
+                <div>• 时间模式: ${timeMode === 'fixed' ? '固定时间段' : '自定义时间点'}</div>
+                <div>• 段落数量: ${segmentCount}</div>
+                <div>• 单段时长: ${segmentDuration}s</div>
+                <div>• 总曝光时间: ${(segmentCount * segmentDuration)}s</div>
+                <div class="formula-separator"></div>
+                <div>📊 <strong>各段曝光详情：</strong></div>
+                ${segmentsTable}
+                <div class="formula-separator"></div>
+                <div>🧮 <strong>DILL模型参数：</strong></div>
+                <div>• 曝光常数 C: ${exposureConstant}</div>
+                <div>• 阈值 cd: ${thresholdCd}</div>
+                <div>• 总累积曝光剂量: ${totalExposureDose.toFixed(3)}</div>
+                <div class="formula-separator"></div>
+                
+                <!-- 添加计算过程详细步骤 -->
+                <div class="calculation-steps">
+                    <div class="step-title">📊 详细计算过程:</div>
+                    <ol>
+                        <li>
+                            <strong>步骤1: 定位最近数据点</strong>
+                            <div class="step-detail">• 用户点击位置: x = ${x.toFixed(3)} mm</div>
+                            <div class="step-detail">• 查找最近的自定义数据点: x = ${nearestX.toFixed(3)} mm</div>
+                            <div class="step-detail">• 对应基础光强值: I<sub>base</sub> = ${nearestIntensity.toFixed(6)}</div>
+                            <div class="step-detail">• 距离差: |Δx| = ${Math.abs(nearestX - x).toFixed(6)} mm</div>
+                            <div class="step-note">💡 基于用户自定义向量数据进行插值定位</div>
+                        </li>
+                        <li>
+                            <strong>步骤2: 多段曝光剂量累积计算</strong>
+                            <div class="step-detail">• 各段有效光强公式: I<sub>effective,i</sub> = I<sub>base</sub> × w<sub>i</sub></div>
+                            <div class="step-detail">• 各段剂量公式: D<sub>i</sub> = I<sub>effective,i</sub> × t<sub>i</sub></div>
+                            <div class="step-detail">• 累积剂量公式: D<sub>total</sub> = ∑<sub>i=1</sub><sup>${segmentCount}</sup> D<sub>i</sub></div>
+                            <div class="step-detail">• 计算结果: D<sub>total</sub> = ${totalExposureDose.toFixed(6)}</div>
+                            <div class="step-note">💡 ${segmentCount}段时间累积，总时长 ${(segmentCount * segmentDuration)}s</div>
+                        </li>
+                        <li>
+                            <strong>步骤3: DILL模型阈值判断</strong>
+                            <div class="step-detail">• 曝光阈值: c<sub>d</sub> = ${thresholdCd} mJ/cm²</div>
+                            <div class="step-detail">• 比较结果: D<sub>total</sub> ${totalExposureDose < thresholdCd ? '<' : '≥'} c<sub>d</sub></div>
+                            <div class="step-detail">• 物理意义: ${totalExposureDose < thresholdCd ? '曝光不足，抗蚀剂不发生反应' : '曝光充分，抗蚀剂发生反应'}</div>
+                            <div class="step-note">💡 阈值决定是否开始产生显影效应</div>
+                        </li>
+                        <li>
+                            <strong>步骤4: 计算抗蚀剂值 M(x)</strong>
+                            ${totalExposureDose < thresholdCd ? 
+                              '<div class="step-detail">• 未达阈值情况: M = 1（完全抗蚀，无溶解）</div><div class="step-note">💡 抗蚀剂保持完整，厚度不变</div>' : 
+                              `<div class="step-detail">• DILL模型公式: M = e<sup>-C × (D<sub>total</sub> - c<sub>d</sub>)</sup></div>
+                               <div class="step-detail">• 参数代入: M = e<sup>-${exposureConstant} × (${totalExposureDose.toFixed(3)} - ${thresholdCd})</sup></div>
+                               <div class="step-detail">• 简化计算: M = e<sup>-${exposureConstant} × ${(totalExposureDose-thresholdCd).toFixed(3)}</sup></div>
+                               <div class="step-detail">• 指数计算: M = e<sup>${(exposureConstant*(totalExposureDose-thresholdCd)).toFixed(3)}</sup></div>
+                               <div class="step-detail">• 最终结果: M = ${M_value.toFixed(6)}</div>
+                               <div class="step-note">💡 M值越小，抗蚀剂溶解越多</div>`
+                            }
+                        </li>
+                        <li>
+                            <strong>步骤5: 计算蚀刻深度 H(x)</strong>
+                            <div class="step-detail">• 蚀刻深度公式: H = 1 - M</div>
+                            <div class="step-detail">• 数值代入: H = 1 - ${M_value.toFixed(6)}</div>
+                            <div class="step-detail">• 最终结果: H = ${theoreticalThickness.toFixed(6)}</div>
+                            <div class="step-detail">• 归一化范围: [0, 1]，其中0表示无蚀刻，1表示完全蚀刻</div>
+                            <div class="step-note">💡 结合了自定义光强分布和多段时间累积的综合效应</div>
+                        </li>
+                    </ol>
+                </div>
+                <div class="formula-separator"></div>
+                
+                <!-- 添加比较分析 -->
+                <div class="thickness-comparison">
+                    <div class="comparison-title">📏 显示厚度与理论计算对比:</div>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>项目</th>
+                            <th>数值</th>
+                            <th>说明</th>
+                        </tr>
+                        <tr>
+                            <td>显示厚度</td>
+                            <td>${y.toFixed(6)}</td>
+                            <td>图表上显示的值</td>
+                        </tr>
+                        <tr>
+                            <td>理论厚度</td>
+                            <td>${theoreticalThickness.toFixed(6)}</td>
+                            <td>根据DILL模型计算的值</td>
+                        </tr>
+                        <tr>
+                            <td>偏差</td>
+                            <td>${Math.abs(y - theoreticalThickness).toFixed(6)}</td>
+                            <td>${Math.abs(y - theoreticalThickness) < 0.001 ? '误差极小' : '有一定偏差'}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="formula-separator"></div>
+                
+                <div>📍 <strong>当前点计算结果：</strong></div>
+                <div>• 点击位置: x = ${x.toFixed(3)}</div>
+                <div>• 显示厚度: ${y.toFixed(6)}</div>
+                <div>• 最近数据点: x = ${nearestX.toFixed(3)}, I_base = ${nearestIntensity.toFixed(6)}</div>
+                <div>• 理论厚度: ${theoreticalThickness.toFixed(6)}</div>
+                <div>• 抗蚀剂状态: ${totalExposureDose < thresholdCd ? '<span class="resist-state unexposed">未曝光 (低于阈值)</span>' : '<span class="resist-state exposed">已曝光 (高于阈值)</span>'}</div>
+                <div class="formula-separator"></div>
+                <div>💡 <strong>计算说明：</strong></div>
+                <div>• 总曝光剂量 = Σ(基础光强 × 权重 × 时长)</div>
+                <div>• 系统结合了自定义光强分布和多段时间累积效应</div>
+                <div>• 每段的有效光强由基础光强和段落权重共同决定</div>
+                <div>• 最终蚀刻深度基于累积总剂量计算</div>
+            `;
+            
+            // 为自定义向量 + 多段曝光时间累积模式添加CSS样式
+            additionalInfo = `
+                <style>
+                    .segments-info-table, .segments-analysis-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 8px 0;
+                        font-size: 12px;
+                        background-color: #f8f9fa;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    .segments-info-table th, .segments-analysis-table th,
+                    .segments-info-table td, .segments-analysis-table td {
+                        border: 1px solid #dee2e6;
+                        padding: 6px 8px;
+                        text-align: center;
+                    }
+                    .segments-info-table th, .segments-analysis-table th {
+                        background-color: #e9ecef;
+                        font-weight: bold;
+                        color: #495057;
+                    }
+                    .calculation-steps {
+                        margin: 10px 0;
+                        padding: 12px;
+                        background-color: #f8f9fa;
+                        border-radius: 6px;
+                        border-left: 4px solid #007bff;
+                    }
+                    .step-title {
+                        font-weight: bold;
+                        margin-bottom: 8px;
+                        color: #495057;
+                    }
+                    .calculation-steps ol {
+                        margin: 0;
+                        padding-left: 20px;
+                    }
+                    .calculation-steps li {
+                        margin-bottom: 12px;
+                        line-height: 1.4;
+                    }
+                    .step-detail {
+                        margin: 2px 0;
+                        padding-left: 8px;
+                        font-size: 11px;
+                        color: #666;
+                    }
+                    .step-note {
+                        margin: 4px 0;
+                        padding: 4px 8px;
+                        background-color: #e7f3ff;
+                        border-radius: 3px;
+                        font-size: 10px;
+                        color: #0066cc;
+                        font-style: italic;
+                    }
+                    .total-row {
+                        background-color: #fff3cd !important;
+                        font-weight: bold;
+                    }
+                    .formula-separator {
+                        height: 1px;
+                        background-color: #dee2e6;
+                        margin: 8px 0;
                     }
                     .segments-info-table tbody tr:nth-child(even),
                     .segments-analysis-table tbody tr:nth-child(even) {
@@ -14966,7 +15388,7 @@ function initUnitSelection() {
             showNotification(`已选择坐标单位: ${unitLabel}，点击"预览数据"按钮应用此更改`, 'info');
             
             // 确保预览按钮存在并使其更醒目
-            const previewBtn = addPreviewButton();
+            const previewBtn = addManualPreviewButton();
             if (previewBtn) {
                 // 添加闪烁动画以提醒用户点击
                 previewBtn.classList.add('highlight-btn');
@@ -14997,7 +15419,7 @@ function initUnitSelection() {
                 showNotification(`已设置自定义比例因子: ${value}，点击"预览数据"按钮应用此更改`, 'info');
                 
                 // 确保预览按钮存在并使其更醒目
-                const previewBtn = addPreviewButton();
+                const previewBtn = addManualPreviewButton();
                 if (previewBtn) {
                     // 添加闪烁动画以提醒用户点击
                     previewBtn.classList.add('highlight-btn');

@@ -251,15 +251,19 @@ def open_browser_when_ready(url, max_wait_time=15):
     thread.start()
     return thread
 
-def setup_environment():
+def setup_environment(verbose_logs=False):
     """设置运行环境
     
     配置应用环境变量，设置工作目录，并配置日志系统。
     
-    可以通过环境变量控制的功能：
-    - DILL_ENABLE_LOG_FILTER: 控制是否过滤掉频繁的API日志请求
+    可以通过以下方式控制日志显示：
+    1. 命令行参数: --verbose-logs 或 -v
+    2. 环境变量: DILL_ENABLE_LOG_FILTER
       - 设置为'false'可显示所有API请求日志（默认为'true'，即启用过滤）
       - 例如: DILL_ENABLE_LOG_FILTER=false python run.py
+    
+    Args:
+        verbose_logs (bool): 是否显示详细日志（来自命令行参数）
     """
     # 设置工作目录
     os.chdir(current_dir)
@@ -272,33 +276,64 @@ def setup_environment():
     import logging
     werkzeug_logger = logging.getLogger('werkzeug')
     
-    # 检查是否应该启用日志过滤（通过环境变量控制）
-    enable_log_filter = os.environ.get('DILL_ENABLE_LOG_FILTER', 'true').lower() != 'false'
+    # 检查是否应该启用日志过滤
+    # 优先级：命令行参数 > 环境变量 > 默认值
+    if verbose_logs:
+        enable_log_filter = False  # 命令行要求显示详细日志
+    else:
+        enable_log_filter = os.environ.get('DILL_ENABLE_LOG_FILTER', 'true').lower() != 'false'
     
     class LogFilter(logging.Filter):
-        """过滤器：过滤掉特定的API请求日志
+        """过滤器：过滤掉特定的API请求日志和静态资源请求日志
         
-        这个过滤器用于减少前端轮询/api/logs接口产生的大量重复日志消息。
-        前端为了实时更新日志显示，会频繁请求这个接口，产生大量相同的访问日志。
-        通过这个过滤器，我们只过滤掉这些特定请求的日志，而保留其他所有日志信息。
+        这个过滤器用于减少以下类型的重复日志消息：
+        1. 前端轮询/api/logs接口产生的大量重复日志消息
+        2. 静态资源文件请求（CSS、JS、图片等）
+        3. favicon.ico 请求
+        
+        通过这个过滤器，我们只保留重要的API调用和错误日志，
+        而过滤掉这些频繁但不重要的请求日志。
         
         注意：这不会影响API的功能，只是减少了控制台输出的日志数量。
         """
         def filter(self, record):
             message = record.getMessage()
-            # 只过滤成功的GET /api/logs请求(状态码200)
+            
+            # 过滤成功的静态资源请求（CSS、JS、图片等）
+            static_extensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.avif']
+            for ext in static_extensions:
+                if f'GET /{ext.lstrip(".")}' in message or f'{ext}' in message:
+                    if '" 200 -' in message or '" 304 -' in message:  # 成功或未修改
+                        return False
+            
+            # 过滤favicon.ico请求
+            if 'favicon.ico' in message and ('" 200 -' in message or '" 304 -' in message):
+                return False
+            
+            # 过滤成功的GET /api/logs请求
             if '"GET /api/logs' in message and '" 200 -' in message:
                 return False
-            # 保留所有其他日志，包括错误状态、其他API请求等
+            
+            # 过滤成功的根路径请求（首页访问）
+            if '"GET / HTTP' in message and '" 200 -' in message:
+                return False
+                
+            # 保留所有其他日志，包括：
+            # - 错误状态的请求
+            # - API计算请求
+            # - 警告和错误日志
+            # - 应用启动日志等
             return True
     
     # 根据配置添加过滤器
     if enable_log_filter:
         werkzeug_logger.addFilter(LogFilter())
-        print("✅ API日志过滤器已启用，减少前端轮询日志输出")
-        logging.info("API日志过滤器已启用，减少/api/logs请求的日志输出")
+        print("✅ 日志过滤器已启用，隐藏静态资源和轮询请求日志")
+        print("   💡 如需查看所有日志，请设置环境变量: DILL_ENABLE_LOG_FILTER=false")
+        logging.info("日志过滤器已启用，过滤静态资源和轮询请求日志")
     else:
-        print("ℹ️ API日志过滤器未启用，显示所有API请求日志")
+        print("ℹ️ 日志过滤器未启用，显示所有请求日志")
+        print("   💡 如需隐藏频繁日志，请设置环境变量: DILL_ENABLE_LOG_FILTER=true")
 
 def print_server_info(host, port, debug_mode):
     """打印服务器信息"""
@@ -333,6 +368,7 @@ def parse_arguments():
   python run.py --port 5000       # 在端口5000启动
   python run.py --debug           # 启用调试模式
   python run.py --no-browser      # 不自动打开浏览器
+  python run.py --verbose-logs    # 显示所有请求日志
         """
     )
     
@@ -361,6 +397,12 @@ def parse_arguments():
         help='不自动打开浏览器'
     )
     
+    parser.add_argument(
+        '--verbose-logs', '-v',
+        action='store_true',
+        help='显示所有请求日志（包括静态资源）'
+    )
+    
     return parser.parse_args()
 
 def main():
@@ -376,7 +418,7 @@ def main():
         sys.exit(1)
     
     # 设置环境（确保在创建应用之前设置）
-    setup_environment()
+    setup_environment(verbose_logs=args.verbose_logs)
     
     # 检查端口可用性
     if not check_port_available(args.host, args.port):
