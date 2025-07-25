@@ -5231,8 +5231,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 }
             }
             
-            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
-            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : y;
+            const nearestX = customIntensityData.x && nearestIndex < customIntensityData.x.length ? customIntensityData.x[nearestIndex] : x;
+            const nearestIntensity = customIntensityData.intensity && nearestIndex < customIntensityData.intensity.length ? customIntensityData.intensity[nearestIndex] : y;
             
             // 获取多段曝光时间参数
             const segmentCount = params.segment_count || 5;
@@ -5615,8 +5615,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 }
             }
             
-            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
-            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : y;
+            const nearestX = customIntensityData.x && nearestIndex < customIntensityData.x.length ? customIntensityData.x[nearestIndex] : x;
+            const nearestIntensity = customIntensityData.intensity && nearestIndex < customIntensityData.intensity.length ? customIntensityData.intensity[nearestIndex] : y;
             
             // 获取多段曝光时间参数
             const segmentCount = params.segment_count || 5;
@@ -5858,8 +5858,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 }
             }
             
-            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
-            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : y;
+            const nearestX = customIntensityData.x && nearestIndex < customIntensityData.x.length ? customIntensityData.x[nearestIndex] : x;
+            const nearestIntensity = customIntensityData.intensity && nearestIndex < customIntensityData.intensity.length ? customIntensityData.intensity[nearestIndex] : y;
             
             formulaExplanation = `
                 <div>📊 <strong>自定义向量数据信息：</strong></div>
@@ -5966,6 +5966,13 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>total</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>total</sub>(x) - c<sub>d</sub>)</sup></div>';
             formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
+
+            // 确保 customIntensityData 有效，如果无效则从 lastPlotData 中获取
+            if (!customIntensityData || !customIntensityData.x || !customIntensityData.intensity) {
+                if (window.lastPlotData && window.lastPlotData.customIntensityData) {
+                    customIntensityData = window.lastPlotData.customIntensityData;
+                }
+            }
             
             // 获取自定义数据的信息
             const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
@@ -5985,17 +5992,17 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 }
             }
             
-            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
-            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : 0;
+            const nearestX = customIntensityData.x && nearestIndex < customIntensityData.x.length ? customIntensityData.x[nearestIndex] : x;
+            const nearestIntensity = customIntensityData.intensity && nearestIndex < customIntensityData.intensity.length ? customIntensityData.intensity[nearestIndex] : 0;
             
             // 获取DILL参数
             const exposureConstant = params.C || 0.022;
             const thresholdCd = params.exposure_threshold || 20;
             
             // 获取多段曝光时间参数
-            const segmentCount = params.segment_count || 5;
-            const segmentDuration = params.segment_duration || 1;
-            const segmentIntensities = params.segment_intensities || [];
+            const segmentCount = params.segment_count || 0;
+            const segmentDuration = Array.isArray(params.segment_duration) ? params.segment_duration : [];
+            const segmentIntensities = Array.isArray(params.segment_intensities) ? params.segment_intensities : [];
             const timeMode = params.time_mode || 'fixed';
             
             // 计算总曝光剂量（基于自定义向量的基础光强和多段时间）
@@ -6294,8 +6301,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 }
             }
             
-            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
-            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : 0;
+            const nearestX = customIntensityData.x && nearestIndex < customIntensityData.x.length ? customIntensityData.x[nearestIndex] : x;
+            const nearestIntensity = customIntensityData.intensity && nearestIndex < customIntensityData.intensity.length ? customIntensityData.intensity[nearestIndex] : 0;
             
             // 获取DILL参数
             const exposureConstant = params.C || 0.022;
@@ -6637,8 +6644,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 }
             }
             
-            const nearestX = customIntensityData.x ? customIntensityData.x[nearestIndex] : x;
-            const nearestIntensity = customIntensityData.intensity ? customIntensityData.intensity[nearestIndex] : 0;
+            const nearestX = customIntensityData.x && nearestIndex < customIntensityData.x.length ? customIntensityData.x[nearestIndex] : x;
+            const nearestIntensity = customIntensityData.intensity && nearestIndex < customIntensityData.intensity.length ? customIntensityData.intensity[nearestIndex] : 0;
             
             // 获取DILL参数
             const exposureConstant = params.C || 0.022;
@@ -7412,8 +7419,9 @@ function getSinglePointDetailedInfo(point, plotType, paramsOverride = null) {
                 
                 // 🔧 修复：如果有API响应数据，合并parameters字段到params
                 if (window.lastPlotData && window.lastPlotData.parameters) {
-                    params.parameters = window.lastPlotData.parameters;
-                    console.log('🔧 合并API参数到弹出窗口:', params.parameters);
+                    const apiParams = window.lastPlotData.parameters;
+                    params = { ...params, ...apiParams };
+                    console.log('🔧 合并API参数到弹出窗口:', params);
                 }
             } else if (modelType === 'enhanced_dill') {
                 params = getEnhancedDillModelParams();
@@ -15673,6 +15681,11 @@ function addManualPreviewButton() {
     if (previewBtn) {
         // 如果已存在，只需更新其显示状态
         previewBtn.style.display = 'inline-block';
+        // 隐藏中间的预览数据按钮
+        const middlePreviewBtn = document.getElementById('preview-intensity-btn');
+        if (middlePreviewBtn) {
+            middlePreviewBtn.style.display = 'none';
+        }
         return previewBtn;
     }
     
@@ -15681,6 +15694,12 @@ function addManualPreviewButton() {
     if (!inputArea) {
         console.error('未找到手动输入区域');
         return null;
+    }
+    
+    // 隐藏中间的预览数据按钮
+    const middlePreviewBtn = document.getElementById('preview-intensity-btn');
+    if (middlePreviewBtn) {
+        middlePreviewBtn.style.display = 'none';
     }
     
     // 创建预览按钮
@@ -15735,9 +15754,16 @@ function addManualPreviewButton() {
         
         // 移除高亮效果（如果有）
         this.classList.remove('highlight-btn');
-    });
-    
-    return previewBtn;
+        
+        // 隐藏手动预览按钮并恢复中间预览按钮的显示
+         this.style.display = 'none';
+         const middlePreviewBtn = document.getElementById('preview-intensity-btn');
+         if (middlePreviewBtn) {
+             middlePreviewBtn.style.display = 'inline-block';
+         }
+     });
+     
+     return previewBtn;
 }
 
 // 更新手动输入数据状态信息中的单位显示

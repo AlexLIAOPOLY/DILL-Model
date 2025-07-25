@@ -359,7 +359,7 @@ function generateSegmentInputs() {
     container.innerHTML = '';
     
     // 重置强度数组
-    cumulativeExposureSegments.intensities = new Array(count).fill(10); // 默认值10
+    cumulativeExposureSegments.intensities = new Array(count).fill(50); // 默认值50
     cumulativeExposureSegments.segmentCount = count;
     cumulativeExposureSegments.segmentDuration = duration;
     cumulativeExposureSegments.activeSegmentIndex = -1; // 重置活跃段落索引
@@ -487,7 +487,7 @@ function generateSegmentInputs() {
         
         const input = document.createElement('input');
         input.type = 'number';
-        input.value = '10';
+        input.value = '50';
         input.min = '0';
         input.max = '100';
         input.step = '0.1';
@@ -503,7 +503,7 @@ function generateSegmentInputs() {
             
             // 确保数组长度足够
             if (cumulativeExposureSegments.intensities.length <= index) {
-                cumulativeExposureSegments.intensities = new Array(index + 1).fill(10);
+                cumulativeExposureSegments.intensities = new Array(index + 1).fill(50);
             }
             
             cumulativeExposureSegments.intensities[index] = value;
@@ -777,6 +777,6 @@ window.extendParametersWithCumulative = function(params) {
     }
     
     return params;
-}; 
+};
 
  
