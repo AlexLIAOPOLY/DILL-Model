@@ -252,13 +252,53 @@ def open_browser_when_ready(url, max_wait_time=15):
     return thread
 
 def setup_environment():
-    """设置运行环境"""
+    """设置运行环境
+    
+    配置应用环境变量，设置工作目录，并配置日志系统。
+    
+    可以通过环境变量控制的功能：
+    - DILL_ENABLE_LOG_FILTER: 控制是否过滤掉频繁的API日志请求
+      - 设置为'false'可显示所有API请求日志（默认为'true'，即启用过滤）
+      - 例如: DILL_ENABLE_LOG_FILTER=false python run.py
+    """
     # 设置工作目录
     os.chdir(current_dir)
     
     # 设置环境变量
     os.environ.setdefault('FLASK_ENV', 'production')
     os.environ.setdefault('PYTHONPATH', current_dir)
+    
+    # 配置Werkzeug日志记录器，过滤频繁的API日志请求
+    import logging
+    werkzeug_logger = logging.getLogger('werkzeug')
+    
+    # 检查是否应该启用日志过滤（通过环境变量控制）
+    enable_log_filter = os.environ.get('DILL_ENABLE_LOG_FILTER', 'true').lower() != 'false'
+    
+    class LogFilter(logging.Filter):
+        """过滤器：过滤掉特定的API请求日志
+        
+        这个过滤器用于减少前端轮询/api/logs接口产生的大量重复日志消息。
+        前端为了实时更新日志显示，会频繁请求这个接口，产生大量相同的访问日志。
+        通过这个过滤器，我们只过滤掉这些特定请求的日志，而保留其他所有日志信息。
+        
+        注意：这不会影响API的功能，只是减少了控制台输出的日志数量。
+        """
+        def filter(self, record):
+            message = record.getMessage()
+            # 只过滤成功的GET /api/logs请求(状态码200)
+            if '"GET /api/logs' in message and '" 200 -' in message:
+                return False
+            # 保留所有其他日志，包括错误状态、其他API请求等
+            return True
+    
+    # 根据配置添加过滤器
+    if enable_log_filter:
+        werkzeug_logger.addFilter(LogFilter())
+        print("✅ API日志过滤器已启用，减少前端轮询日志输出")
+        logging.info("API日志过滤器已启用，减少/api/logs请求的日志输出")
+    else:
+        print("ℹ️ API日志过滤器未启用，显示所有API请求日志")
 
 def print_server_info(host, port, debug_mode):
     """打印服务器信息"""
@@ -335,7 +375,7 @@ def main():
     if not check_dependencies():
         sys.exit(1)
     
-    # 设置环境
+    # 设置环境（确保在创建应用之前设置）
     setup_environment()
     
     # 检查端口可用性

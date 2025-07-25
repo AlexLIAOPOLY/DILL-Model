@@ -108,10 +108,22 @@
         <div class="header-main">
             <div class="header-content">
                 <div class="brand-section">
-                    <div class="logo-container">
-                        <div class="logo-images">
-                            <img src="assets/images/LOGO.avif" alt="香港大学校徽" class="university-logo" title="香港大学">
+                    <!-- 添加新的动态LOGO -->
+                    <div class="dynamic-logo-container">
+                        <div class="dynamic-logo">
+                            <div class="dynamic-logo-circle"></div>
+                            <div class="dynamic-logo-ring"></div>
+                            <div class="dynamic-logo-orbit orbit-1">
+                                <div class="dynamic-logo-particle particle-1"></div>
+                            </div>
+                            <div class="dynamic-logo-orbit orbit-2">
+                                <div class="dynamic-logo-particle particle-2"></div>
+                            </div>
+                            <!-- 第三个轨道由CSS ::after伪元素创建 -->
+                            <div class="dynamic-logo-particle particle-3"></div>
                         </div>
+                    </div>
+                    <div class="logo-container">
                         <div class="logo-text">
                             <div class="logo-title" data-i18n="logo_title">
                                 <span class="logo-highlight">多模型</span>光刻胶计算平台
@@ -1054,5 +1066,93 @@
             </div>
         </div>
     </footer>
+    
+    <!-- 动态LOGO交互效果脚本 -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取动态LOGO元素
+        const dynamicLogo = document.querySelector('.dynamic-logo');
+        const dynamicLogoContainer = document.querySelector('.dynamic-logo-container');
+        const dynamicLogoRing = document.querySelector('.dynamic-logo-ring');
+        const dynamicLogoCircle = document.querySelector('.dynamic-logo-circle');
+        
+        if (!dynamicLogo || !dynamicLogoContainer) return;
+        
+        // 添加鼠标移入暂停旋转效果
+        dynamicLogoContainer.addEventListener('mouseenter', function() {
+            if (dynamicLogo) {
+                // 暂停主体旋转
+                dynamicLogo.style.animationPlayState = 'paused';
+                
+                // 暂停轨道和环的旋转
+                document.querySelectorAll('.dynamic-logo-orbit').forEach(orbit => {
+                    orbit.style.animationPlayState = 'paused';
+                });
+                
+                if (dynamicLogoRing) {
+                    dynamicLogoRing.style.animationPlayState = 'paused';
+                }
+            }
+        });
+        
+        // 添加鼠标移出继续旋转效果
+        dynamicLogoContainer.addEventListener('mouseleave', function() {
+            if (dynamicLogo) {
+                // 恢复主体旋转
+                dynamicLogo.style.animationPlayState = 'running';
+                
+                // 恢复轨道和环的旋转
+                document.querySelectorAll('.dynamic-logo-orbit').forEach(orbit => {
+                    orbit.style.animationPlayState = 'running';
+                });
+                
+                if (dynamicLogoRing) {
+                    dynamicLogoRing.style.animationPlayState = 'running';
+                }
+            }
+        });
+        
+        // 添加点击时的增强3D脉冲效果
+        dynamicLogoContainer.addEventListener('click', function() {
+            if (dynamicLogo) {
+                // 防止多次点击触发叠加效果
+                if (dynamicLogo.classList.contains('pulse-effect')) {
+                    return;
+                }
+                
+                // 添加脉冲效果类
+                dynamicLogo.classList.add('pulse-effect');
+                
+                // 获取当前3D状态并保存
+                const currentTransform = getComputedStyle(dynamicLogo).transform;
+                
+                // 重置粒子元素，使其从当前位置开始动画
+                const particles = dynamicLogo.querySelectorAll('.dynamic-logo-particle');
+                particles.forEach((particle, index) => {
+                    // 错开不同粒子的动画开始时间
+                    setTimeout(() => {
+                        particle.style.animation = `particlePulse ${0.6 + index * 0.1}s ease-in-out forwards`;
+                    }, index * 50);
+                });
+                
+                // 在动画结束后移除脉冲效果类
+                setTimeout(() => {
+                    dynamicLogo.classList.remove('pulse-effect');
+                    
+                    // 重置粒子动画
+                    particles.forEach(particle => {
+                        particle.style.animation = '';
+                    });
+                    
+                    // 恢复原始3D状态，确保动画结束后不会跳动
+                    dynamicLogo.style.transform = currentTransform;
+                    setTimeout(() => {
+                        dynamicLogo.style.transform = '';
+                    }, 50);
+                }, 1000);
+            }
+        });
+    });
+    </script>
 </body>
 </html> 
