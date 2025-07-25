@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
-from backend.models import EnhancedDillModel
+from ..models import EnhancedDillModel
 import traceback, datetime
 import time
 
@@ -1208,7 +1208,7 @@ def compare_data():
             if model_type == 'enhanced_dill' or any(k in params for k in ['z_h', 'I0', 'M0']):
                 # Enhanced Dill模型
                 if enhanced_model is None:
-                    from backend.models import EnhancedDillModel
+                    from ..models import EnhancedDillModel
                     enhanced_model = EnhancedDillModel()
                 
                 # 获取Enhanced Dill参数
@@ -1626,7 +1626,7 @@ def generate_comparison_plots_with_enhanced(parameter_sets):
             label = f"Set {i+1}: CAR模型 (K={K}, t_exp={t_exp}, acid_eff={acid_gen_efficiency})"
         elif any(k in params for k in ['z_h', 'I0', 'M0']):
             if enhanced_model is None:
-                from backend.models import EnhancedDillModel
+                from ..models import EnhancedDillModel
                 enhanced_model = EnhancedDillModel()
             z_h = float(params['z_h'])
             T = float(params['T'])
@@ -1703,7 +1703,7 @@ def generate_comparison_plots_with_enhanced(parameter_sets):
             label = f"Set {i+1}: CAR模型 (K={K}, diffusion={diffusion_length}, contrast={contrast})"
         elif any(k in params for k in ['z_h', 'I0', 'M0']):
             if enhanced_model is None:
-                from backend.models import EnhancedDillModel
+                from ..models import EnhancedDillModel
                 enhanced_model = EnhancedDillModel()
             z_h = float(params['z_h'])
             T = float(params['T'])
@@ -1906,3 +1906,263 @@ def clear_calculation_logs():
         error_msg = f"清空日志失败: {str(e)}"
         print(f"Error: {error_msg}")
         return jsonify(format_response(False, message=error_msg)), 500
+
+
+# ===============================
+# 示例文件管理API接口
+# ===============================
+
+import os
+import pathlib
+
+# 示例文件根目录路径 - 支持多种部署环境
+def get_example_files_dir():
+    """获取示例文件目录路径，支持多种部署环境"""
+    current_file = os.path.abspath(__file__)
+    
+    # 尝试多种可能的路径
+    possible_paths = [
+        # 相对于当前文件的路径（开发环境）
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file)))), 'test_data'),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file)))), 'TEST_DATA'),
+        
+        # 相对于项目根目录（部署环境）
+        os.path.join(os.getcwd(), 'test_data'),
+        os.path.join(os.getcwd(), 'TEST_DATA'),
+        
+        # RENDER等云平台部署环境
+        os.path.join('/opt/render/project/src', 'test_data'),
+        os.path.join('/opt/render/project/src', 'TEST_DATA'),
+        
+        # Heroku等部署环境
+        os.path.join('/app', 'test_data'),
+        os.path.join('/app', 'TEST_DATA'),
+        
+        # 通过环境变量指定的路径
+        os.path.join(os.environ.get('DILL_DATA_DIR', ''), 'test_data') if os.environ.get('DILL_DATA_DIR') else None,
+        os.path.join(os.environ.get('DILL_DATA_DIR', ''), 'TEST_DATA') if os.environ.get('DILL_DATA_DIR') else None,
+        
+        # 相对于dill_model目录
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(current_file))), '..', 'test_data'),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(current_file))), '..', 'TEST_DATA'),
+        
+        # 在同级目录下查找
+        os.path.join(os.path.dirname(current_file), '..', '..', '..', '..', 'test_data'),
+        os.path.join(os.path.dirname(current_file), '..', '..', '..', '..', 'TEST_DATA'),
+        
+        # 尝试查找常见的部署位置
+        os.path.join('/var/www', 'test_data'),
+        os.path.join('/var/www', 'TEST_DATA'),
+        os.path.join('/home/app', 'test_data'),
+        os.path.join('/home/app', 'TEST_DATA'),
+    ]
+    
+    # 过滤掉None值
+    possible_paths = [path for path in possible_paths if path is not None]
+    
+    for path in possible_paths:
+        abs_path = os.path.abspath(path)
+        if os.path.exists(abs_path) and os.path.isdir(abs_path):
+            print(f"Found example files directory: {abs_path}")
+            return abs_path
+    
+    # 如果都找不到，返回第一个路径并打印调试信息
+    print(f"Warning: Could not find example files directory. Tried paths:")
+    for i, path in enumerate(possible_paths):
+        abs_path = os.path.abspath(path)
+        print(f"  {i+1}. {abs_path} - {'EXISTS' if os.path.exists(abs_path) else 'NOT FOUND'}")
+    
+    return os.path.abspath(possible_paths[0])
+
+EXAMPLE_FILES_DIR = get_example_files_dir()
+
+@api_bp.route('/example-files', methods=['GET'])
+def get_example_files():
+    """获取示例文件列表"""
+    try:
+        # 重新获取目录路径以确保最新
+        example_dir = get_example_files_dir()
+        
+        if not os.path.exists(example_dir):
+            error_msg = f"示例文件目录不存在: {example_dir}"
+            print(f"Error: {error_msg}")
+            add_log_entry('error', 'system', error_msg)
+            return jsonify(format_response(False, message=error_msg)), 404
+        
+        if not os.path.isdir(example_dir):
+            error_msg = f"路径不是目录: {example_dir}"
+            print(f"Error: {error_msg}")
+            add_log_entry('error', 'system', error_msg)
+            return jsonify(format_response(False, message="指定路径不是目录")), 400
+        
+        files = []
+        print(f"Scanning directory: {example_dir}")
+        
+        try:
+            file_list = os.listdir(example_dir)
+            print(f"Found {len(file_list)} items in directory")
+        except PermissionError:
+            error_msg = f"没有权限访问目录: {example_dir}"
+            print(f"Error: {error_msg}")
+            add_log_entry('error', 'system', error_msg)
+            return jsonify(format_response(False, message="没有权限访问示例文件目录")), 403
+        
+        for filename in file_list:
+            if filename.startswith('.') or filename.lower() == 'readme.md':
+                continue
+                
+            file_path = os.path.join(example_dir, filename)
+            if os.path.isfile(file_path):
+                try:
+                    file_stat = os.stat(file_path)
+                    file_ext = pathlib.Path(filename).suffix.lstrip('.')
+                    
+                    file_info = {
+                        'name': filename,
+                        'extension': file_ext,
+                        'size': file_stat.st_size,
+                        'modified': file_stat.st_mtime,
+                        'description': get_file_description(filename, file_ext)
+                    }
+                    files.append(file_info)
+                except (OSError, IOError) as e:
+                    print(f"Error reading file {filename}: {e}")
+                    continue
+        
+        # 按文件名排序
+        files.sort(key=lambda x: x['name'])
+        
+        print(f"Successfully found {len(files)} example files")
+        add_log_entry('info', 'system', f'加载了 {len(files)} 个示例文件')
+        
+        return jsonify(format_response(True, data=files))
+        
+    except Exception as e:
+        error_msg = f"获取示例文件列表失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        return jsonify(format_response(False, message=error_msg)), 500
+
+@api_bp.route('/example-files/<filename>', methods=['GET'])
+def get_example_file_content(filename):
+    """获取示例文件内容"""
+    try:
+        # 安全检查：防止目录遍历攻击
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify(format_response(False, message="无效的文件名")), 400
+        
+        example_dir = get_example_files_dir()
+        file_path = os.path.join(example_dir, filename)
+        
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return jsonify(format_response(False, message="文件不存在")), 404
+        
+        # 读取文件内容
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            # 如果UTF-8解码失败，尝试其他编码
+            try:
+                with open(file_path, 'r', encoding='gbk') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                with open(file_path, 'r', encoding='latin-1') as f:
+                    content = f.read()
+        
+        file_stat = os.stat(file_path)
+        file_ext = pathlib.Path(filename).suffix.lstrip('.')
+        
+        file_data = {
+            'name': filename,
+            'content': content,
+            'size': file_stat.st_size,
+            'format': file_ext.upper() if file_ext else '未知',
+            'modified': file_stat.st_mtime,
+            'description': get_file_description(filename, file_ext)
+        }
+        
+        return jsonify(format_response(True, data=file_data))
+        
+    except Exception as e:
+        error_msg = f"读取文件内容失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        return jsonify(format_response(False, message=error_msg)), 500
+
+@api_bp.route('/example-files/<filename>', methods=['PUT'])
+def update_example_file_content(filename):
+    """更新示例文件内容"""
+    try:
+        # 安全检查：防止目录遍历攻击
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify(format_response(False, message="无效的文件名")), 400
+        
+        example_dir = get_example_files_dir()
+        file_path = os.path.join(example_dir, filename)
+        
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return jsonify(format_response(False, message="文件不存在")), 404
+        
+        # 获取请求数据
+        data = request.get_json()
+        if not data or 'content' not in data:
+            return jsonify(format_response(False, message="请求数据格式错误")), 400
+        
+        content = data['content']
+        
+        # 备份原文件
+        backup_path = file_path + '.backup'
+        try:
+            import shutil
+            shutil.copy2(file_path, backup_path)
+        except Exception as backup_error:
+            print(f"Warning: 创建备份文件失败: {backup_error}")
+        
+        # 写入新内容
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        # 添加日志
+        add_log_entry('info', 'system', f'示例文件已更新: {filename}')
+        
+        return jsonify(format_response(True, message="文件更新成功"))
+        
+    except Exception as e:
+        error_msg = f"更新文件内容失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'system', f'更新示例文件失败: {filename} - {error_msg}')
+        return jsonify(format_response(False, message=error_msg)), 500
+
+def get_file_description(filename, extension):
+    """根据文件名和扩展名获取文件描述"""
+    descriptions = {
+        'txt': '文本格式数据文件',
+        'csv': '逗号分隔值表格文件',
+        'json': 'JSON格式数据文件',
+        'dat': '数据文件',
+        'tab': '制表符分隔数据文件',
+        'xlsx': 'Excel表格文件',
+        'xls': 'Excel表格文件',
+        'mat': 'MATLAB数据文件',
+        'pli': 'PROLITH格式文件',
+        'ldf': 'Lithography数据文件',
+        'msk': '掩模文件',
+        'int': '强度数据文件',
+        'pro': '工艺参数文件',
+        'sim': '仿真结果文件',
+        'asc': 'ASCII格式文件',
+        'log': '日志文件'
+    }
+    
+    # 特殊文件名描述
+    if 'gaussian' in filename.lower():
+        return '高斯分布光强示例'
+    elif 'sinusoidal' in filename.lower():
+        return '正弦波光强示例'
+    elif 'speckle' in filename.lower():
+        return '斑点图案光强示例'
+    elif 'complex' in filename.lower():
+        return '复杂光强分布示例'
+    elif 'formula' in filename.lower():
+        return '公式计算光强示例'
+    
+    return descriptions.get(extension.lower(), '示例数据文件')

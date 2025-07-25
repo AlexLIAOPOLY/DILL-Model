@@ -15877,3 +15877,513 @@ function applyUnitSettings() {
     
     console.log(`🔄 应用单位设置: ${unit}, 比例因子: ${factor}`);
 }
+
+// ===============================
+// 示例文件管理相关功能
+// ===============================
+
+// 示例文件数据存储
+let exampleFilesData = [];
+let currentPreviewFile = null;
+let isEditingFile = false;
+
+// 初始化示例文件管理
+function initExampleFilesManager() {
+    const exampleFilesBtn = document.getElementById('example-files-btn');
+    if (exampleFilesBtn) {
+        exampleFilesBtn.addEventListener('click', openExampleFilesModal);
+    }
+    
+    // 绑定模态框事件
+    bindExampleFilesModalEvents();
+    bindFilePreviewModalEvents();
+}
+
+// 绑定示例文件模态框事件
+function bindExampleFilesModalEvents() {
+    const modal = document.getElementById('example-files-modal');
+    const closeBtn = modal.querySelector('.example-files-close');
+    const refreshBtn = document.getElementById('refresh-files-btn');
+    const searchInput = document.getElementById('file-search-input');
+    
+    // 关闭模态框
+    closeBtn.addEventListener('click', closeExampleFilesModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeExampleFilesModal();
+        }
+    });
+    
+    // 刷新文件列表
+    refreshBtn.addEventListener('click', loadExampleFiles);
+    
+    // 搜索功能
+    searchInput.addEventListener('input', filterFileList);
+}
+
+// 绑定文件预览模态框事件
+function bindFilePreviewModalEvents() {
+    const modal = document.getElementById('file-preview-modal');
+    const closeBtn = modal.querySelector('.file-preview-close');
+    const editBtn = document.getElementById('edit-file-btn');
+    const downloadBtn = document.getElementById('download-file-btn');
+    const useBtn = document.getElementById('use-file-btn');
+    const saveBtn = document.getElementById('save-changes-btn');
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    
+    // 关闭模态框
+    closeBtn.addEventListener('click', closeFilePreviewModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeFilePreviewModal();
+        }
+    });
+    
+    // 功能按钮
+    editBtn.addEventListener('click', toggleEditMode);
+    downloadBtn.addEventListener('click', downloadCurrentFile);
+    useBtn.addEventListener('click', useCurrentFile);
+    saveBtn.addEventListener('click', saveFileChanges);
+    cancelBtn.addEventListener('click', cancelEditMode);
+}
+
+// 打开示例文件管理模态框
+function openExampleFilesModal() {
+    const modal = document.getElementById('example-files-modal');
+    modal.style.display = 'flex';
+    loadExampleFiles();
+}
+
+// 关闭示例文件管理模态框
+function closeExampleFilesModal() {
+    const modal = document.getElementById('example-files-modal');
+    modal.style.display = 'none';
+}
+
+// 加载示例文件列表
+async function loadExampleFiles() {
+    try {
+        showLoadingInFileList('正在加载示例文件...');
+        
+        const response = await fetch('/api/example-files');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        
+        // 检查API响应格式
+        if (!responseData.success) {
+            throw new Error(responseData.message || '获取示例文件失败');
+        }
+        
+        const files = responseData.data || [];
+        exampleFilesData = files;
+        renderFileList(files);
+        
+    } catch (error) {
+        console.error('加载示例文件失败:', error);
+        showErrorInFileList('加载示例文件失败: ' + error.message);
+    }
+}
+
+// 显示文件列表加载状态
+function showLoadingInFileList(message) {
+    const filesList = document.getElementById('example-files-list');
+    filesList.innerHTML = `
+        <div class="loading-message" style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i>
+            <div>${message}</div>
+        </div>
+    `;
+}
+
+// 显示文件列表错误状态
+function showErrorInFileList(message) {
+    const filesList = document.getElementById('example-files-list');
+    filesList.innerHTML = `
+        <div class="error-message" style="text-align: center; padding: 40px; color: #e74c3c;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+            <div>${message}</div>
+            <button onclick="loadExampleFiles()" style="margin-top: 15px; padding: 8px 16px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <i class="fas fa-sync-alt"></i> 重试
+            </button>
+        </div>
+    `;
+}
+
+// 渲染文件列表
+function renderFileList(files) {
+    const filesList = document.getElementById('example-files-list');
+    
+    if (!files || files.length === 0) {
+        filesList.innerHTML = `
+            <div class="empty-message" style="text-align: center; padding: 40px; color: #999;">
+                <i class="fas fa-folder-open" style="font-size: 24px; margin-bottom: 10px;"></i>
+                <div>没有找到示例文件</div>
+            </div>
+        `;
+        return;
+    }
+    
+    const filesHtml = files.map(file => `
+        <div class="file-item" data-filename="${file.name}">
+            <div class="file-info-left">
+                <div class="file-icon" style="color: ${getFileColorByType(file.extension)};">
+                    <i class="fas ${getFileIcon(file.extension)}"></i>
+                </div>
+                <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-meta">${file.extension.toUpperCase()} • ${formatFileSize(file.size)} • ${file.description || '示例数据文件'}</div>
+                </div>
+            </div>
+            <div class="file-actions">
+                <button class="file-action-btn preview-btn" onclick="previewFile('${file.name}')" type="button">
+                    <i class="fas fa-eye"></i> 预览
+                </button>
+                <button class="file-action-btn use-btn" onclick="useFileDirectly('${file.name}')" type="button">
+                    <i class="fas fa-check"></i> 使用
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    filesList.innerHTML = filesHtml;
+}
+
+// 获取文件颜色
+function getFileColorByType(extension) {
+    const colorMap = {
+        'txt': '#607D8B',  // 灰蓝色
+        'csv': '#4CAF50',  // 绿色
+        'json': '#2196F3',  // 蓝色
+        'dat': '#795548',  // 棕色
+        'xlsx': '#217346',  // Excel绿色
+        'xls': '#217346',  // Excel绿色
+        'mat': '#E91E63',  // 粉红色
+        'pli': '#9C27B0',  // 紫色
+        'ldf': '#673AB7',  // 深紫色
+        'msk': '#3F51B5',  // 靛青色
+        'int': '#FF9800',  // 橙色
+        'pro': '#009688',  // 青绿色
+        'sim': '#FF5722',  // 深橙色
+        'tab': '#8BC34A',  // 淡绿色
+        'asc': '#607D8B',  // 灰蓝色
+        'log': '#9E9E9E'   // 灰色
+    };
+    return colorMap[extension.toLowerCase()] || '#607D8B';
+}
+
+// 直接使用文件（不预览）
+async function useFileDirectly(filename) {
+    try {
+        currentPreviewFile = filename;
+        
+        const response = await fetch(`/api/example-files/${encodeURIComponent(filename)}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        
+        // 检查API响应格式
+        if (!responseData.success) {
+            throw new Error(responseData.message || '获取文件内容失败');
+        }
+        
+        const fileData = responseData.data;
+        const content = fileData.content;
+        const fileExtension = '.' + filename.split('.').pop().toLowerCase();
+        
+        // 关闭示例文件管理模态框
+        closeExampleFilesModal();
+        
+        // 确定文件的MIME类型
+        let mimeType = 'text/plain';
+        if (fileExtension === '.json') {
+            mimeType = 'application/json';
+        } else if (fileExtension === '.csv') {
+            mimeType = 'text/csv';
+        } else if (fileExtension === '.xls' || fileExtension === '.xlsx') {
+            mimeType = 'application/vnd.ms-excel';
+        } else if (fileExtension === '.dat' || fileExtension === '.tab' || fileExtension === '.asc') {
+            mimeType = 'text/plain';
+        }
+        
+        // 创建一个临时的Blob文件
+        const blob = new Blob([content], { type: mimeType });
+        const file = new File([blob], filename, { type: mimeType });
+        
+        // 使用现有的文件处理函数
+        handleFileUpload(file);
+        
+        showNotification('已应用示例文件', 'success');
+        
+    } catch (error) {
+        console.error('使用文件失败:', error);
+        showNotification('使用文件失败: ' + error.message, 'error');
+    }
+}
+
+// 获取文件图标
+function getFileIcon(extension) {
+    const iconMap = {
+        'txt': 'fa-file-alt',
+        'csv': 'fa-file-csv',
+        'json': 'fa-file-code',
+        'dat': 'fa-database',
+        'xlsx': 'fa-file-excel',
+        'xls': 'fa-file-excel',
+        'mat': 'fa-cube',
+        'pli': 'fa-layer-group',
+        'ldf': 'fa-microscope',
+        'msk': 'fa-mask',
+        'int': 'fa-chart-line',
+        'pro': 'fa-cogs',
+        'sim': 'fa-terminal',
+        'tab': 'fa-table',
+        'asc': 'fa-file-code',
+        'log': 'fa-clipboard-list',
+        'bin': 'fa-file-archive',
+        'zip': 'fa-file-archive',
+        'pdf': 'fa-file-pdf',
+        'doc': 'fa-file-word',
+        'docx': 'fa-file-word',
+        'ppt': 'fa-file-powerpoint',
+        'pptx': 'fa-file-powerpoint',
+        'jpg': 'fa-file-image',
+        'png': 'fa-file-image',
+        'gif': 'fa-file-image',
+        'svg': 'fa-file-image',
+        'mp4': 'fa-file-video',
+        'mp3': 'fa-file-audio',
+        'wav': 'fa-file-audio',
+        'js': 'fa-file-code',
+        'py': 'fa-file-code',
+        'html': 'fa-file-code',
+        'css': 'fa-file-code'
+    };
+    return iconMap[extension.toLowerCase()] || 'fa-file';
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 过滤文件列表
+function filterFileList() {
+    const searchTerm = document.getElementById('file-search-input').value.toLowerCase();
+    const filteredFiles = exampleFilesData.filter(file => 
+        file.name.toLowerCase().includes(searchTerm) ||
+        file.extension.toLowerCase().includes(searchTerm) ||
+        (file.description && file.description.toLowerCase().includes(searchTerm))
+    );
+    renderFileList(filteredFiles);
+}
+
+// 预览文件
+async function previewFile(filename) {
+    try {
+        currentPreviewFile = filename;
+        showFilePreviewModal(filename);
+        
+        const response = await fetch(`/api/example-files/${encodeURIComponent(filename)}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        
+        // 检查API响应格式
+        if (!responseData.success) {
+            throw new Error(responseData.message || '获取文件内容失败');
+        }
+        
+        const fileData = responseData.data;
+        displayFileContent(fileData);
+        
+    } catch (error) {
+        console.error('预览文件失败:', error);
+        showNotification('预览文件失败: ' + error.message, 'error');
+    }
+}
+
+// 显示文件预览模态框
+function showFilePreviewModal(filename) {
+    const modal = document.getElementById('file-preview-modal');
+    const title = document.getElementById('preview-file-title');
+    
+    title.innerHTML = `<i class="fas fa-file-alt"></i> ${filename}`;
+    modal.style.display = 'flex';
+}
+
+// 关闭文件预览模态框
+function closeFilePreviewModal() {
+    const modal = document.getElementById('file-preview-modal');
+    modal.style.display = 'none';
+    currentPreviewFile = null;
+    isEditingFile = false;
+    
+    // 重置编辑状态
+    const editor = document.getElementById('file-content-editor');
+    const editActions = document.getElementById('edit-actions');
+    editor.readOnly = true;
+    editActions.style.display = 'none';
+}
+
+// 显示文件内容
+function displayFileContent(fileData) {
+    const editor = document.getElementById('file-content-editor');
+    const formatInfo = document.getElementById('file-format-info');
+    const sizeInfo = document.getElementById('file-size-info');
+    
+    editor.value = fileData.content;
+    formatInfo.textContent = `格式: ${fileData.format}`;
+    sizeInfo.textContent = `大小: ${formatFileSize(fileData.size)}`;
+}
+
+// 切换编辑模式
+function toggleEditMode() {
+    const editor = document.getElementById('file-content-editor');
+    const editActions = document.getElementById('edit-actions');
+    
+    isEditingFile = !isEditingFile;
+    editor.readOnly = !isEditingFile;
+    editActions.style.display = isEditingFile ? 'flex' : 'none';
+    
+    if (isEditingFile) {
+        editor.focus();
+        showNotification('已进入编辑模式', 'success');
+    }
+}
+
+// 取消编辑模式
+function cancelEditMode() {
+    const editor = document.getElementById('file-content-editor');
+    const editActions = document.getElementById('edit-actions');
+    
+    isEditingFile = false;
+    editor.readOnly = true;
+    editActions.style.display = 'none';
+    
+    // 重新加载原始内容
+    if (currentPreviewFile) {
+        previewFile(currentPreviewFile);
+    }
+    
+    showNotification('已取消编辑', 'info');
+}
+
+// 保存文件更改
+async function saveFileChanges() {
+    if (!currentPreviewFile) return;
+    
+    try {
+        const editor = document.getElementById('file-content-editor');
+        const content = editor.value;
+        
+        const response = await fetch(`/api/example-files/${encodeURIComponent(currentPreviewFile)}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ content })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        
+        // 检查API响应格式
+        if (!responseData.success) {
+            throw new Error(responseData.message || '保存文件失败');
+        }
+        
+        showNotification('文件保存成功', 'success');
+        toggleEditMode(); // 退出编辑模式
+        
+    } catch (error) {
+        console.error('保存文件失败:', error);
+        showNotification('保存文件失败: ' + error.message, 'error');
+    }
+}
+
+// 下载当前文件
+function downloadCurrentFile() {
+    if (!currentPreviewFile) return;
+    
+    const editor = document.getElementById('file-content-editor');
+    const content = editor.value;
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentPreviewFile;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    URL.revokeObjectURL(url);
+    showNotification('文件下载完成', 'success');
+}
+
+// 使用当前文件
+function useCurrentFile() {
+    if (!currentPreviewFile) return;
+    
+    const editor = document.getElementById('file-content-editor');
+    const content = editor.value;
+    
+    // 获取文件扩展名（确保小写且包含点号）
+    const fileExtension = '.' + currentPreviewFile.split('.').pop().toLowerCase();
+    
+    // 关闭预览模态框
+    closeFilePreviewModal();
+    
+    // 关闭示例文件管理模态框
+    closeExampleFilesModal();
+    
+    // 确定文件的MIME类型
+    let mimeType = 'text/plain';
+    if (fileExtension === '.json') {
+        mimeType = 'application/json';
+    } else if (fileExtension === '.csv') {
+        mimeType = 'text/csv';
+    } else if (fileExtension === '.xls' || fileExtension === '.xlsx') {
+        mimeType = 'application/vnd.ms-excel';
+    } else if (fileExtension === '.dat' || fileExtension === '.tab' || fileExtension === '.asc') {
+        mimeType = 'text/plain';
+    }
+    
+    try {
+        // 创建一个临时的Blob文件
+        const blob = new Blob([content], { type: mimeType });
+        const file = new File([blob], currentPreviewFile, { type: mimeType });
+        
+        // 使用现有的文件处理函数
+        handleFileUpload(file);
+        
+        // 显示成功通知
+        showNotification('已应用示例文件', 'success');
+    } catch (error) {
+        console.error('应用文件失败:', error);
+        showNotification('应用文件失败: ' + error.message, 'error');
+    }
+}
+
+// 在页面加载完成后初始化示例文件管理
+document.addEventListener('DOMContentLoaded', function() {
+    // 延迟初始化，确保其他组件先加载完成
+    setTimeout(() => {
+        initExampleFilesManager();
+    }, 100);
+});
