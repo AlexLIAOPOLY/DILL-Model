@@ -2132,6 +2132,166 @@ def update_example_file_content(filename):
         add_log_entry('error', 'system', f'更新示例文件失败: {filename} - {error_msg}')
         return jsonify(format_response(False, message=error_msg)), 500
 
+@api_bp.route('/example-files/<filename>', methods=['DELETE'])
+def delete_example_file(filename):
+    """删除示例文件"""
+    print(f"接收到删除文件请求: {filename}")
+    try:
+        # 安全检查：防止目录遍历攻击
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify(format_response(False, message="无效的文件名")), 400
+        
+        example_dir = get_example_files_dir()
+        file_path = os.path.join(example_dir, filename)
+        print(f"尝试删除文件: {file_path}")
+        
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return jsonify(format_response(False, message="文件不存在")), 404
+            
+        try:
+            # 创建备份目录（如果不存在）
+            backup_dir = os.path.join(example_dir, '.deleted_backups')
+            try:
+                if not os.path.exists(backup_dir):
+                    os.makedirs(backup_dir)
+                    
+                # 将文件移动到备份目录，文件名加上时间戳
+                import shutil
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                backup_filename = f"{filename}.{timestamp}.bak"
+                backup_path = os.path.join(backup_dir, backup_filename)
+                shutil.copy2(file_path, backup_path)
+                print(f"备份文件已创建: {backup_path}")
+            except Exception as backup_error:
+                print(f"Warning: 创建备份失败: {str(backup_error)}，将直接删除文件")
+                
+            # 删除原文件 - 即使备份失败也要删除
+            os.remove(file_path)
+            print(f"文件已删除: {file_path}")
+            
+            # 验证文件是否确实被删除
+            if not os.path.exists(file_path):
+                # 添加日志
+                add_log_entry('info', 'system', f'示例文件已删除: {filename}')
+                return jsonify(format_response(True, message="文件删除成功"))
+            else:
+                error_msg = "文件删除失败，文件仍然存在"
+                print(f"Error: {error_msg}")
+                add_log_entry('error', 'system', error_msg)
+                return jsonify(format_response(False, message=error_msg)), 500
+            
+        except Exception as e:
+            error_msg = f"删除文件失败: {str(e)}"
+            print(f"Error: {error_msg}")
+            add_log_entry('error', 'system', f'删除示例文件失败: {filename} - {error_msg}')
+            return jsonify(format_response(False, message=error_msg)), 500
+            
+    except Exception as e:
+        error_msg = f"删除文件失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'system', f'删除示例文件失败: {filename} - {error_msg}')
+        return jsonify(format_response(False, message=error_msg)), 500
+
+@api_bp.route('/example-files/delete/<filename>', methods=['POST'])
+def delete_example_file_by_post(filename):
+    """使用POST方法删除示例文件"""
+    print(f"接收到通过POST删除文件请求: {filename}")
+    try:
+        # 安全检查：防止目录遍历攻击
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify(format_response(False, message="无效的文件名")), 400
+        
+        example_dir = get_example_files_dir()
+        file_path = os.path.join(example_dir, filename)
+        print(f"尝试删除文件: {file_path}")
+        
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return jsonify(format_response(False, message="文件不存在")), 404
+            
+        try:
+            # 直接删除文件，不再创建备份
+            os.remove(file_path)
+            print(f"文件已删除: {file_path}")
+            
+            # 验证文件是否确实被删除
+            if not os.path.exists(file_path):
+                # 添加日志
+                add_log_entry('info', 'system', f'示例文件已删除: {filename}')
+                return jsonify(format_response(True, message="文件删除成功"))
+            else:
+                error_msg = "文件删除失败，文件仍然存在"
+                print(f"Error: {error_msg}")
+                add_log_entry('error', 'system', error_msg)
+                return jsonify(format_response(False, message=error_msg)), 500
+            
+        except Exception as e:
+            error_msg = f"删除文件失败: {str(e)}"
+            print(f"Error: {error_msg}")
+            add_log_entry('error', 'system', f'删除示例文件失败: {filename} - {error_msg}')
+            return jsonify(format_response(False, message=error_msg)), 500
+            
+    except Exception as e:
+        error_msg = f"删除文件失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'system', f'删除示例文件失败: {filename} - {error_msg}')
+        return jsonify(format_response(False, message=error_msg)), 500
+
+@api_bp.route('/example-files', methods=['POST'])
+def create_example_file():
+    """创建新的示例文件"""
+    try:
+        data = request.get_json()
+        if not data or 'filename' not in data or 'content' not in data or 'type' not in data:
+            return jsonify(format_response(False, message="请求数据格式错误，需要filename、content和type字段")), 400
+        
+        filename = data['filename']
+        content = data['content']
+        file_type = data['type']  # 文件类型，如'txt', 'json', 'asc'等
+        
+        # 安全检查：防止目录遍历攻击
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify(format_response(False, message="无效的文件名")), 400
+        
+        # 确保文件名有正确的扩展名
+        if not filename.lower().endswith('.' + file_type.lower()):
+            filename = f"{filename}.{file_type.lower()}"
+        
+        example_dir = get_example_files_dir()
+        file_path = os.path.join(example_dir, filename)
+        
+        # 检查文件是否已存在
+        if os.path.exists(file_path):
+            return jsonify(format_response(False, message="文件已存在，请使用其他文件名")), 409
+        
+        # 写入新文件内容
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        # 获取文件信息
+        file_stat = os.stat(file_path)
+        file_ext = pathlib.Path(filename).suffix.lstrip('.')
+        
+        file_data = {
+            'name': filename,
+            'extension': file_ext,
+            'size': file_stat.st_size,
+            'modified': file_stat.st_mtime,
+            'description': get_file_description(filename, file_ext),
+            'content': content
+        }
+        
+        # 添加日志
+        add_log_entry('info', 'system', f'新的示例文件已创建: {filename}')
+        
+        return jsonify(format_response(True, message="文件创建成功", data=file_data))
+        
+    except Exception as e:
+        error_msg = f"创建新文件失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'system', f'创建示例文件失败: {error_msg}')
+        return jsonify(format_response(False, message=error_msg)), 500
+
 def get_file_description(filename, extension):
     """根据文件名和扩展名获取文件描述"""
     descriptions = {
@@ -2166,3 +2326,85 @@ def get_file_description(filename, extension):
         return '公式计算光强示例'
     
     return descriptions.get(extension.lower(), '示例数据文件')
+
+@api_bp.route('/example-files/action', methods=['GET'])
+def file_action():
+    """通用文件操作端点 - 使用GET方法和查询参数"""
+    try:
+        action = request.args.get('action')
+        filename = request.args.get('filename')
+        
+        if not action or not filename:
+            return jsonify(format_response(False, message="缺少必要的参数")), 400
+        
+        print(f"接收到文件操作请求: action={action}, filename={filename}")
+        
+        # 安全检查：防止目录遍历攻击
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify(format_response(False, message="无效的文件名")), 400
+        
+        example_dir = get_example_files_dir()
+        file_path = os.path.join(example_dir, filename)
+        
+        # 删除文件操作
+        if action == 'delete':
+            if not os.path.exists(file_path) or not os.path.isfile(file_path):
+                return jsonify(format_response(False, message="文件不存在")), 404
+                
+            try:
+                # 直接删除文件
+                os.remove(file_path)
+                print(f"文件已删除: {file_path}")
+                
+                # 验证文件是否确实被删除
+                if not os.path.exists(file_path):
+                    add_log_entry('info', 'system', f'示例文件已删除: {filename}')
+                    
+                    # 检查是否是通过浏览器直接访问的（非AJAX请求）
+                    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                    accepts_html = 'text/html' in request.headers.get('Accept', '')
+                    
+                    # 如果是直接访问，返回HTML重定向
+                    if not is_ajax and accepts_html:
+                        return """
+                        <html>
+                        <head>
+                            <meta http-equiv="refresh" content="1;url=/">
+                            <title>文件已删除</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+                                .message { padding: 20px; background-color: #d4edda; color: #155724; border-radius: 5px; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="message">文件 """ + filename + """ 已成功删除！正在返回...</div>
+                            <script>
+                                setTimeout(function() {
+                                    window.location.href = "/";
+                                }, 1000);
+                            </script>
+                        </body>
+                        </html>
+                        """
+                    
+                    # 对于AJAX请求返回JSON响应
+                    return jsonify(format_response(True, message="文件删除成功"))
+                else:
+                    error_msg = "文件删除失败，文件仍然存在"
+                    print(f"Error: {error_msg}")
+                    add_log_entry('error', 'system', error_msg)
+                    return jsonify(format_response(False, message=error_msg)), 500
+                
+            except Exception as e:
+                error_msg = f"删除文件失败: {str(e)}"
+                print(f"Error: {error_msg}")
+                add_log_entry('error', 'system', f'删除示例文件失败: {filename} - {error_msg}')
+                return jsonify(format_response(False, message=error_msg)), 500
+        else:
+            return jsonify(format_response(False, message="不支持的操作类型")), 400
+            
+    except Exception as e:
+        error_msg = f"文件操作失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'system', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500

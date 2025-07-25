@@ -143,6 +143,425 @@
     
     <!-- 引入多段曝光时间累积模式 -->
     <script src="js/cumulative-exposure.js?v=1.0"></script>
+    
+    <!-- 添加的CSS样式 -->
+    <style>
+        /* 文件管理工具栏样式 */
+        .example-files-toolbar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .toolbar-btn {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            margin-right: 10px;
+            transition: background-color 0.2s;
+        }
+        
+        .toolbar-btn i {
+            margin-right: 6px;
+        }
+        
+        .toolbar-btn:hover {
+            background-color: #3a7bc8;
+        }
+        
+        .create-btn {
+            background-color: #5cb85c;
+        }
+        
+        .create-btn:hover {
+            background-color: #4cae4c;
+        }
+        
+        .file-search {
+            flex-grow: 1;
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 8px 15px 8px 35px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+        }
+        
+        /* 创建文件表单样式 */
+        .create-file-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #444;
+        }
+        
+        .form-input,
+        .form-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-select {
+            background-color: white;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        /* 文件项样式优化 */
+        .file-item {
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .file-item:hover {
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
+        
+        .file-name {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .file-meta {
+            color: #777;
+        }
+        
+        .file-actions {
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-action-btn {
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-action-btn i {
+            margin-right: 4px;
+        }
+        
+        .preview-btn {
+            color: #4a90e2;
+        }
+        
+        .preview-btn:hover {
+            background-color: rgba(74, 144, 226, 0.1);
+        }
+        
+        .use-btn {
+            color: #5cb85c;
+        }
+        
+        .use-btn:hover {
+            background-color: rgba(92, 184, 92, 0.1);
+        }
+        
+        .delete-btn {
+            color: white;
+            background-color: #d9534f;
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            margin-left: 8px;
+        }
+        
+        .delete-btn i {
+            margin-right: 4px;
+        }
+        
+        .delete-btn:hover {
+            background-color: #c9302c;
+        }
+        
+        /* 确认对话框样式 */
+        .confirm-dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .confirm-dialog {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            max-width: 90%;
+            overflow: hidden;
+            animation: dialog-pop 0.3s ease-out;
+        }
+        
+        @keyframes dialog-pop {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .confirm-dialog-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .confirm-dialog-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .confirm-dialog-body {
+            padding: 20px;
+        }
+        
+        .confirm-dialog-body p {
+            margin: 0;
+            color: #555;
+        }
+        
+        .confirm-dialog-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .confirm-dialog-btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .cancel-btn {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #e9ecef;
+        }
+        
+        .confirm-btn {
+            color: white;
+        }
+        
+        .confirm-primary {
+            background-color: #4a90e2;
+        }
+        
+        .confirm-primary:hover {
+            background-color: #3a7bc8;
+        }
+        
+        .confirm-danger {
+            background-color: #d9534f;
+        }
+        
+        .confirm-danger:hover {
+            background-color: #c9302c;
+        }
+        
+        /* 模态框样式优化 */
+        .example-files-modal,
+        .file-preview-modal,
+        #create-file-modal {
+            background-color: rgba(0, 0, 0, 0.6);
+            -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+        }
+        
+        .example-files-modal-content,
+        .file-preview-modal-content,
+        .create-file-modal-content {
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: modal-fade-in 0.3s ease-out;
+        }
+        
+        @keyframes modal-fade-in {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        
+        .example-files-header,
+        .file-preview-header {
+            background-color: #6c7ae0;
+            padding: 15px 20px;
+            color: white;
+        }
+        
+        .example-files-header h3,
+        .file-preview-header h3 {
+            font-size: 18px;
+            margin: 0;
+        }
+        
+        .example-files-body,
+        .file-preview-body {
+            padding: 20px;
+        }
+        
+        .example-files-close,
+        .file-preview-close,
+        .create-file-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .example-files-close:hover,
+        .file-preview-close:hover,
+        .create-file-close:hover {
+            opacity: 1;
+        }
+        
+        /* 文件内容编辑器 */
+        .file-content-editor {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            resize: vertical;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        /* 通知样式 */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            width: 300px;
+            max-width: 100%;
+        }
+        
+        .notification {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            opacity: 0;
+            transform: translateX(20px);
+            animation: notification-slide-in 0.3s forwards;
+            display: flex;
+            align-items: center;
+        }
+        
+        @keyframes notification-slide-in {
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .notification-hide {
+            animation: notification-slide-out 0.3s forwards;
+        }
+        
+        @keyframes notification-slide-out {
+            to { opacity: 0; transform: translateX(20px); }
+        }
+        
+        .notification-icon {
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        
+        .notification-success .notification-icon {
+            color: #5cb85c;
+        }
+        
+        .notification-error .notification-icon {
+            color: #d9534f;
+        }
+        
+        .notification-warning .notification-icon {
+            color: #f0ad4e;
+        }
+        
+        .notification-info .notification-icon {
+            color: #5bc0de;
+        }
+        
+        .notification-message {
+            flex-grow: 1;
+            font-size: 14px;
+        }
+        
+        .notification-close {
+            color: #aaa;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            margin-left: 10px;
+        }
+    </style>
+    
+    <title>DILL模型 - 光刻胶光化学反应模拟</title>
 </head>
 <body>
     <!-- 加载动画 -->
@@ -2826,6 +3245,55 @@ intensity3
                     <button id="cancel-edit-btn" class="action-btn cancel-btn" type="button">
                         <i class="fas fa-times"></i> 取消
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建新文件模态框 -->
+    <div id="create-file-modal" class="file-preview-modal" style="display: none;">
+        <div class="file-preview-modal-content">
+            <div class="file-preview-header">
+                <h3><i class="fas fa-plus"></i> 创建新示例文件</h3>
+                <button class="create-file-close" type="button">&times;</button>
+            </div>
+            <div class="file-preview-body">
+                <div class="create-file-form">
+                    <div class="form-group">
+                        <label for="new-file-name">文件名</label>
+                        <input type="text" id="new-file-name" class="form-input" placeholder="输入文件名（无需扩展名）">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-file-type">文件类型</label>
+                        <select id="new-file-type" class="form-select">
+                            <option value="txt">TXT - 文本文件</option>
+                            <option value="json">JSON - JSON格式数据</option>
+                            <option value="csv">CSV - 逗号分隔值表格</option>
+                            <option value="asc">ASC - ASCII格式文件</option>
+                            <option value="dat">DAT - 数据文件</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-file-template">选择模板</label>
+                        <select id="new-file-template" class="form-select">
+                            <option value="empty">空文件</option>
+                            <option value="intensity_simple">简单光强分布模板</option>
+                            <option value="intensity_complex">复杂光强分布模板</option>
+                            <option value="sine_wave">正弦波分布模板</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-file-content">文件内容</label>
+                        <textarea id="new-file-content" class="file-content-editor" placeholder="输入文件内容"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button id="create-file-submit" class="action-btn save-btn" type="button">
+                            <i class="fas fa-save"></i> 创建文件
+                        </button>
+                        <button id="create-file-cancel" class="action-btn cancel-btn" type="button">
+                            <i class="fas fa-times"></i> 取消
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

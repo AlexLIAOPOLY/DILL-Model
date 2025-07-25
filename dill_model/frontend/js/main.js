@@ -15895,6 +15895,58 @@ let exampleFilesData = [];
 let currentPreviewFile = null;
 let isEditingFile = false;
 
+// 文件模板
+const FILE_TEMPLATES = {
+    empty: "",
+    intensity_simple: `# 简单光强分布样例数据
+# 格式: x坐标 光强值
+# 单位: x(um) I(mW/cm²)
+0.0 10.0
+1.0 10.5
+2.0 11.2
+3.0 12.0
+4.0 12.8
+5.0 13.5
+6.0 14.0
+7.0 14.2
+8.0 14.0
+9.0 13.5
+10.0 12.8`,
+    intensity_complex: `{
+    "format": "intensity_distribution",
+    "version": "1.0",
+    "metadata": {
+        "description": "复杂光强分布示例",
+        "unit_x": "μm",
+        "unit_intensity": "mW/cm²"
+    },
+    "data": {
+        "x": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "intensity": [10.0, 10.5, 11.2, 12.0, 12.8, 13.5, 14.0, 14.2, 14.0, 13.5, 12.8]
+    }
+}`,
+    sine_wave: `{
+    "format": "intensity_distribution",
+    "version": "1.0",
+    "metadata": {
+        "description": "正弦波光强分布示例",
+        "unit_x": "μm",
+        "unit_intensity": "mW/cm²",
+        "wavelength": 405,
+        "pattern_type": "sine_wave"
+    },
+    "parameters": {
+        "I_avg": 15.0,
+        "V": 0.8,
+        "K": 2.0
+    },
+    "data": {
+        "x": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        "intensity": [27.0, 25.6, 22.0, 16.5, 10.2, 4.5, 0.8, 0.0, 2.2, 7.0, 13.5]
+    }
+}`
+};
+
 // 初始化示例文件管理
 function initExampleFilesManager() {
     const exampleFilesBtn = document.getElementById('example-files-btn');
@@ -15913,6 +15965,7 @@ function bindExampleFilesModalEvents() {
     const closeBtn = modal.querySelector('.example-files-close');
     const refreshBtn = document.getElementById('refresh-files-btn');
     const searchInput = document.getElementById('file-search-input');
+    const createFileBtn = document.getElementById('create-file-btn');
     
     // 关闭模态框
     closeBtn.addEventListener('click', closeExampleFilesModal);
@@ -15927,6 +15980,9 @@ function bindExampleFilesModalEvents() {
     
     // 搜索功能
     searchInput.addEventListener('input', filterFileList);
+    
+    // 新增按钮功能
+    createFileBtn.addEventListener('click', showCreateFileModal);
 }
 
 // 绑定文件预览模态框事件
@@ -16067,12 +16123,20 @@ function renderFileList(files) {
                 </div>
             </div>
             <div class="file-actions">
-                <button class="file-action-btn preview-btn" onclick="previewFile('${file.name}')" type="button">
+                <button class="file-action-btn preview-btn" onclick="previewFile('${file.name}')" type="button" title="预览">
                     <i class="fas fa-eye"></i> 预览
                 </button>
-                <button class="file-action-btn use-btn" onclick="useFileDirectly('${file.name}')" type="button">
+                <button class="file-action-btn use-btn" onclick="useFileDirectly('${file.name}')" type="button" title="使用">
                     <i class="fas fa-check"></i> 使用
                 </button>
+                <button class="file-action-btn delete-btn" onclick="confirmDeleteFile('${file.name}')" type="button" title="删除">
+                    <i class="fas fa-times"></i> 删除
+                </button>
+                <!-- 备用删除链接，如果JavaScript方法失效可以直接点击 -->
+                <a href="/api/example-files/action?action=delete&filename=${encodeURIComponent(file.name)}" 
+                   class="backup-delete-link" 
+                   onclick="event.preventDefault(); confirmDeleteFile('${file.name}'); return false;" 
+                   style="display:none;">删除</a>
             </div>
         </div>
     `).join('');
@@ -16600,6 +16664,202 @@ function checkFontAwesome() {
     return isLoaded;
 }
 
+// 确认删除文件
+function confirmDeleteFile(filename) {
+    // 使用自定义的确认对话框
+    showConfirmDialog(
+        `确定要删除文件 "${filename}" 吗？`,
+        '此操作不可逆，文件将被永久删除。',
+        () => {
+            // 尝试使用新方法删除
+            deleteFile(filename)
+                .then(response => {
+                    if (response && response.ok) {
+                        response.json().then(data => {
+                            if (data && data.success) {
+                                // 关闭通知
+                                hideNotification();
+                                // 显示成功通知
+                                showNotification(`文件 ${filename} 已删除`, 'success');
+                                // 重新加载文件列表
+                                loadExampleFiles();
+                            } else {
+                                throw new Error(data.message || "删除失败");
+                            }
+                        }).catch(err => {
+                            showNotification("处理响应数据时出错: " + err.message, 'error');
+                        });
+                    } else {
+                        throw new Error("删除请求失败");
+                    }
+                })
+                .catch(error => {
+                    console.error('删除文件失败:', error);
+                    
+                    // 如果JavaScript方法失败，尝试直接跳转到删除链接
+                    showNotification("正在尝试备用删除方法...", 'info');
+                    setTimeout(() => {
+                        window.location.href = `/api/example-files/action?action=delete&filename=${encodeURIComponent(filename)}`;
+                    }, 1000);
+                });
+        },
+        '删除',
+        'danger'
+    );
+}
+
+// 删除文件
+async function deleteFile(filename) {
+    try {
+        // 显示加载状态
+        showNotification(`正在删除文件 ${filename}...`, 'info', 0);
+        
+        console.log(`尝试删除文件: ${filename}`);
+        // 使用GET方法和查询参数
+        const apiUrl = `/api/example-files/action?action=delete&filename=${encodeURIComponent(filename)}`;
+        console.log(`API URL: ${apiUrl}`);
+        
+        // 使用旧的XMLHttpRequest以避免可能的浏览器兼容性问题
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', apiUrl, true);
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        resolve({
+                            ok: true,
+                            json: () => Promise.resolve(data)
+                        });
+                    } catch (e) {
+                        reject(new Error("无法解析响应"));
+                    }
+                } else {
+                    reject(new Error(`请求失败，状态码：${xhr.status}`));
+                }
+            };
+            xhr.onerror = function() {
+                reject(new Error("网络请求失败"));
+            };
+            xhr.send();
+        });
+        
+        console.log(`删除API返回状态: ${response.status}`);
+        
+        if (!response.ok) {
+            let errorMessage = `删除失败，状态码: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorMessage;
+            } catch (parseError) {
+                console.error('解析错误响应失败:', parseError);
+            }
+            throw new Error(errorMessage);
+        }
+        
+        let responseData;
+        try {
+            responseData = await response.json();
+            console.log('删除API响应数据:', responseData);
+        } catch (parseError) {
+            console.error('解析响应数据失败:', parseError);
+            throw new Error('服务器返回了无效的JSON响应');
+        }
+        
+        // 检查API响应格式
+        if (!responseData.success) {
+            throw new Error(responseData.message || '删除文件失败');
+        }
+        
+        // 关闭通知
+        hideNotification();
+        
+        // 显示成功通知
+        showNotification(`文件 ${filename} 已删除`, 'success');
+        
+        // 重新加载文件列表
+        console.log('重新加载文件列表');
+        loadExampleFiles();
+        
+    } catch (error) {
+        console.error('删除文件失败:', error);
+        hideNotification();
+        showNotification('删除文件失败: ' + error.message, 'error');
+    }
+}
+
+// 显示确认对话框
+function showConfirmDialog(title, message, confirmCallback, confirmText = '确认', confirmType = 'primary') {
+    // 创建对话框元素
+    const dialogOverlay = document.createElement('div');
+    dialogOverlay.className = 'confirm-dialog-overlay';
+    dialogOverlay.innerHTML = `
+        <div class="confirm-dialog">
+            <div class="confirm-dialog-header">
+                <h3>${title}</h3>
+            </div>
+            <div class="confirm-dialog-body">
+                <p>${message}</p>
+            </div>
+            <div class="confirm-dialog-footer">
+                <button class="confirm-dialog-btn cancel-btn">取消</button>
+                <button class="confirm-dialog-btn confirm-btn confirm-${confirmType}">${confirmText}</button>
+            </div>
+        </div>
+    `;
+    
+    // 添加到页面
+    document.body.appendChild(dialogOverlay);
+    
+    // 显示对话框
+    setTimeout(() => {
+        dialogOverlay.style.opacity = '1';
+    }, 10);
+    
+    // 绑定事件
+    const cancelBtn = dialogOverlay.querySelector('.cancel-btn');
+    const confirmBtn = dialogOverlay.querySelector('.confirm-btn');
+    
+    // 关闭对话框的函数
+    const closeDialog = () => {
+        dialogOverlay.style.opacity = '0';
+        setTimeout(() => {
+            document.body.removeChild(dialogOverlay);
+        }, 300);
+    };
+    
+    // 点击取消
+    cancelBtn.addEventListener('click', closeDialog);
+    
+    // 点击确认
+    confirmBtn.addEventListener('click', () => {
+        closeDialog();
+        if (typeof confirmCallback === 'function') {
+            confirmCallback();
+        }
+    });
+    
+    // 点击遮罩层关闭
+    dialogOverlay.addEventListener('click', (e) => {
+        if (e.target === dialogOverlay) {
+            closeDialog();
+        }
+    });
+}
+
+// 隐藏通知
+function hideNotification() {
+    const notifications = document.querySelectorAll('.notification');
+    notifications.forEach(notification => {
+        notification.classList.add('notification-hide');
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.parentElement.removeChild(notification);
+            }
+        }, 300);
+    });
+}
+
 // 在页面加载完成后初始化示例文件管理
 document.addEventListener('DOMContentLoaded', function() {
     // 检查Font Awesome加载状态
@@ -16612,3 +16872,127 @@ document.addEventListener('DOMContentLoaded', function() {
         initExampleFilesManager();
     }, 100);
 });
+
+// 显示创建新文件模态框
+function showCreateFileModal() {
+    const modal = document.getElementById('create-file-modal');
+    const nameInput = document.getElementById('new-file-name');
+    const templateSelect = document.getElementById('new-file-template');
+    const contentTextarea = document.getElementById('new-file-content');
+    
+    // 重置表单
+    nameInput.value = '';
+    templateSelect.value = 'empty';
+    contentTextarea.value = '';
+    
+    // 显示模态框
+    modal.style.display = 'flex';
+    
+    // 绑定模态框事件（如果尚未绑定）
+    bindCreateFileModalEvents();
+}
+
+// 绑定创建新文件模态框事件
+function bindCreateFileModalEvents() {
+    const modal = document.getElementById('create-file-modal');
+    const closeBtn = modal.querySelector('.create-file-close');
+    const submitBtn = document.getElementById('create-file-submit');
+    const cancelBtn = document.getElementById('create-file-cancel');
+    const templateSelect = document.getElementById('new-file-template');
+    const contentTextarea = document.getElementById('new-file-content');
+    const fileTypeSelect = document.getElementById('new-file-type');
+    
+    // 关闭模态框
+    closeBtn.addEventListener('click', closeCreateFileModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeCreateFileModal();
+        }
+    });
+    
+    // 模板选择事件
+    templateSelect.addEventListener('change', () => {
+        const template = templateSelect.value;
+        const content = FILE_TEMPLATES[template] || '';
+        contentTextarea.value = content;
+        
+        // 根据模板类型自动调整文件类型
+        if (template === 'intensity_complex' || template === 'sine_wave') {
+            fileTypeSelect.value = 'json';
+        } else if (template === 'intensity_simple') {
+            fileTypeSelect.value = 'txt';
+        }
+    });
+    
+    // 提交按钮
+    submitBtn.addEventListener('click', createNewFile);
+    
+    // 取消按钮
+    cancelBtn.addEventListener('click', closeCreateFileModal);
+}
+
+// 关闭创建新文件模态框
+function closeCreateFileModal() {
+    const modal = document.getElementById('create-file-modal');
+    modal.style.display = 'none';
+}
+
+// 创建新文件
+async function createNewFile() {
+    const nameInput = document.getElementById('new-file-name');
+    const typeSelect = document.getElementById('new-file-type');
+    const contentTextarea = document.getElementById('new-file-content');
+    
+    // 验证表单
+    const filename = nameInput.value.trim();
+    const fileType = typeSelect.value;
+    const content = contentTextarea.value;
+    
+    if (!filename) {
+        showNotification('请输入文件名', 'warning');
+        nameInput.focus();
+        return;
+    }
+    
+    // 构建请求数据
+    const requestData = {
+        filename: filename,
+        type: fileType,
+        content: content
+    };
+    
+    try {
+        const response = await fetch('/api/example-files', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `创建失败，状态码: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        
+        // 检查API响应格式
+        if (!responseData.success) {
+            throw new Error(responseData.message || '创建文件失败');
+        }
+        
+        // 显示成功通知
+        showNotification(`文件 ${responseData.data.name} 创建成功`, 'success');
+        
+        // 关闭模态框
+        closeCreateFileModal();
+        
+        // 重新加载文件列表
+        loadExampleFiles();
+        
+    } catch (error) {
+        console.error('创建文件失败:', error);
+        showNotification('创建文件失败: ' + error.message, 'error');
+    }
+}
