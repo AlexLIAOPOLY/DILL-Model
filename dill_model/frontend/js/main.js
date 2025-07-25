@@ -12925,7 +12925,15 @@ function handleFileUpload(file) {
         // 光刻仿真软件特定格式
         '.pli', '.ldf', '.msk', '.slf', '.int'
     ];
-    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    
+    // 安全地获取文件扩展名
+    let fileExtension = '.txt'; // 默认扩展名
+    if (file && file.name && typeof file.name === 'string' && file.name.includes('.')) {
+        const parts = file.name.split('.');
+        if (parts.length > 1) {
+            fileExtension = '.' + parts[parts.length - 1].toLowerCase();
+        }
+    }
     
     if (!allowedTypes.includes(fileExtension)) {
         showNotification(`不支持的文件格式: ${fileExtension}。请使用光刻仿真软件支持的格式，如TXT、CSV、DAT等。`, 'error');
@@ -15942,7 +15950,10 @@ function bindFilePreviewModalEvents() {
     // 功能按钮
     editBtn.addEventListener('click', toggleEditMode);
     downloadBtn.addEventListener('click', downloadCurrentFile);
-    useBtn.addEventListener('click', useCurrentFile);
+    // useBtn.addEventListener('click', useCurrentFile); // 按钮已注释，跳过事件绑定
+    if (useBtn) {
+        useBtn.addEventListener('click', useCurrentFile);
+    }
     saveBtn.addEventListener('click', saveFileChanges);
     cancelBtn.addEventListener('click', cancelEditMode);
 }
@@ -16026,10 +16037,28 @@ function renderFileList(files) {
         return;
     }
     
+    // 获取文件类型的备用文本
+    const getFallbackText = (extension) => {
+        const fallbackMap = {
+            'txt': 'TXT', 'rtf': 'RTF', 'md': 'MD',
+            'csv': 'CSV', 'tsv': 'TSV', 'tab': 'TAB', 'dat': 'DAT', 'asc': 'ASC',
+            'json': 'JSON', 'xml': 'XML', 'js': 'JS', 'py': 'PY', 'html': 'HTML', 'css': 'CSS',
+            'xlsx': 'XLS', 'xls': 'XLS', 'xlsm': 'XLS',
+            'mat': 'MAT', 'm': 'M',
+            'pli': 'PLI', 'ldf': 'LDF', 'msk': 'MSK', 'int': 'INT', 'pro': 'PRO', 'sim': 'SIM',
+            'log': 'LOG', 'out': 'OUT', 'lis': 'LIS',
+            'zip': 'ZIP', 'rar': 'RAR', '7z': '7Z', 'tar': 'TAR', 'gz': 'GZ',
+            'pdf': 'PDF', 'doc': 'DOC', 'docx': 'DOC', 'ppt': 'PPT', 'pptx': 'PPT',
+            'jpg': 'IMG', 'jpeg': 'IMG', 'png': 'IMG', 'gif': 'IMG', 'svg': 'IMG',
+            'mp4': 'VID', 'avi': 'VID', 'mov': 'VID', 'mp3': 'AUD', 'wav': 'AUD'
+        };
+        return fallbackMap[extension.toLowerCase()] || extension.toUpperCase().substring(0, 3);
+    };
+    
     const filesHtml = files.map(file => `
         <div class="file-item" data-filename="${file.name}">
             <div class="file-info-left">
-                <div class="file-icon" style="color: ${getFileColorByType(file.extension)};">
+                <div class="file-icon fallback-icon" style="background-color: ${getFileColorByType(file.extension)}; color: white;" data-fallback="${getFallbackText(file.extension)}">
                     <i class="fas ${getFileIcon(file.extension)}"></i>
                 </div>
                 <div class="file-details">
@@ -16054,24 +16083,106 @@ function renderFileList(files) {
 // 获取文件颜色
 function getFileColorByType(extension) {
     const colorMap = {
-        'txt': '#607D8B',  // 灰蓝色
-        'csv': '#4CAF50',  // 绿色
-        'json': '#2196F3',  // 蓝色
-        'dat': '#795548',  // 棕色
-        'xlsx': '#217346',  // Excel绿色
-        'xls': '#217346',  // Excel绿色
-        'mat': '#E91E63',  // 粉红色
-        'pli': '#9C27B0',  // 紫色
-        'ldf': '#673AB7',  // 深紫色
-        'msk': '#3F51B5',  // 靛青色
-        'int': '#FF9800',  // 橙色
-        'pro': '#009688',  // 青绿色
-        'sim': '#FF5722',  // 深橙色
-        'tab': '#8BC34A',  // 淡绿色
-        'asc': '#607D8B',  // 灰蓝色
-        'log': '#9E9E9E'   // 灰色
+        // 文本文件 - 蓝灰色系
+        'txt': '#607D8B',
+        'rtf': '#546E7A',
+        'md': '#455A64',
+        
+        // 数据文件 - 绿色系
+        'csv': '#4CAF50',
+        'tsv': '#66BB6A',
+        'tab': '#81C784',
+        'dat': '#795548',
+        'asc': '#8BC34A',
+        
+        // 代码文件 - 蓝色系
+        'json': '#2196F3',
+        'xml': '#1976D2',
+        'js': '#FFC107',
+        'py': '#3776AB',
+        'html': '#E34F26',
+        'css': '#1572B6',
+        'php': '#777BB4',
+        'cpp': '#00599C',
+        'c': '#A8B9CC',
+        'java': '#ED8B00',
+        
+        // Excel文件 - 绿色系
+        'xlsx': '#217346',
+        'xls': '#217346',
+        'xlsm': '#1B5E20',
+        
+        // MATLAB文件 - 橙红色系
+        'mat': '#E91E63',
+        'm': '#F06292',
+        
+        // 光刻仿真文件 - 紫色系
+        'pli': '#9C27B0',
+        'ldf': '#673AB7',
+        'msk': '#3F51B5',
+        'int': '#FF9800',
+        'pro': '#009688',
+        'sim': '#FF5722',
+        'slf': '#8E24AA',
+        'fdt': '#7B1FA2',
+        
+        // 日志文件 - 灰色系
+        'log': '#9E9E9E',
+        'out': '#757575',
+        'lis': '#616161',
+        
+        // 压缩文件 - 深色系
+        'zip': '#424242',
+        'rar': '#37474F',
+        '7z': '#263238',
+        'tar': '#455A64',
+        'gz': '#546E7A',
+        'bin': '#607D8B',
+        
+        // 文档文件 - 专业色系
+        'pdf': '#D32F2F',
+        'doc': '#1976D2',
+        'docx': '#1565C0',
+        'ppt': '#D84315',
+        'pptx': '#BF360C',
+        
+        // 图像文件 - 暖色系
+        'jpg': '#FF7043',
+        'jpeg': '#FF6F00',
+        'png': '#FF8F00',
+        'gif': '#FFA000',
+        'svg': '#FFB300',
+        'bmp': '#FFC107',
+        'tiff': '#FFD54F',
+        
+        // 音视频文件 - 紫红色系
+        'mp4': '#8E24AA',
+        'avi': '#7B1FA2',
+        'mov': '#6A1B9A',
+        'wmv': '#4A148C',
+        'mp3': '#E91E63',
+        'wav': '#C2185B',
+        'flac': '#AD1457',
+        'aac': '#880E4F'
     };
-    return colorMap[extension.toLowerCase()] || '#607D8B';
+    
+    const ext = extension.toLowerCase();
+    const color = colorMap[ext];
+    
+    // 如果找不到对应颜色，根据文件类型返回默认颜色
+    if (!color) {
+        if (['txt', 'rtf', 'md', 'readme'].includes(ext)) {
+            return '#607D8B';  // 文本文件默认色
+        } else if (['dat', 'csv', 'tsv', 'tab'].includes(ext)) {
+            return '#4CAF50';  // 数据文件默认色
+        } else if (['json', 'xml', 'js', 'py', 'html', 'css'].includes(ext)) {
+            return '#2196F3';  // 代码文件默认色
+        } else {
+            return '#607D8B';  // 通用默认色
+        }
+    }
+    
+    return color;
 }
 
 // 直接使用文件（不预览）
@@ -16093,7 +16204,15 @@ async function useFileDirectly(filename) {
         
         const fileData = responseData.data;
         const content = fileData.content;
-        const fileExtension = '.' + filename.split('.').pop().toLowerCase();
+        
+        // 安全地获取文件扩展名
+        let fileExtension = '.txt'; // 默认扩展名
+        if (filename && typeof filename === 'string' && filename.includes('.')) {
+            const parts = filename.split('.');
+            if (parts.length > 1) {
+                fileExtension = '.' + parts[parts.length - 1].toLowerCase();
+            }
+        }
         
         // 关闭示例文件管理模态框
         closeExampleFilesModal();
@@ -16117,7 +16236,7 @@ async function useFileDirectly(filename) {
         // 使用现有的文件处理函数
         handleFileUpload(file);
         
-        showNotification('已应用示例文件', 'success');
+        showNotification(`已应用示例文件: ${filename}`, 'success');
         
     } catch (error) {
         console.error('使用文件失败:', error);
@@ -16128,42 +16247,106 @@ async function useFileDirectly(filename) {
 // 获取文件图标
 function getFileIcon(extension) {
     const iconMap = {
-        'txt': 'fa-file-alt',
+        // 文本文件
+        'txt': 'fa-file-lines',
+        'rtf': 'fa-file-lines',
+        'md': 'fa-file-lines',
+        
+        // 数据文件
         'csv': 'fa-file-csv',
-        'json': 'fa-file-code',
+        'tsv': 'fa-table',
+        'tab': 'fa-table',
         'dat': 'fa-database',
+        'asc': 'fa-chart-line',
+        
+        // 代码文件
+        'json': 'fa-file-code',
+        'xml': 'fa-file-code',
+        'js': 'fa-file-code',
+        'py': 'fa-file-code',
+        'html': 'fa-file-code',
+        'css': 'fa-file-code',
+        'php': 'fa-file-code',
+        'cpp': 'fa-file-code',
+        'c': 'fa-file-code',
+        'java': 'fa-file-code',
+        
+        // Excel文件
         'xlsx': 'fa-file-excel',
         'xls': 'fa-file-excel',
+        'xlsm': 'fa-file-excel',
+        
+        // MATLAB文件
         'mat': 'fa-cube',
-        'pli': 'fa-layer-group',
+        'm': 'fa-cube',
+        
+        // 光刻仿真文件
+        'pli': 'fa-microchip',
         'ldf': 'fa-microscope',
-        'msk': 'fa-mask',
+        'msk': 'fa-layer-group',
         'int': 'fa-chart-line',
         'pro': 'fa-cogs',
         'sim': 'fa-terminal',
-        'tab': 'fa-table',
-        'asc': 'fa-file-code',
+        'slf': 'fa-wave-square',
+        'fdt': 'fa-chart-area',
+        
+        // 日志文件
         'log': 'fa-clipboard-list',
-        'bin': 'fa-file-archive',
-        'zip': 'fa-file-archive',
+        'out': 'fa-file-lines',
+        'lis': 'fa-list',
+        
+        // 压缩文件
+        'zip': 'fa-file-zipper',
+        'rar': 'fa-file-zipper',
+        '7z': 'fa-file-zipper',
+        'tar': 'fa-file-zipper',
+        'gz': 'fa-file-zipper',
+        'bin': 'fa-file-zipper',
+        
+        // 文档文件
         'pdf': 'fa-file-pdf',
         'doc': 'fa-file-word',
         'docx': 'fa-file-word',
         'ppt': 'fa-file-powerpoint',
         'pptx': 'fa-file-powerpoint',
+        
+        // 图像文件
         'jpg': 'fa-file-image',
+        'jpeg': 'fa-file-image',
         'png': 'fa-file-image',
         'gif': 'fa-file-image',
         'svg': 'fa-file-image',
+        'bmp': 'fa-file-image',
+        'tiff': 'fa-file-image',
+        
+        // 音视频文件
         'mp4': 'fa-file-video',
+        'avi': 'fa-file-video',
+        'mov': 'fa-file-video',
+        'wmv': 'fa-file-video',
         'mp3': 'fa-file-audio',
         'wav': 'fa-file-audio',
-        'js': 'fa-file-code',
-        'py': 'fa-file-code',
-        'html': 'fa-file-code',
-        'css': 'fa-file-code'
+        'flac': 'fa-file-audio',
+        'aac': 'fa-file-audio'
     };
-    return iconMap[extension.toLowerCase()] || 'fa-file';
+    
+    const ext = extension.toLowerCase();
+    const icon = iconMap[ext];
+    
+    // 如果找不到对应图标，根据文件类型返回通用图标
+    if (!icon) {
+        if (['txt', 'rtf', 'md', 'readme'].includes(ext)) {
+            return 'fa-file-lines';
+        } else if (['dat', 'csv', 'tsv', 'tab'].includes(ext)) {
+            return 'fa-table';
+        } else if (['json', 'xml', 'js', 'py', 'html', 'css'].includes(ext)) {
+            return 'fa-file-code';
+        } else {
+            return 'fa-file';
+        }
+    }
+    
+    return icon;
 }
 
 // 格式化文件大小
@@ -16373,15 +16556,57 @@ function useCurrentFile() {
         handleFileUpload(file);
         
         // 显示成功通知
-        showNotification('已应用示例文件', 'success');
+        showNotification(`已应用示例文件: ${currentPreviewFile}`, 'success');
     } catch (error) {
         console.error('应用文件失败:', error);
         showNotification('应用文件失败: ' + error.message, 'error');
     }
 }
 
+// 检查Font Awesome图标是否加载成功
+function checkFontAwesome() {
+    const testElement = document.createElement('i');
+    testElement.className = 'fas fa-file';
+    testElement.style.position = 'absolute';
+    testElement.style.left = '-9999px';
+    document.body.appendChild(testElement);
+    
+    const computedStyle = window.getComputedStyle(testElement, ':before');
+    const isLoaded = computedStyle.getPropertyValue('font-family').includes('Font Awesome');
+    
+    document.body.removeChild(testElement);
+    
+    if (!isLoaded) {
+        console.warn('Font Awesome 图标库加载失败，使用备用显示方案');
+        // 添加备用CSS样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .file-icon i:before {
+                content: "📄" !important;
+                font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif !important;
+            }
+            .file-icon .fa-file-csv:before { content: "📊" !important; }
+            .file-icon .fa-file-excel:before { content: "📈" !important; }
+            .file-icon .fa-file-code:before { content: "💻" !important; }
+            .file-icon .fa-database:before { content: "🗃️" !important; }
+            .file-icon .fa-file-pdf:before { content: "📕" !important; }
+            .file-icon .fa-file-image:before { content: "🖼️" !important; }
+            .file-icon .fa-file-video:before { content: "🎬" !important; }
+            .file-icon .fa-file-audio:before { content: "🎵" !important; }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    return isLoaded;
+}
+
 // 在页面加载完成后初始化示例文件管理
 document.addEventListener('DOMContentLoaded', function() {
+    // 检查Font Awesome加载状态
+    setTimeout(() => {
+        checkFontAwesome();
+    }, 500);
+    
     // 延迟初始化，确保其他组件先加载完成
     setTimeout(() => {
         initExampleFilesManager();
