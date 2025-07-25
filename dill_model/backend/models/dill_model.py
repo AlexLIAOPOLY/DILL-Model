@@ -241,14 +241,20 @@ class DillModel:
                 x_min_target, x_max_target = np.min(x), np.max(x)
                 target_range = x_max_target - x_min_target
                 
-                # 判断目标坐标轴的单位（基于范围大小）
-                # 标准模式: 0-10 (范围=10), 多段模式: -1000到1000 (范围=2000)
-                if target_range > 1000:  # 目标范围很大，可能是微米单位
-                    target_is_um = True
-                    logger.info(f"🔸 目标坐标轴范围较大 ({target_range:.1f})，推测为微米(μm)单位")
-                else:  # 目标范围较小，可能是毫米单位
-                    target_is_um = False
-                    logger.info(f"🔸 目标坐标轴范围较小 ({target_range:.1f})，推测为毫米(mm)单位")
+                # 改进的单位判断逻辑：基于数据特征而非硬编码阈值
+                # 如果自定义数据的范围非常小（<10），通常是毫米单位
+                # 如果自定义数据的范围较大（>100），通常是微米单位
+                custom_x_range = np.max(custom_x) - np.min(custom_x)
+                
+                if custom_x_range < 10:  # 自定义数据范围小，可能是毫米单位
+                    # 如果目标范围也小，则是毫米对毫米
+                    target_is_um = target_range > 100  # 只有当目标范围很大时才是微米
+                    unit_hint = "mm(数据范围小)" if not target_is_um else "μm(目标范围大)"
+                else:  # 自定义数据范围大，可能是微米单位
+                    target_is_um = target_range > 100
+                    unit_hint = "μm(数据范围大)" if target_is_um else "mm(目标范围小)"
+                
+                logger.info(f"🔸 单位判断: 自定义数据范围={custom_x_range:.6f}, 目标范围={target_range:.6f}, 推测={unit_hint}")
                 
                 # 关键修复：前端已经将所有数据转换为毫米单位
                 # unit_scale != 1.0 表示前端进行了单位转换
@@ -1082,8 +1088,37 @@ class DillModel:
                     logger.info(f"   - 光强数组: {segment_intensities}")
                     
                     # 🔥 多段曝光模式的专用计算逻辑
-                    # 创建坐标轴
-                    x_coords = np.linspace(-1000, 1000, 2001)
+                    # 🔥 修复：使用动态坐标范围计算，与标准模式保持一致
+                    # 检查是否使用自定义光强分布来决定坐标范围
+                    if custom_intensity_data is not None:
+                        custom_x = np.array(custom_intensity_data.get('x', []))
+                        if len(custom_x) > 0:
+                            # 获取自定义数据的范围
+                            x_min_custom = np.min(custom_x)
+                            x_max_custom = np.max(custom_x)
+                            
+                            # 计算合适的坐标轴（扩展范围20%）
+                            x_range = x_max_custom - x_min_custom
+                            x_padding = x_range * 0.2  # 20% 的额外空间
+                            calc_x_min = x_min_custom - x_padding
+                            calc_x_max = x_max_custom + x_padding
+                            
+                            logger.info(f"🔸 使用基于自定义数据范围的计算网格:")
+                            logger.info(f"   - 自定义数据范围: [{x_min_custom:.6f}, {x_max_custom:.6f}]")
+                            logger.info(f"   - 计算网格范围: [{calc_x_min:.6f}, {calc_x_max:.6f}]")
+                        else:
+                            # 如果没有范围信息，使用默认范围
+                            calc_x_min = -1000
+                            calc_x_max = 1000
+                            logger.info(f"🔸 使用默认计算网格范围(无自定义数据): [{calc_x_min}, {calc_x_max}]")
+                    else:
+                        # 没有自定义数据，使用默认范围
+                        calc_x_min = -1000
+                        calc_x_max = 1000
+                        logger.info(f"🔸 使用默认计算网格范围(标准模式): [{calc_x_min}, {calc_x_max}]")
+                    
+                    # 创建坐标轴，点数保持一致为2001
+                    x_coords = np.linspace(calc_x_min, calc_x_max, 2001)
                     
                     
                     # 🔥 计算基准光强分布（使用正确的光强分布计算方法，支持自定义光强数据）
@@ -1143,9 +1178,10 @@ class DillModel:
                     logger.info(f"   - 🔥 显示用光强分布（平均系数 {average_intensity_coefficient}）: [{np.min(actual_intensity_distribution):.6f}, {np.max(actual_intensity_distribution):.6f}]")
                     
                     # 🔥 返回多段曝光专用数据结构
+                    # 🔥 修复：不再硬编码除以1000，保持与标准模式一致
                     return {
-                        'x': (x_coords / 1000.0).tolist(),  # 转换为mm
-                        'x_coords': (x_coords / 1000.0).tolist(),
+                        'x': x_coords.tolist(),  # 直接返回坐标，与标准模式一致
+                        'x_coords': x_coords.tolist(),
                         'exposure_dose': cumulative_exposure_dose.tolist(),
                         'thickness': thickness_values.tolist(),
                         'intensity_distribution': actual_intensity_distribution.tolist(),  # 🔥 修复：返回实际光强分布
