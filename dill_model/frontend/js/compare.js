@@ -2462,13 +2462,13 @@ function showPresetNotification(message) {
         notification.classList.add('show');
     }, 100);
     
-    // 自动隐藏
+    // 自动隐藏 - 设置为2.5秒显示时间
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
             notification.remove();
         }, 300);
-    }, 3000);
+    }, 2500);
 }
 
 /**

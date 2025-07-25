@@ -177,7 +177,7 @@ function showRecalculationNotice() {
         notice.style.transform = 'translateX(0)';
     }, 10);
     
-    // 5秒后自动消失
+    // 2.5秒后自动消失
     setTimeout(() => {
         if (notice.parentElement) {
             notice.style.opacity = '0';
@@ -188,7 +188,7 @@ function showRecalculationNotice() {
                 }
             }, 300);
         }
-    }, 5000);
+    }, 2500);
 }
 
 // 初始化波形类型标题的国际化支持
@@ -896,12 +896,12 @@ function initApp() {
         
         document.body.appendChild(notification);
         
-        // 3秒后自动移除
+        // 2.5秒后自动移除
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
             }
-        }, 3000);
+        }, 2500);
     }
 
     // 在页面加载时添加控制元素
@@ -1141,7 +1141,7 @@ function showKCalculationNotice(angle, wavelength, kValue) {
         notice.style.transform = 'translateX(0)';
     }, 10);
     
-    // 3秒后自动消失
+    // 2.5秒后自动消失
     setTimeout(() => {
         if (notice.parentElement) {
             notice.style.opacity = '0';
@@ -1152,7 +1152,7 @@ function showKCalculationNotice(angle, wavelength, kValue) {
                 }
             }, 300);
         }
-    }, 3000);
+    }, 2500);
 }
 
 function bindSliderEvents() {
@@ -7974,7 +7974,7 @@ function showAxisNotification(message, type = 'success') {
         notification.classList.add('show');
     }, 100);
     
-    // 自动隐藏
+    // 自动隐藏 - 设置为2.5秒显示时间
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
@@ -7982,7 +7982,7 @@ function showAxisNotification(message, type = 'success') {
                 notification.parentNode.removeChild(notification);
             }
         }, 300);
-    }, 3000);
+    }, 2500);
 }
 
 /**
@@ -14986,18 +14986,63 @@ function showNotification(message, type = 'info') {
         </button>
     `;
     
+    // 添加唯一ID用于跟踪
+    const notificationId = 'notification-' + Date.now();
+    notification.id = notificationId;
+    
     // 添加到页面
     const container = getOrCreateNotificationContainer();
     container.appendChild(notification);
     
-    // 自动移除
-    setTimeout(() => {
-        if (notification.parentElement) {
-            notification.remove();
-        }
-    }, 5000);
+    // 强制设置样式确保可见性，覆盖任何可能的CSS冲突
+    notification.style.cssText += `
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: flex !important;
+        transform: translateX(0) !important;
+        transition: none !important;
+        animation: none !important;
+    `;
     
-    console.log(`📢 通知 [${type}]: ${message}`);
+    console.log(`📢 通知已创建 [${type}]: ${message} (ID: ${notificationId})`);
+    
+    // 监控通知是否被意外移除
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList') {
+                mutation.removedNodes.forEach((node) => {
+                    if (node.id === notificationId) {
+                        console.log(`⚠️ 通知被意外移除: ${message} (ID: ${notificationId})`);
+                        console.trace('通知移除的调用栈:');
+                    }
+                });
+            }
+        });
+    });
+    
+    // 开始监控
+    observer.observe(container, { childList: true });
+    
+    // 自动移除 - 使用精确时间控制而不是setTimeout
+    const startTime = performance.now();
+    const displayDuration = 2500; // 2.5秒
+    console.log(`🔔 通知将在${displayDuration}ms后自动移除: ${message} (ID: ${notificationId})`);
+    
+    function checkRemoval() {
+        const elapsed = performance.now() - startTime;
+        
+        if (elapsed >= displayDuration) {
+            if (notification.parentElement) {
+                console.log(`🗑️ 正在移除通知: ${message} (ID: ${notificationId}) - 总显示时间: ${Math.round(elapsed)}ms`);
+                observer.disconnect(); // 停止监控
+                notification.remove();
+            }
+        } else {
+            requestAnimationFrame(checkRemoval);
+        }
+    }
+    
+    requestAnimationFrame(checkRemoval);
 }
 
 // 获取通知图标
@@ -15028,6 +15073,23 @@ function getOrCreateNotificationContainer() {
             max-width: 400px;
         `;
         document.body.appendChild(container);
+        console.log('🔧 通知容器已创建');
+        
+        // 监控容器是否被移除
+        const containerObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.removedNodes.forEach((node) => {
+                        if (node.id === 'notification-container') {
+                            console.log('⚠️ 通知容器被意外移除!');
+                            console.trace('容器移除的调用栈:');
+                        }
+                    });
+                }
+            });
+        });
+        
+        containerObserver.observe(document.body, { childList: true });
     }
     return container;
 }
@@ -16677,9 +16739,7 @@ function confirmDeleteFile(filename) {
                     if (response && response.ok) {
                         response.json().then(data => {
                             if (data && data.success) {
-                                // 关闭通知
-                                hideNotification();
-                                // 显示成功通知
+                                // 显示成功通知（不再预先清除通知）
                                 showNotification(`文件 ${filename} 已删除`, 'success');
                                 // 重新加载文件列表
                                 loadExampleFiles();
@@ -16771,10 +16831,7 @@ async function deleteFile(filename) {
             throw new Error(responseData.message || '删除文件失败');
         }
         
-        // 关闭通知
-        hideNotification();
-        
-        // 显示成功通知
+        // 显示成功通知（不再预先清除通知）
         showNotification(`文件 ${filename} 已删除`, 'success');
         
         // 重新加载文件列表
@@ -16783,7 +16840,6 @@ async function deleteFile(filename) {
         
     } catch (error) {
         console.error('删除文件失败:', error);
-        hideNotification();
         showNotification('删除文件失败: ' + error.message, 'error');
     }
 }
