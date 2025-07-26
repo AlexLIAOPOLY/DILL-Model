@@ -1297,6 +1297,375 @@ intensity3
                                 .file-category-header:first-child {
                                     margin-top: 0;
                                 }
+                                
+                                /* 文件拖拽排序样式 */
+                                .file-item {
+                                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                                    cursor: move;
+                                }
+                                
+                                .file-item.dragging {
+                                    opacity: 0.5;
+                                    transform: rotate(5deg);
+                                    z-index: 1000;
+                                    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                                }
+                                
+                                .file-item.drag-over {
+                                    border-top: 3px solid #4a90e2;
+                                    background-color: #f0f7ff;
+                                }
+                                
+                                .file-item.drag-forbidden {
+                                    background-color: #ffebee;
+                                    border: 2px dashed #f44336;
+                                    cursor: not-allowed;
+                                }
+                                
+                                .file-item .drag-handle {
+                                    display: none;
+                                    position: absolute;
+                                    left: 5px;
+                                    top: 50%;
+                                    transform: translateY(-50%);
+                                    color: #999;
+                                    cursor: grab;
+                                    padding: 5px;
+                                }
+                                
+                                .file-item:hover .drag-handle {
+                                    display: block;
+                                }
+                                
+                                .file-item .drag-handle:active {
+                                    cursor: grabbing;
+                                }
+                                
+                                .drag-placeholder {
+                                    height: 3px;
+                                    background: linear-gradient(90deg, #4a90e2, #2196F3);
+                                    border-radius: 2px;
+                                    margin: 2px 0;
+                                    opacity: 0.8;
+                                    animation: pulse 1s infinite;
+                                }
+                                
+                                @keyframes pulse {
+                                    0%, 100% { opacity: 0.8; }
+                                    50% { opacity: 0.4; }
+                                }
+                                
+                                /* 文件管理区域布局修正 */
+                                .example-files-body {
+                                    overflow-y: auto;
+                                    max-height: 600px;
+                                }
+                                
+                                .example-files-list {
+                                    overflow-y: auto;
+                                    max-height: 500px;
+                                }
+                                
+                                /* 工具栏布局优化 */
+                                .example-files-toolbar {
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    gap: 15px;
+                                    position: relative;
+                                    z-index: 10;
+                                }
+                                
+                                .toolbar-left {
+                                    display: flex;
+                                    gap: 10px;
+                                }
+                                
+                                .toolbar-right {
+                                    flex: 1;
+                                    display: flex;
+                                    justify-content: flex-end;
+                                }
+                                
+                                /* 搜索和筛选容器 */
+                                .search-filter-container {
+                                    position: relative;
+                                    width: 100%;
+                                    max-width: 400px;
+                                    z-index: 10;
+                                }
+                                
+                                .file-search {
+                                    position: relative;
+                                    width: 100%;
+                                }
+                                
+                                .search-input {
+                                    width: 100%;
+                                    padding: 8px 45px 8px 40px;
+                                    border: 1px solid #dee2e6;
+                                    border-radius: 6px;
+                                    font-size: 14px;
+                                    transition: border-color 0.2s ease;
+                                }
+                                
+                                .search-input:focus {
+                                    outline: none;
+                                    border-color: #4a90e2;
+                                    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+                                }
+                                
+                                .search-icon {
+                                    position: absolute;
+                                    left: 12px;
+                                    top: 50%;
+                                    transform: translateY(-50%);
+                                    color: #6c757d;
+                                    font-size: 14px;
+                                    pointer-events: none;
+                                }
+                                
+                                /* 漏斗筛选按钮 */
+                                .filter-funnel-container {
+                                    position: absolute;
+                                    right: 4px;
+                                    top: 50%;
+                                    transform: translateY(-50%);
+                                    z-index: 10;
+                                }
+                                
+                                .filter-funnel-btn {
+                                    position: relative;
+                                    background: rgba(255,255,255,0.9);
+                                    border: 1px solid #e9ecef;
+                                    padding: 6px;
+                                    cursor: pointer;
+                                    border-radius: 4px;
+                                    color: #495057;
+                                    font-size: 14px;
+                                    transition: all 0.2s ease;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    width: 28px;
+                                    height: 28px;
+                                    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                                }
+                                
+                                .filter-funnel-btn i {
+                                    display: block;
+                                    font-style: normal;
+                                    font-variant: normal;
+                                    text-rendering: auto;
+                                    -webkit-font-smoothing: antialiased;
+                                }
+                                
+                                /* CSS Fallback for filter icon if Font Awesome fails to load */
+                                .filter-funnel-btn i::before {
+                                    content: "\f0b0";
+                                    font-family: "Font Awesome 6 Free";
+                                    font-weight: 900;
+                                }
+                                
+                                /* Backup fallback with Unicode symbol */
+                                .filter-funnel-btn:not(.fa-loaded) i {
+                                    font-family: Arial, sans-serif;
+                                }
+                                
+                                .filter-funnel-btn:not(.fa-loaded) i::before {
+                                    content: "⧨";
+                                    font-size: 12px;
+                                }
+                                
+                                .filter-funnel-btn:hover {
+                                    background: #e9ecef;
+                                    border-color: #adb5bd;
+                                    color: #212529;
+                                    transform: scale(1.05);
+                                }
+                                
+                                .filter-funnel-btn.active {
+                                    background: #4a90e2;
+                                    border-color: #4a90e2;
+                                    color: white;
+                                    box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
+                                }
+                                
+                                .filter-count {
+                                    background: #dc3545;
+                                    color: white;
+                                    border-radius: 10px;
+                                    padding: 2px 5px;
+                                    font-size: 10px;
+                                    font-weight: 600;
+                                    min-width: 14px;
+                                    text-align: center;
+                                    position: absolute;
+                                    top: -4px;
+                                    right: -4px;
+                                    line-height: 1;
+                                }
+                                
+                                .filter-dropdown {
+                                    position: absolute;
+                                    top: calc(100% + 8px);
+                                    right: -8px;
+                                    background: white;
+                                    border: 1px solid #dee2e6;
+                                    border-radius: 8px;
+                                    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+                                    min-width: 300px;
+                                    max-height: 450px;
+                                    overflow-y: auto;
+                                    z-index: 9999;
+                                    
+                                    /* 添加三角形指针 */
+                                }
+                                
+                                .filter-dropdown::before {
+                                    content: '';
+                                    position: absolute;
+                                    top: -8px;
+                                    right: 16px;
+                                    width: 0;
+                                    height: 0;
+                                    border-left: 8px solid transparent;
+                                    border-right: 8px solid transparent;
+                                    border-bottom: 8px solid white;
+                                    z-index: 10001;
+                                }
+                                
+                                .filter-dropdown::after {
+                                    content: '';
+                                    position: absolute;
+                                    top: -9px;
+                                    right: 16px;
+                                    width: 0;
+                                    height: 0;
+                                    border-left: 8px solid transparent;
+                                    border-right: 8px solid transparent;
+                                    border-bottom: 8px solid #dee2e6;
+                                    z-index: 10000;
+                                }
+                                
+                                .filter-section {
+                                    border-bottom: 1px solid #f1f3f4;
+                                    padding: 12px;
+                                }
+                                
+                                .filter-section:last-child {
+                                    border-bottom: none;
+                                }
+                                
+                                .filter-header {
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    margin-bottom: 8px;
+                                    font-weight: 600;
+                                    font-size: 13px;
+                                    color: #333;
+                                }
+                                
+                                .clear-filter {
+                                    background: none;
+                                    border: none;
+                                    color: #4a90e2;
+                                    cursor: pointer;
+                                    font-size: 12px;
+                                    padding: 2px 4px;
+                                    border-radius: 3px;
+                                    transition: background-color 0.2s ease;
+                                }
+                                
+                                .clear-filter:hover {
+                                    background: #f0f7ff;
+                                }
+                                
+                                .filter-options {
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 6px;
+                                }
+                                
+                                .filter-option {
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    cursor: pointer;
+                                    padding: 4px 6px;
+                                    border-radius: 4px;
+                                    transition: background-color 0.2s ease;
+                                    font-size: 13px;
+                                }
+                                
+                                .filter-option:hover {
+                                    background: #f8f9fa;
+                                }
+                                
+                                .filter-option input[type="checkbox"] {
+                                    margin: 0;
+                                    cursor: pointer;
+                                }
+                                
+                                .filter-actions {
+                                    padding: 12px;
+                                    border-top: 1px solid #f1f3f4;
+                                    display: flex;
+                                    gap: 8px;
+                                    justify-content: flex-end;
+                                }
+                                
+                                .clear-all-btn {
+                                    background: #f8f9fa;
+                                    border: 1px solid #dee2e6;
+                                    color: #6c757d;
+                                    padding: 6px 12px;
+                                    border-radius: 4px;
+                                    font-size: 12px;
+                                    cursor: pointer;
+                                    transition: all 0.2s ease;
+                                }
+                                
+                                .clear-all-btn:hover {
+                                    background: #e9ecef;
+                                }
+                                
+                                .apply-filters-btn {
+                                    background: #4a90e2;
+                                    border: 1px solid #4a90e2;
+                                    color: white;
+                                    padding: 6px 12px;
+                                    border-radius: 4px;
+                                    font-size: 12px;
+                                    cursor: pointer;
+                                    transition: all 0.2s ease;
+                                }
+                                
+                                .apply-filters-btn:hover {
+                                    background: #357abd;
+                                    border-color: #357abd;
+                                }
+                                
+                                /* 响应式调整 */
+                                @media (max-width: 768px) {
+                                    .example-files-toolbar {
+                                        flex-direction: column;
+                                        gap: 10px;
+                                    }
+                                    
+                                    .toolbar-left,
+                                    .toolbar-right {
+                                        width: 100%;
+                                        justify-content: space-between;
+                                    }
+                                    
+                                    .filter-dropdown {
+                                        right: auto;
+                                        left: 0;
+                                        min-width: 100%;
+                                    }
+                                }
                                 </style>
                                 <div id="intensity-preview-plot" class="preview-plot"></div>
                             </div>
@@ -3229,15 +3598,71 @@ intensity3
             </div>
             <div class="example-files-body">
                 <div class="example-files-toolbar">
-                    <button id="refresh-files-btn" class="toolbar-btn" type="button">
-                        <i class="fas fa-sync-alt"></i> 刷新
-                    </button>
-                    <button id="create-file-btn" class="toolbar-btn create-btn" type="button">
-                        <i class="fas fa-plus"></i> 新增
-                    </button>
-                    <div class="file-search">
-                        <input type="text" id="file-search-input" placeholder="搜索文件..." class="search-input">
-                        <i class="fas fa-search search-icon"></i>
+                    <div class="toolbar-left">
+                        <button id="refresh-files-btn" class="toolbar-btn" type="button">
+                            <i class="fas fa-sync-alt"></i> 刷新
+                        </button>
+                        <button id="create-file-btn" class="toolbar-btn create-btn" type="button">
+                            <i class="fas fa-plus"></i> 新增
+                        </button>
+                    </div>
+                    <div class="toolbar-right">
+                        <div class="search-filter-container">
+                            <div class="file-search">
+                                <input type="text" id="file-search-input" placeholder="搜索文件..." class="search-input">
+                                <i class="fas fa-search search-icon"></i>
+                                <div class="filter-funnel-container">
+                                    <button id="filter-toggle-btn" class="filter-funnel-btn" type="button" title="高级筛选">
+                                        <i class="fas fa-filter" aria-hidden="true"></i>
+                                        <span class="filter-count" id="filter-count" style="display: none;">0</span>
+                                    </button>
+                                    <div id="filter-dropdown" class="filter-dropdown" style="display: none;">
+                                        <div class="filter-section">
+                                            <div class="filter-header">
+                                                <span>文件类型</span>
+                                                <button type="button" class="clear-filter" data-filter="type">清除</button>
+                                            </div>
+                                            <div class="filter-options" id="type-filters">
+                                                <!-- 动态生成文件类型选项 -->
+                                            </div>
+                                        </div>
+                                        <div class="filter-section">
+                                            <div class="filter-header">
+                                                <span>文件大小</span>
+                                                <button type="button" class="clear-filter" data-filter="size">清除</button>
+                                            </div>
+                                            <div class="filter-options">
+                                                <label class="filter-option">
+                                                    <input type="checkbox" value="small" data-filter="size">
+                                                    <span>小于 1KB</span>
+                                                </label>
+                                                <label class="filter-option">
+                                                    <input type="checkbox" value="medium" data-filter="size">
+                                                    <span>1KB - 100KB</span>
+                                                </label>
+                                                <label class="filter-option">
+                                                    <input type="checkbox" value="large" data-filter="size">
+                                                    <span>大于 100KB</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="filter-section">
+                                            <div class="filter-header">
+                                                <span>扩展名</span>
+                                                <button type="button" class="clear-filter" data-filter="extension">清除</button>
+                                            </div>
+                                            <div class="filter-options" id="extension-filters">
+                                                <!-- 动态生成扩展名选项 -->
+                                            </div>
+                                        </div>
+                                        <div class="filter-actions">
+                                            <button type="button" id="clear-all-filters" class="clear-all-btn">清除所有筛选</button>
+                                            <button type="button" id="apply-filters" class="apply-filters-btn">应用筛选</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="example-files-list" id="example-files-list">
@@ -3301,20 +3726,54 @@ intensity3
                     <div class="form-group">
                         <label for="new-file-type">文件类型</label>
                         <select id="new-file-type" class="form-select">
-                            <option value="txt">TXT - 文本文件</option>
-                            <option value="json">JSON - JSON格式数据</option>
-                            <option value="csv">CSV - 逗号分隔值表格</option>
-                            <option value="asc">ASC - ASCII格式文件</option>
-                            <option value="dat">DAT - 数据文件</option>
+                            <optgroup label="数据文件">
+                                <option value="txt">TXT - 文本数据文件</option>
+                                <option value="dat">DAT - 二进制数据文件</option>
+                                <option value="asc">ASC - ASCII格式数据</option>
+                                <option value="csv">CSV - 逗号分隔值表格</option>
+                                <option value="tsv">TSV - 制表符分隔值</option>
+                            </optgroup>
+                            <optgroup label="配置文件">
+                                <option value="json">JSON - JSON配置格式</option>
+                                <option value="xml">XML - XML配置格式</option>
+                            </optgroup>
+                            <optgroup label="脚本文件">
+                                <option value="py">Python - Python脚本</option>
+                                <option value="m">MATLAB - MATLAB脚本</option>
+                                <option value="js">JavaScript - JS脚本</option>
+                            </optgroup>
+                            <optgroup label="文档文件">
+                                <option value="md">Markdown - 文档说明</option>
+                                <option value="log">LOG - 日志文件</option>
+                                <option value="rtf">RTF - 富文本文档</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="new-file-template">选择模板</label>
                         <select id="new-file-template" class="form-select">
                             <option value="empty">空文件</option>
-                            <option value="intensity_simple">简单光强分布模板</option>
-                            <option value="intensity_complex">复杂光强分布模板</option>
-                            <option value="sine_wave">正弦波分布模板</option>
+                            <optgroup label="光强分布模板">
+                                <option value="intensity_simple">简单光强分布数据</option>
+                                <option value="intensity_gaussian">高斯光强分布</option>
+                                <option value="intensity_complex">复杂光强分布JSON</option>
+                                <option value="sine_wave">正弦波光强分布</option>
+                            </optgroup>
+                            <optgroup label="表格数据模板">
+                                <option value="csv_basic">基础CSV文件清单</option>
+                                <option value="csv_experiment">实验数据记录表</option>
+                            </optgroup>
+                            <optgroup label="配置模板">
+                                <option value="config_json">实验配置文件</option>
+                            </optgroup>
+                            <optgroup label="脚本模板">
+                                <option value="python_analysis">Python数据分析脚本</option>
+                                <option value="matlab_analysis">MATLAB分析脚本</option>
+                            </optgroup>
+                            <optgroup label="文档模板">
+                                <option value="markdown_doc">Markdown实验文档</option>
+                                <option value="log_experiment">实验日志模板</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="form-group">
