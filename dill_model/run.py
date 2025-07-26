@@ -72,6 +72,59 @@ def check_and_activate_venv():
 # check_and_activate_venv()
 print("⚠️  跳过虚拟环境自动切换，使用当前Python环境")
 
+def install_missing_dependency(package_name, import_name=None):
+    """安装缺失的依赖包"""
+    if import_name is None:
+        import_name = package_name
+    
+    print(f"🔧 检测到缺失依赖 {import_name}，正在自动安装 {package_name}...")
+    try:
+        # 尝试多种安装方式
+        install_commands = [
+            # 用户目录安装（推荐）
+            [sys.executable, '-m', 'pip', 'install', '--user', package_name],
+            # 如果用户目录失败，尝试系统包管理
+            [sys.executable, '-m', 'pip', 'install', '--break-system-packages', package_name],
+        ]
+        
+        for cmd in install_commands:
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                if result.returncode == 0:
+                    install_method = "用户目录" if '--user' in cmd else "系统目录"
+                    print(f"✅ {package_name} 已安装到{install_method}")
+                    return True
+            except Exception:
+                continue
+        
+        print(f"❌ 无法自动安装 {package_name}")
+        return False
+        
+    except Exception as e:
+        print(f"❌ 安装 {package_name} 时出错: {e}")
+        return False
+
+# 预先检查并安装关键依赖
+try:
+    import flask_cors
+except ImportError:
+    if install_missing_dependency('flask-cors', 'flask_cors'):
+        # 刷新模块搜索路径，让Python找到新安装的包
+        import importlib
+        import site
+        importlib.reload(site)
+        try:
+            import flask_cors
+            print("✅ flask_cors 模块已成功导入")
+        except ImportError:
+            print("⚠️  安装完成但仍无法导入，可能需要重启Python")
+    else:
+        print("\n🔧 手动解决方案:")
+        print("1. 激活虚拟环境: source venv/bin/activate")
+        print("2. 安装依赖: pip install -r requirements.txt")
+        print("3. 或者运行: bash start.sh")
+        sys.exit(1)
+
 try:
     from backend.app import create_app
 except ImportError as e:
@@ -126,7 +179,7 @@ def print_banner():
     print(banner)
 
 def check_dependencies():
-    """检查必要的依赖包"""
+    """检查必要的依赖包，并自动安装缺失的依赖"""
     required_packages = [
         'flask', 'flask_cors', 'numpy', 'matplotlib', 'requests'
     ]
@@ -149,10 +202,37 @@ def check_dependencies():
         missing_packages.append('pillow')
     
     if missing_packages:
-        print(f"❌ 缺少必要的依赖包: {', '.join(missing_packages)}")
-        print("请运行以下命令安装依赖:")
-        print("pip install -r requirements.txt")
-        return False
+        print(f"⚠️  检测到缺少依赖包: {', '.join(missing_packages)}")
+        print("🔧 正在自动安装缺失的依赖...")
+        
+        try:
+            # 尝试使用当前Python环境的pip安装依赖
+            for package in missing_packages:
+                pip_package = 'flask-cors' if package == 'flask_cors' else package
+                print(f"   📦 安装 {pip_package}...")
+                result = subprocess.run([
+                    sys.executable, '-m', 'pip', 'install', pip_package
+                ], capture_output=True, text=True, timeout=60)
+                
+                if result.returncode != 0:
+                    print(f"   ❌ 安装 {pip_package} 失败: {result.stderr}")
+                    print("\n🔧 请手动安装依赖:")
+                    print("pip install -r requirements.txt")
+                    return False
+                else:
+                    print(f"   ✅ {pip_package} 安装成功")
+            
+            print("✅ 所有缺失依赖已自动安装完成")
+            print("🔄 正在重新检查依赖...")
+            
+            # 重新检查依赖
+            return check_dependencies()
+            
+        except Exception as e:
+            print(f"❌ 自动安装依赖时出错: {e}")
+            print("\n🔧 请手动安装依赖:")
+            print("pip install -r requirements.txt")
+            return False
     
     print("✅ 所有依赖包检查通过")
     return True
