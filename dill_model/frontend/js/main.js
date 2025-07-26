@@ -413,6 +413,10 @@ function initWaveTypeTitles() {
 function initApp() {
     console.log('🔍 [DEBUG] initApp 开始执行');
     
+    // 初始化通知样式
+    addNotificationStyles();
+    console.log('✅ 通知样式初始化成功');
+    
     // 强制初始化系统化日志管理器
     console.log('🔍 [DEBUG] 强制初始化系统化日志管理器...');
     try {
@@ -15132,13 +15136,13 @@ function getCurrentIntensityData() {
 function showNotification(message, type = 'info') {
     // 创建通知元素
     const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
+    notification.className = `notification notification-${type} notification-enter`;
     notification.innerHTML = `
         <div class="notification-content">
             <i class="fas ${getNotificationIcon(type)}"></i>
             <span>${message}</span>
         </div>
-        <button class="notification-close" onclick="this.parentElement.remove()">
+        <button class="notification-close" onclick="removeNotification(this.parentElement)">
             <i class="fas fa-times"></i>
         </button>
     `;
@@ -15151,15 +15155,14 @@ function showNotification(message, type = 'info') {
     const container = getOrCreateNotificationContainer();
     container.appendChild(notification);
     
-    // 强制设置样式确保可见性，覆盖任何可能的CSS冲突
-    notification.style.cssText += `
-        opacity: 1 !important;
-        visibility: visible !important;
-        display: flex !important;
-        transform: translateX(0) !important;
-        transition: none !important;
-        animation: none !important;
-    `;
+    // 确保动画样式已添加
+    addNotificationStyles();
+    
+    // 延迟一帧，确保DOM已更新，再触发动画
+    requestAnimationFrame(() => {
+        notification.classList.remove('notification-enter');
+        notification.classList.add('notification-active');
+    });
     
     console.log(`📢 通知已创建 [${type}]: ${message} (ID: ${notificationId})`);
     
@@ -15192,7 +15195,7 @@ function showNotification(message, type = 'info') {
             if (notification.parentElement) {
                 console.log(`🗑️ 正在移除通知: ${message} (ID: ${notificationId}) - 总显示时间: ${Math.round(elapsed)}ms`);
                 observer.disconnect(); // 停止监控
-                notification.remove();
+                removeNotification(notification);
             }
         } else {
             requestAnimationFrame(checkRemoval);
@@ -15200,6 +15203,20 @@ function showNotification(message, type = 'info') {
     }
     
     requestAnimationFrame(checkRemoval);
+}
+
+// 移除通知的函数
+function removeNotification(notification) {
+    // 添加退出动画
+    notification.classList.remove('notification-active');
+    notification.classList.add('notification-exit');
+    
+    // 动画完成后删除元素
+    notification.addEventListener('animationend', () => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    });
 }
 
 // 获取通知图标
@@ -15264,8 +15281,28 @@ function addNotificationStyles() {
             padding: 12px 16px;
             border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            animation: slideIn 0.3s ease-out;
             max-width: 100%;
+            transform-origin: right top;
+            will-change: transform, opacity;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        /* 进入状态 - 初始位置 */
+        .notification-enter {
+            opacity: 0;
+            transform: translateX(100%) scale(0.8);
+        }
+        
+        /* 活动状态 - 可见位置 */
+        .notification-active {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            animation: notification-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        /* 退出状态 - 隐藏并向上淡出 */
+        .notification-exit {
+            animation: notification-fadeout 0.4s forwards;
         }
         
         .notification-info {
@@ -15306,20 +15343,42 @@ function addNotificationStyles() {
             opacity: 0.6;
             padding: 4px;
             margin-left: 8px;
+            transition: opacity 0.2s, transform 0.2s;
         }
         
         .notification-close:hover {
             opacity: 1;
+            transform: scale(1.15);
         }
         
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
+        /* 弹跳进入动画 */
+        @keyframes notification-bounce {
+            0% {
+                transform: translateX(80%) scale(0.8);
+                opacity: 0.5;
             }
-            to {
-                transform: translateX(0);
+            70% {
+                transform: translateX(-5%) scale(1.05);
                 opacity: 1;
+            }
+            100% {
+                transform: translateX(0) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* 淡出退出动画 */
+        @keyframes notification-fadeout {
+            0% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+            20% {
+                transform: translateX(-5%) scale(1.05);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(100%) scale(0.9);
             }
         }
     `;
@@ -16106,7 +16165,7 @@ function applyUnitSettings() {
 }
 
 // ===============================
-// 示例文件管理相关功能
+// 我的工作间相关功能
 // ===============================
 
 // 示例文件数据存储
@@ -16115,6 +16174,7 @@ let currentPreviewFile = null;
 let isEditingFile = false;
 
 // 筛选功能相关变量
+// 全局变量，存储当前的筛选条件
 let currentFilters = {
     types: new Set(),
     sizes: new Set(),
@@ -16462,7 +16522,7 @@ if __name__ == "__main__":
 *版本: v1.0*`
 };
 
-// 初始化示例文件管理
+// 初始化我的工作间
 function initExampleFilesManager() {
     const exampleFilesBtn = document.getElementById('example-files-btn');
     if (exampleFilesBtn) {
@@ -16584,19 +16644,69 @@ function bindFilterEvents() {
             hideFilterDropdown();
         }
     });
+    
+    // 在绑定事件时初始化筛选计数状态
+    initFilterCountStatus();
 }
 
-// 打开示例文件管理模态框
+// 初始化筛选计数状态
+function initFilterCountStatus() {
+    // 确保筛选条件为空
+    currentFilters.types.clear();
+    currentFilters.sizes.clear();
+    currentFilters.extensions.clear();
+    
+    // 更新筛选计数显示
+    const filterCount = document.getElementById('filter-count');
+    if (filterCount) {
+        filterCount.style.display = 'none';
+        filterCount.textContent = '';
+    }
+    
+    console.log('✅ 已初始化筛选计数状态');
+}
+
+// 打开我的工作间模态框
 function openExampleFilesModal() {
     const modal = document.getElementById('example-files-modal');
     modal.style.display = 'flex';
+    
+    // 每次打开模态框时重置筛选计数和状态
+    resetFilterCount();
+    
+    // 加载文件列表
     loadExampleFiles();
 }
 
-// 关闭示例文件管理模态框
+// 关闭我的工作间模态框
 function closeExampleFilesModal() {
     const modal = document.getElementById('example-files-modal');
     modal.style.display = 'none';
+    
+    // 重置筛选计数和筛选条件
+    resetFilterCount();
+}
+
+// 重置筛选计数器和状态
+function resetFilterCount() {
+    // 清除所有筛选条件
+    currentFilters.types.clear();
+    currentFilters.sizes.clear();
+    currentFilters.extensions.clear();
+    
+    // 更新筛选计数显示
+    const filterCount = document.getElementById('filter-count');
+    if (filterCount) {
+        filterCount.style.display = 'none';
+    }
+    
+    // 取消选中所有筛选复选框
+    const checkboxes = document.querySelectorAll('#filter-dropdown input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    console.log('✅ 已重置筛选状态和计数');
 }
 
 // 加载示例文件列表
@@ -16834,7 +16944,7 @@ function renderFileList(files) {
                 color: #333;
                 position: sticky;
                 top: 0;
-                z-index: 10;
+                z-index: 5;
                 backdrop-filter: blur(10px);
             ">
                 <i class="${category.icon}" style="color: ${category.color}; margin-right: 10px; font-size: 16px;"></i>
@@ -17889,6 +17999,16 @@ function hideFilterDropdown() {
     
     filterDropdown.style.display = 'none';
     filterToggleBtn.classList.remove('active');
+    
+    // 检查筛选数量是否为零，如果是则重置筛选计数显示
+    const totalFilters = currentFilters.types.size + currentFilters.sizes.size + currentFilters.extensions.size;
+    if (totalFilters === 0) {
+        const filterCount = document.getElementById('filter-count');
+        if (filterCount) {
+            filterCount.style.display = 'none';
+            filterCount.textContent = '';
+        }
+    }
 }
 
 // 清除所有筛选
@@ -18012,13 +18132,20 @@ function getFileSizeCategory(sizeBytes) {
 // 更新筛选计数
 function updateFilterCount() {
     const filterCount = document.getElementById('filter-count');
+    if (!filterCount) return;
+    
     const totalFilters = currentFilters.types.size + currentFilters.sizes.size + currentFilters.extensions.size;
     
     if (totalFilters > 0) {
+        // 更新计数值
         filterCount.textContent = totalFilters;
         filterCount.style.display = 'block';
+        console.log(`筛选计数器更新: ${totalFilters} 个筛选条件`);
     } else {
+        // 隐藏计数器
         filterCount.style.display = 'none';
+        filterCount.textContent = '';
+        console.log('筛选计数器已隐藏 (无筛选条件)');
     }
 }
 

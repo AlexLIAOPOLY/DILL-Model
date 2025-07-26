@@ -7104,3 +7104,61 @@ input:checked + .toggle-slider:hover {
 .file-action-btn.use-btn:hover {
     background-color: #388E3C;
 }
+
+.filter-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: -8px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    min-width: 300px;
+    max-height: 450px;
+    overflow-y: auto;
+    z-index: 10000;
+    /* 添加三角形指针 */
+}
+
+.filter-dropdown::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    right: 16px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid white;
+    z-index: 10001;
+}
+
+.filter-dropdown::after {
+    content: '';
+    position: absolute;
+    top: -9px;
+    right: 16px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid #dee2e6;
+    z-index: 10000;
+}
+
+/* 确保筛选下拉菜单在分类标题上方显示 */
+.file-category-header {
+    display: flex; 
+    align-items: center; 
+    margin: 20px 0 10px 0; 
+    padding: 10px 15px; 
+    background: linear-gradient(135deg, var(--color)15, var(--color)05); 
+    border-left: 4px solid var(--color); 
+    border-radius: 8px;
+    font-weight: 600;
+    color: #333;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: blur(10px);
+}
