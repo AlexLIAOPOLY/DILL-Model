@@ -1271,6 +1271,32 @@ intensity3
                                         border-radius: 4px;
                                         font-size: 0.9em;
                                     }
+                                
+                                /* 文件分类标题样式 */
+                                .file-category-header {
+                                    user-select: none;
+                                    transition: all 0.3s ease;
+                                }
+                                
+                                .file-category-header:hover {
+                                    transform: translateX(2px);
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                                }
+                                
+                                .file-item[data-category] {
+                                    margin-left: 15px;
+                                    border-left: 2px solid #f0f0f0;
+                                    transition: all 0.2s ease;
+                                }
+                                
+                                .file-item[data-category]:hover {
+                                    border-left-color: #4a90e2;
+                                    background-color: #f8f9ff;
+                                }
+                                
+                                .file-category-header:first-child {
+                                    margin-top: 0;
+                                }
                                 </style>
                                 <div id="intensity-preview-plot" class="preview-plot"></div>
                             </div>

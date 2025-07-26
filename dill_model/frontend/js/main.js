@@ -16298,6 +16298,131 @@ function showErrorInFileList(message) {
     `;
 }
 
+// 文件自动分类函数
+function categorizeFilesByType(files) {
+    // 定义文件类型分类和优先级
+    const fileTypeCategories = {
+        'intensity': {
+            name: '光强分布文件',
+            extensions: ['txt', 'dat', 'asc'],
+            priority: 1,
+            icon: 'fas fa-chart-line',
+            color: '#4CAF50'
+        },
+        'json': {
+            name: 'JSON数据文件',
+            extensions: ['json'],
+            priority: 2,
+            icon: 'fas fa-file-code',
+            color: '#2196F3'
+        },
+        'backup': {
+            name: '备份文件',
+            extensions: ['backup', 'bak'],
+            priority: 3,
+            icon: 'fas fa-file-archive',
+            color: '#FF9800'
+        },
+        'table': {
+            name: '表格数据文件',
+            extensions: ['csv', 'tsv', 'tab', 'xlsx', 'xls'],
+            priority: 4,
+            icon: 'fas fa-table',
+            color: '#4CAF50'
+        },
+        'document': {
+            name: '文档文件',
+            extensions: ['pdf', 'doc', 'docx', 'md', 'rtf'],
+            priority: 5,
+            icon: 'fas fa-file-alt',
+            color: '#607D8B'
+        },
+        'code': {
+            name: '代码文件',
+            extensions: ['js', 'py', 'html', 'css', 'xml', 'php', 'cpp', 'c', 'java'],
+            priority: 6,
+            icon: 'fas fa-file-code',
+            color: '#2196F3'
+        },
+        'simulation': {
+            name: '仿真文件',
+            extensions: ['pli', 'ldf', 'msk', 'int', 'pro', 'sim', 'slf', 'fdt', 'mat', 'm'],
+            priority: 7,
+            icon: 'fas fa-microchip',
+            color: '#9C27B0'
+        },
+        'log': {
+            name: '日志文件',
+            extensions: ['log', 'out', 'lis'],
+            priority: 8,
+            icon: 'fas fa-file-lines',
+            color: '#9E9E9E'
+        },
+        'archive': {
+            name: '压缩文件',
+            extensions: ['zip', 'rar', '7z', 'tar', 'gz', 'bin'],
+            priority: 9,
+            icon: 'fas fa-file-archive',
+            color: '#424242'
+        },
+        'media': {
+            name: '媒体文件',
+            extensions: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'tiff', 'mp4', 'avi', 'mov', 'wmv', 'mp3', 'wav', 'flac', 'aac'],
+            priority: 10,
+            icon: 'fas fa-file-image',
+            color: '#FF7043'
+        },
+        'other': {
+            name: '其他文件',
+            extensions: [],
+            priority: 999,
+            icon: 'fas fa-file',
+            color: '#607D8B'
+        }
+    };
+    
+    // 为每个文件分配类型
+    const categorizedFiles = {};
+    
+    files.forEach(file => {
+        const extension = file.extension.toLowerCase();
+        let categoryKey = 'other';
+        
+        // 查找匹配的文件类型
+        for (const [key, category] of Object.entries(fileTypeCategories)) {
+            if (category.extensions.includes(extension)) {
+                categoryKey = key;
+                break;
+            }
+        }
+        
+        // 初始化分类数组
+        if (!categorizedFiles[categoryKey]) {
+            categorizedFiles[categoryKey] = {
+                category: fileTypeCategories[categoryKey],
+                files: []
+            };
+        }
+        
+        categorizedFiles[categoryKey].files.push(file);
+    });
+    
+    // 按优先级排序类别，并在每个类别内按文件名排序
+    const sortedCategories = Object.keys(categorizedFiles)
+        .sort((a, b) => {
+            const categoryA = fileTypeCategories[a];
+            const categoryB = fileTypeCategories[b];
+            return categoryA.priority - categoryB.priority;
+        });
+    
+    // 对每个类别内的文件按名称排序
+    sortedCategories.forEach(categoryKey => {
+        categorizedFiles[categoryKey].files.sort((a, b) => a.name.localeCompare(b.name));
+    });
+    
+    return { categorizedFiles, sortedCategories };
+}
+
 // 渲染文件列表
 function renderFileList(files) {
     const filesList = document.getElementById('example-files-list');
@@ -16311,6 +16436,9 @@ function renderFileList(files) {
         `;
         return;
     }
+    
+    // 文件自动分类 - 按文件类型分组
+    const { categorizedFiles, sortedCategories } = categorizeFilesByType(files);
     
     // 获取文件类型的备用文本
     const getFallbackText = (extension) => {
@@ -16330,37 +16458,80 @@ function renderFileList(files) {
         return fallbackMap[extension.toLowerCase()] || extension.toUpperCase().substring(0, 3);
     };
     
-    const filesHtml = files.map(file => `
-        <div class="file-item" data-filename="${file.name}">
-            <div class="file-info-left">
-                <div class="file-icon fallback-icon" style="background-color: ${getFileColorByType(file.extension)}; color: white;" data-fallback="${getFallbackText(file.extension)}">
-                    <i class="fas ${getFileIcon(file.extension)}"></i>
-                </div>
-                <div class="file-details">
-                    <div class="file-name">${file.name}</div>
-                    <div class="file-meta">${file.extension.toUpperCase()} • ${formatFileSize(file.size)} • ${file.description || '示例数据文件'}</div>
-                </div>
-            </div>
-            <div class="file-actions">
-                <button class="file-action-btn preview-btn" onclick="previewFile('${file.name}')" type="button" title="预览">
-                    <i class="fas fa-eye"></i> 预览
-                </button>
-                <button class="file-action-btn use-btn" onclick="useFileDirectly('${file.name}')" type="button" title="使用">
-                    <i class="fas fa-check"></i> 使用
-                </button>
-                <button class="file-action-btn delete-btn" onclick="confirmDeleteFile('${file.name}')" type="button" title="删除">
-                    <i class="fas fa-times"></i> 删除
-                </button>
-                <!-- 备用删除链接，如果JavaScript方法失效可以直接点击 -->
-                <a href="/api/example-files/action?action=delete&filename=${encodeURIComponent(file.name)}" 
-                   class="backup-delete-link" 
-                   onclick="event.preventDefault(); confirmDeleteFile('${file.name}'); return false;" 
-                   style="display:none;">删除</a>
-            </div>
-        </div>
-    `).join('');
+    // 生成分类后的HTML
+    let categorizedHtml = '';
     
-    filesList.innerHTML = filesHtml;
+    sortedCategories.forEach(categoryKey => {
+        const categoryData = categorizedFiles[categoryKey];
+        const category = categoryData.category;
+        const categoryFiles = categoryData.files;
+        
+        // 分类标题
+        categorizedHtml += `
+            <div class="file-category-header" style="
+                display: flex; 
+                align-items: center; 
+                margin: 20px 0 10px 0; 
+                padding: 10px 15px; 
+                background: linear-gradient(135deg, ${category.color}15, ${category.color}05); 
+                border-left: 4px solid ${category.color}; 
+                border-radius: 8px;
+                font-weight: 600;
+                color: #333;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                backdrop-filter: blur(10px);
+            ">
+                <i class="${category.icon}" style="color: ${category.color}; margin-right: 10px; font-size: 16px;"></i>
+                <span>${category.name}</span>
+                <span style="
+                    margin-left: auto; 
+                    background: ${category.color}; 
+                    color: white; 
+                    padding: 2px 8px; 
+                    border-radius: 12px; 
+                    font-size: 12px; 
+                    font-weight: 500;
+                ">${categoryFiles.length}</span>
+            </div>
+        `;
+        
+        // 该分类下的文件
+        const categoryFilesHtml = categoryFiles.map(file => `
+            <div class="file-item" data-filename="${file.name}" data-category="${categoryKey}">
+                <div class="file-info-left">
+                    <div class="file-icon fallback-icon" style="background-color: ${getFileColorByType(file.extension)}; color: white;" data-fallback="${getFallbackText(file.extension)}">
+                        <i class="fas ${getFileIcon(file.extension)}"></i>
+                    </div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-meta">${file.extension.toUpperCase()} • ${formatFileSize(file.size)} • ${file.description || '示例数据文件'}</div>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <button class="file-action-btn preview-btn" onclick="previewFile('${file.name}')" type="button" title="预览">
+                        <i class="fas fa-eye"></i> 预览
+                    </button>
+                    <button class="file-action-btn use-btn" onclick="useFileDirectly('${file.name}')" type="button" title="使用">
+                        <i class="fas fa-check"></i> 使用
+                    </button>
+                    <button class="file-action-btn delete-btn" onclick="confirmDeleteFile('${file.name}')" type="button" title="删除">
+                        <i class="fas fa-times"></i> 删除
+                    </button>
+                    <!-- 备用删除链接，如果JavaScript方法失效可以直接点击 -->
+                    <a href="/api/example-files/action?action=delete&filename=${encodeURIComponent(file.name)}" 
+                       class="backup-delete-link" 
+                       onclick="event.preventDefault(); confirmDeleteFile('${file.name}'); return false;" 
+                       style="display:none;">删除</a>
+                </div>
+            </div>
+        `).join('');
+        
+        categorizedHtml += categoryFilesHtml;
+    });
+    
+    filesList.innerHTML = categorizedHtml;
 }
 
 // 获取文件颜色
