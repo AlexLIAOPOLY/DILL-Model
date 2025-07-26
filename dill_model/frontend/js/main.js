@@ -16485,6 +16485,8 @@ function bindExampleFilesModalEvents() {
     const refreshBtn = document.getElementById('refresh-files-btn');
     const searchInput = document.getElementById('file-search-input');
     const createFileBtn = document.getElementById('create-file-btn');
+    const uploadFileBtn = document.getElementById('upload-file-btn');
+    const uploadFileInput = document.getElementById('upload-file-input');
     
     // 关闭模态框
     closeBtn.addEventListener('click', closeExampleFilesModal);
@@ -16502,6 +16504,14 @@ function bindExampleFilesModalEvents() {
     
     // 新增按钮功能
     createFileBtn.addEventListener('click', showCreateFileModal);
+    
+    // 上传按钮功能
+    uploadFileBtn.addEventListener('click', () => {
+        uploadFileInput.click();
+    });
+    
+    // 文件选择事件
+    uploadFileInput.addEventListener('change', handleExampleFileUpload);
 }
 
 // 绑定文件预览模态框事件
@@ -18189,5 +18199,97 @@ async function createNewFile() {
     } catch (error) {
         console.error('创建文件失败:', error);
         showNotification('创建文件失败: ' + error.message, 'error');
+    }
+}
+
+// 处理示例文件上传
+async function handleExampleFileUpload(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) {
+        return;
+    }
+    
+    // 准备FormData
+    const formData = new FormData();
+    
+    // 检查文件类型和数量
+    const allowedExtensions = ['.txt', '.csv', '.json', '.dat', '.xls', '.xlsx', '.mat', '.pli', '.ldf', '.msk', '.int', '.pro', '.sim', '.tab', '.tsv', '.asc', '.lis', '.log', '.out', '.fdt', '.slf'];
+    let validFiles = 0;
+    let invalidFiles = [];
+    
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (allowedExtensions.includes(fileExt)) {
+            formData.append('files', file);
+            validFiles++;
+        } else {
+            invalidFiles.push(file.name);
+        }
+    }
+    
+    if (validFiles === 0) {
+        showNotification('没有有效的文件可上传。支持的格式：' + allowedExtensions.join(', '), 'warning');
+        return;
+    }
+    
+    if (invalidFiles.length > 0) {
+        showNotification(`已忽略不支持的文件: ${invalidFiles.join(', ')}`, 'warning');
+    }
+    
+    try {
+        // 显示上传中的提示
+        showNotification(`正在上传 ${validFiles} 个文件...`, 'info');
+        
+        const response = await fetch('/api/example-files/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        // 检查响应状态和内容类型
+        if (!response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `上传失败，状态码: ${response.status}`);
+            } else {
+                // 非JSON响应，可能是HTML错误页面
+                const errorText = await response.text();
+                throw new Error(`上传失败，状态码: ${response.status} (${response.statusText})`);
+            }
+        }
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // 上传成功
+            if (result.data.total_uploaded > 0) {
+                showNotification(result.message, 'success');
+                // 刷新文件列表
+                loadExampleFiles();
+            }
+            
+            // 如果有失败的文件，显示详细信息
+            if (result.data.total_failed > 0) {
+                const failedList = result.data.failed.map(f => `${f.filename}: ${f.error}`).join('\n');
+                console.warn('部分文件上传失败:', failedList);
+            }
+        } else {
+            // 上传失败
+            showNotification(result.message || '上传失败', 'error');
+            
+            // 显示失败的文件详情
+            if (result.data && result.data.failed && result.data.failed.length > 0) {
+                const failedList = result.data.failed.map(f => `${f.filename}: ${f.error}`).join('\n');
+                console.error('文件上传失败详情:', failedList);
+            }
+        }
+    } catch (error) {
+        console.error('上传文件时发生错误:', error);
+        showNotification('上传文件失败: ' + error.message, 'error');
+    } finally {
+        // 清空文件输入框，允许重复选择相同文件
+        event.target.value = '';
     }
 }

@@ -33,6 +33,9 @@ def create_app():
     
     # 配置应用
     app.config['JSON_SORT_KEYS'] = False
+    # 文件上传配置
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB最大文件大小
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(root_dir), 'test_data')
     # 自定义JSON编码器以处理NumPy数据类型
     app.json_encoder = NumpyEncoder
     

@@ -2327,6 +2327,103 @@ def get_file_description(filename, extension):
     
     return descriptions.get(extension.lower(), '示例数据文件')
 
+@api_bp.route('/example-files/upload', methods=['POST'])
+def upload_example_files():
+    """上传文件到示例文件目录"""
+    try:
+        # 检查是否有文件上传
+        if 'files' not in request.files:
+            return jsonify(format_response(False, message="没有选择文件")), 400
+        
+        files = request.files.getlist('files')
+        if not files or all(file.filename == '' for file in files):
+            return jsonify(format_response(False, message="没有选择有效文件")), 400
+        
+        example_dir = get_example_files_dir()
+        
+        # 确保目录存在
+        if not os.path.exists(example_dir):
+            os.makedirs(example_dir)
+        
+        uploaded_files = []
+        failed_files = []
+        
+        for file in files:
+            if file.filename == '':
+                continue
+                
+            filename = file.filename
+            
+            # 安全检查：防止目录遍历攻击
+            if '..' in filename or '/' in filename or '\\' in filename:
+                failed_files.append({'filename': filename, 'error': '无效的文件名'})
+                continue
+            
+            # 检查文件扩展名
+            allowed_extensions = ['.txt', '.csv', '.json', '.dat', '.xls', '.xlsx', '.mat', '.pli', '.ldf', '.msk', '.int', '.pro', '.sim', '.tab', '.tsv', '.asc', '.lis', '.log', '.out', '.fdt', '.slf']
+            file_ext = os.path.splitext(filename)[1].lower()
+            if file_ext not in allowed_extensions:
+                failed_files.append({'filename': filename, 'error': f'不支持的文件类型: {file_ext}'})
+                continue
+            
+            file_path = os.path.join(example_dir, filename)
+            
+            # 检查文件是否已存在
+            if os.path.exists(file_path):
+                # 生成新的文件名
+                name, ext = os.path.splitext(filename)
+                counter = 1
+                while os.path.exists(file_path):
+                    new_filename = f"{name}_{counter}{ext}"
+                    file_path = os.path.join(example_dir, new_filename)
+                    counter += 1
+                filename = os.path.basename(file_path)
+            
+            try:
+                # 保存文件
+                file.save(file_path)
+                
+                # 获取文件信息
+                file_size = os.path.getsize(file_path)
+                file_ext = os.path.splitext(filename)[1][1:]  # 去掉点
+                
+                uploaded_files.append({
+                    'filename': filename,
+                    'size': file_size,
+                    'extension': file_ext,
+                    'description': get_file_description(filename, file_ext)
+                })
+                
+                # 添加日志
+                add_log_entry('info', 'system', f'文件上传成功: {filename}')
+                
+            except Exception as e:
+                failed_files.append({'filename': filename, 'error': f'保存失败: {str(e)}'})
+                # 添加错误日志
+                add_log_entry('error', 'system', f'文件上传失败: {filename} - {str(e)}')
+        
+        # 构建响应
+        response_data = {
+            'uploaded': uploaded_files,
+            'failed': failed_files,
+            'total_uploaded': len(uploaded_files),
+            'total_failed': len(failed_files)
+        }
+        
+        if uploaded_files:
+            message = f"成功上传 {len(uploaded_files)} 个文件"
+            if failed_files:
+                message += f"，{len(failed_files)} 个文件失败"
+            return jsonify(format_response(True, message=message, data=response_data))
+        else:
+            return jsonify(format_response(False, message="所有文件上传失败", data=response_data)), 400
+        
+    except Exception as e:
+        error_msg = f"文件上传失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'system', f'文件上传异常: {error_msg}')
+        return jsonify(format_response(False, message=error_msg)), 500
+
 @api_bp.route('/example-files/action', methods=['GET'])
 def file_action():
     """通用文件操作端点 - 使用GET方法和查询参数"""
