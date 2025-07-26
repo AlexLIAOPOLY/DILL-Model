@@ -699,18 +699,24 @@ let car4DAnimationState = {
  * @param {string} message - 错误消息
  */
 function showErrorMessage(message) {
-    const errorContainer = document.getElementById('error-message');
-    if (errorContainer) {
-        errorContainer.textContent = message;
-        errorContainer.style.display = 'block';
-        
-        // 3秒后自动隐藏
-        setTimeout(() => {
-            errorContainer.style.display = 'none';
-        }, 3000);
+    // 优先使用新的错误通知框系统
+    if (typeof showTopError === 'function') {
+        showTopError(message, true);
     } else {
-        // 回退到alert
-        alert(message);
+        // 回退到旧的错误显示方式
+        const errorContainer = document.getElementById('error-message');
+        if (errorContainer) {
+            errorContainer.textContent = message;
+            errorContainer.style.display = 'block';
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                errorContainer.style.display = 'none';
+            }, 3000);
+        } else {
+            // 最后回退到alert
+            alert(message);
+        }
     }
 }
 

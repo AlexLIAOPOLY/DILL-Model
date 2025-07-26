@@ -682,23 +682,27 @@ header::before {
 
 /* 错误消息 */
 .error-message {
-    display: none !important;
-    background-color: var(--accent-color);
+    display: none;
+    background-color: #e74c3c;
     color: white;
-    padding: 1rem;
+    padding: 0;
     border-radius: var(--border-radius);
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     text-align: center;
     min-height: 0;
     height: 0;
     overflow: hidden;
     opacity: 0;
     transition: all 0.3s ease;
+    border: 2px solid #c0392b;
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
 
 .error-message.visible {
     display: block !important;
     height: auto;
+    padding: 1rem;
+    margin-bottom: 1rem;
     opacity: 1;
 }
 
@@ -5771,6 +5775,111 @@ input:checked + .toggle-slider:hover {
     border-color: #555;
     box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.03), inset 0 1px 3px rgba(0,0,0,0.03);
     outline: none;
+}
+
+/* ========================================
+   错误通知框系统 - 位于页眉下方
+   ======================================== */
+
+.error-notification {
+    display: none;
+    background: linear-gradient(135deg, #d73027, #c1392b);
+    color: white;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.4s ease;
+    box-shadow: 0 4px 12px rgba(215, 48, 39, 0.25);
+    border: 1px solid #b83e3c;
+}
+
+.error-notification.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.error-notification.shake {
+    animation: errorNotificationShake 0.8s ease-in-out;
+}
+
+.error-notification-content {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+}
+
+.error-notification-icon {
+    font-size: 22px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.error-notification-message {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.error-notification-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.error-notification-close:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    opacity: 1;
+}
+
+/* 错误通知框的震动动画 */
+@keyframes errorNotificationShake {
+    0%, 100% {
+        transform: translateY(0) translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateY(0) translateX(-3px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateY(0) translateX(3px);
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .error-notification-content {
+        padding: 14px 16px;
+        gap: 10px;
+    }
+    
+    .error-notification-icon {
+        font-size: 20px;
+    }
+    
+    .error-notification-message {
+        font-size: 14px;
+    }
+    
+    .error-notification-close {
+        font-size: 20px;
+        padding: 2px 6px;
+    }
 }
 
 .cumulative-settings-grid .input-with-unit span {

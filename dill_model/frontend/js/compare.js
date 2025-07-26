@@ -878,21 +878,30 @@ function displayInteractiveComparisonResults(data) {
  * 显示错误消息的辅助函数
  */
 function showError(message) {
-    const errorMessage = document.getElementById('error-message');
     const loading = document.getElementById('loading');
     
     // 隐藏加载动画
-    loading.classList.remove('active');
+    if (loading) {
+        loading.classList.remove('active');
+    }
     
-    // 显示错误消息
-    errorMessage.textContent = message;
-    errorMessage.classList.add('visible');
-    
-    // 添加摇晃动画
-    errorMessage.classList.add('shake');
-    setTimeout(() => {
-        errorMessage.classList.remove('shake');
-    }, 800);
+    // 使用新的错误通知框系统
+    if (typeof showTopError === 'function') {
+        showTopError(message, true);
+    } else {
+        // 回退到旧的错误显示方式
+        const errorMessage = document.getElementById('error-message');
+        if (errorMessage) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('visible');
+            errorMessage.classList.add('shake');
+            setTimeout(() => {
+                errorMessage.classList.remove('shake');
+            }, 800);
+        } else {
+            alert(message);
+        }
+    }
 }
 
 /**

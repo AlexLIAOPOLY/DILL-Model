@@ -169,8 +169,17 @@
     <!-- 主要内容 -->
     <main class="main-content">
         <div class="container">
-            <!-- 错误消息 -->
-            <div id="error-message" class="error-message" data-i18n="error_message"></div>
+            <!-- 全新的错误框系统 - 位于页眉下方，模型选择区域上方 -->
+            <div id="top-error-notification" class="error-notification">
+                <div class="error-notification-content">
+                    <div class="error-notification-icon">⚠　</div>
+                    <div class="error-notification-message" id="top-error-message-text"></div>
+                    <button class="error-notification-close" onclick="hideTopError()">&times;</button>
+                </div>
+            </div>
+            
+            <!-- 旧的错误消息（保留但隐藏，避免影响现有逻辑） -->
+            <div id="error-message" class="error-message" data-i18n="error_message" style="display: none !important;"></div>
             
             <!-- 模型选择与公式展示区域 -->
             <section id="model-selection-section" class="model-selection-section">

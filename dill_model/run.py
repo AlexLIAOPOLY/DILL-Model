@@ -56,16 +56,21 @@ def check_and_activate_venv():
             import subprocess
             cmd = [venv_python] + sys.argv
             print(f"🚀 使用虚拟环境Python重新启动: {venv_python}")
-            os.execv(venv_python, cmd)
+            # 使用subprocess.run代替os.execv，避免可能的问题
+            result = subprocess.run(cmd, cwd=current_dir)
+            sys.exit(result.returncode)
         except Exception as e:
             print(f"⚠️  无法切换到虚拟环境: {e}")
+            print(f"详细错误: {e}")
             return False
     
     print("⚠️  未检测到虚拟环境，使用当前Python环境")
     return False
 
 # 检查并切换到虚拟环境
-check_and_activate_venv()
+# 暂时跳过虚拟环境自动切换，避免卡住
+# check_and_activate_venv()
+print("⚠️  跳过虚拟环境自动切换，使用当前Python环境")
 
 try:
     from backend.app import create_app

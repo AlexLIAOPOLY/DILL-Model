@@ -2,6 +2,176 @@
  * Dill模型Web应用 - 主逻辑脚本
  */
 
+// ========================================
+// 全新的顶部错误框系统
+// ========================================
+
+/**
+ * 显示错误通知
+ * @param {string} message - 错误消息
+ * @param {boolean} autoHide - 是否自动隐藏（默认5秒后隐藏）
+ */
+function showTopError(message, autoHide = true) {
+    const errorNotification = document.getElementById('top-error-notification');
+    const errorMessageText = document.getElementById('top-error-message-text');
+    
+    if (!errorNotification || !errorMessageText) {
+        console.error('错误通知框元素未找到');
+        return;
+    }
+    
+    // 设置错误消息
+    errorMessageText.textContent = message;
+    
+    // 显示错误框
+    errorNotification.classList.add('show');
+    
+    // 添加震动动画
+    errorNotification.classList.add('shake');
+    setTimeout(() => {
+        errorNotification.classList.remove('shake');
+    }, 800);
+    
+    // 轻微滚动到错误框位置
+    setTimeout(() => {
+        errorNotification.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }, 100);
+    
+    // 自动隐藏（如果启用）
+    if (autoHide) {
+        setTimeout(() => {
+            hideTopError();
+        }, 5000);
+    }
+    
+    console.log('🚨 错误通知框已显示:', message);
+}
+
+/**
+ * 隐藏错误通知
+ */
+function hideTopError() {
+    const errorNotification = document.getElementById('top-error-notification');
+    
+    if (!errorNotification) {
+        console.error('错误通知框元素未找到');
+        return;
+    }
+    
+    // 隐藏错误框
+    errorNotification.classList.remove('show', 'shake');
+    
+    console.log('✅ 错误通知框已隐藏');
+}
+
+/**
+ * 智能错误类型检测和显示
+ * @param {Error|string|Object} error - 错误对象、字符串或错误信息对象
+ */
+function showSmartError(error) {
+    const currentLang = window.currentLang || localStorage.getItem('lang') || 'zh-CN';
+    let message = '';
+    
+    // 检测错误类型并生成合适的消息
+    if (typeof error === 'string') {
+        // 字符串错误消息
+        if (error.toLowerCase().includes('fetch')) {
+            message = currentLang.startsWith('zh') ? 
+                '🌐 网络连接失败！请检查网络状态或稍后重试。' : 
+                '🌐 Network connection failed! Please check your network or try again later.';
+        } else if (error.toLowerCase().includes('timeout')) {
+            message = currentLang.startsWith('zh') ? 
+                '⏰ 请求超时！服务器响应时间过长，请稍后重试。' : 
+                '⏰ Request timeout! Server response too slow, please try again later.';
+        } else {
+            message = error;
+        }
+    } else if (error && error.name === 'TypeError' && error.message.includes('fetch')) {
+        // fetch API 错误
+        message = currentLang.startsWith('zh') ? 
+            '🔌 服务器连接断开！请检查后端服务是否正常运行。' : 
+            '🔌 Server connection lost! Please check if backend service is running.';
+    } else if (error && error.message) {
+        // 错误对象
+        try {
+            // 尝试解析JSON错误信息
+            if (error.message.startsWith('{') && error.message.endsWith('}')) {
+                const errorObj = JSON.parse(error.message);
+                if (currentLang.startsWith('zh') && errorObj.message_zh) {
+                    message = errorObj.message_zh;
+                } else if (currentLang.startsWith('en') && errorObj.message_en) {
+                    message = errorObj.message_en;
+                } else if (errorObj.message) {
+                    message = errorObj.message;
+                } else {
+                    message = error.message;
+                }
+            } else {
+                message = error.message;
+            }
+        } catch (parseError) {
+            message = error.message;
+        }
+    } else {
+        // 默认错误消息
+        message = currentLang.startsWith('zh') ? 
+            '❌ 发生未知错误！请刷新页面或稍后重试。' : 
+            '❌ Unknown error occurred! Please refresh or try again later.';
+    }
+    
+    showTopError(message, true);
+}
+
+/**
+ * 显示连接错误（保持向后兼容）
+ * @param {string} type - 错误类型（如 'connection', 'timeout', 'server'）
+ */
+function showConnectionError(type = 'connection') {
+    const currentLang = window.currentLang || localStorage.getItem('lang') || 'zh-CN';
+    
+    let message = '';
+    switch (type) {
+        case 'connection':
+            message = currentLang.startsWith('zh') ? 
+                '⚠️ 服务器连接失败！请检查网络连接或稍后重试。' : 
+                '⚠️ Server connection failed! Please check your network or try again later.';
+            break;
+        case 'timeout':
+            message = currentLang.startsWith('zh') ? 
+                '⏰ 请求超时！服务器响应时间过长，请稍后重试。' : 
+                '⏰ Request timeout! Server response too slow, please try again later.';
+            break;
+        case 'server':
+            message = currentLang.startsWith('zh') ? 
+                '🔧 服务器内部错误！请稍后重试或联系管理员。' : 
+                '🔧 Server internal error! Please try again later or contact administrator.';
+            break;
+        default:
+            message = currentLang.startsWith('zh') ? 
+                '❌ 发生未知错误！请刷新页面或稍后重试。' : 
+                '❌ Unknown error occurred! Please refresh or try again later.';
+    }
+    
+    showTopError(message, true);
+}
+
+/**
+ * 测试顶部错误框功能
+ */
+function testTopError() {
+    showTopError('🧪 这是一个测试错误消息 - 前后端连接断开！', false);
+}
+
+// 将函数暴露到全局作用域
+window.showTopError = showTopError;
+window.hideTopError = hideTopError;
+window.showSmartError = showSmartError;
+window.showConnectionError = showConnectionError;
+window.testTopError = testTopError;
+
 // === 加载期间日志相关状态 ===
 let loadingLogsPanel = null;
 let loadingLogsContainer = null;
@@ -319,20 +489,9 @@ function initApp() {
         if (intensityMethodSelect && intensityMethodSelect.value === 'custom') {
             if (!customIntensityData.loaded || !customIntensityData.x || !customIntensityData.intensity || 
                 customIntensityData.x.length === 0 || customIntensityData.intensity.length === 0) {
-                // 显示错误消息
-                if (errorMessage) {
-                    errorMessage.textContent = '请先上传文件或手动输入光强分布数据，然后预览/应用数据后再计算';
-                    errorMessage.classList.add('visible', 'shake');
-                    errorMessage.style.display = 'block';
-                    errorMessage.style.visibility = 'visible';
-                    errorMessage.style.opacity = '1';
-                    errorMessage.style.height = 'auto';
-                    console.log('❌ 自定义向量模式下未加载数据，计算被阻止');
-                }
-                // 滚动到页面顶部
-                setTimeout(() => {
-                    window.scrollTo({top: 0, behavior: 'smooth'});
-                }, 50);
+                // 使用新的顶部错误框显示错误
+                showTopError('请先上传文件或手动输入光强分布数据，然后预览/应用数据后再计算', true);
+                console.log('❌ 自定义向量模式下未加载数据，计算被阻止');
                 // 不执行计算
                 return;
             }
@@ -399,7 +558,7 @@ function initApp() {
                         if (carInteractivePlotsContainer) carInteractivePlotsContainer.style.display = 'block';
                     } else {
                         console.error('renderCarInteractivePlots function not found.');
-                        showErrorMessage('CAR模型图表渲染函数未找到。');
+                        showTopError('CAR模型图表渲染函数未找到。', true);
                     }
                 }
                 
@@ -461,19 +620,17 @@ function initApp() {
                     parameters: postData
                 });
                 
-                // 显示错误信息
-                errorMessage.textContent = msg;
-                errorMessage.classList.add('visible');
-                // 添加摇晃动画
-                errorMessage.classList.add('shake');
-                setTimeout(() => {
-                    errorMessage.classList.remove('shake');
-                }, 800);
-                // 修正：报错时自动滚动到页面顶部
-                setTimeout(() => {
-                    window.scrollTo({top: 0, behavior: 'smooth'});
-                }, 50);
+                // 使用智能错误检测和显示
+                showSmartError(error);
+                
+                // 保留原有的错误卡片高亮功能
                 highlightErrorCard(msg);
+                
+                // 保留旧的错误消息逻辑（隐藏状态，避免冲突）
+                if (errorMessage) {
+                    errorMessage.textContent = msg;
+                    errorMessage.style.display = 'none';
+                }
             });
     });
     
