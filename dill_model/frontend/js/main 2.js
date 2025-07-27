@@ -413,10 +413,6 @@ function initWaveTypeTitles() {
 function initApp() {
     console.log('🔍 [DEBUG] initApp 开始执行');
     
-    // 初始化通知样式
-    addNotificationStyles();
-    console.log('✅ 通知样式初始化成功');
-    
     // 强制初始化系统化日志管理器
     console.log('🔍 [DEBUG] 强制初始化系统化日志管理器...');
     try {
@@ -15136,13 +15132,13 @@ function getCurrentIntensityData() {
 function showNotification(message, type = 'info') {
     // 创建通知元素
     const notification = document.createElement('div');
-    notification.className = `notification notification-${type} notification-enter`;
+    notification.className = `notification notification-${type}`;
     notification.innerHTML = `
         <div class="notification-content">
             <i class="fas ${getNotificationIcon(type)}"></i>
             <span>${message}</span>
         </div>
-        <button class="notification-close" onclick="removeNotification(this.parentElement)">
+        <button class="notification-close" onclick="this.parentElement.remove()">
             <i class="fas fa-times"></i>
         </button>
     `;
@@ -15155,14 +15151,15 @@ function showNotification(message, type = 'info') {
     const container = getOrCreateNotificationContainer();
     container.appendChild(notification);
     
-    // 确保动画样式已添加
-    addNotificationStyles();
-    
-    // 延迟一帧，确保DOM已更新，再触发动画
-    requestAnimationFrame(() => {
-        notification.classList.remove('notification-enter');
-        notification.classList.add('notification-active');
-    });
+    // 强制设置样式确保可见性，覆盖任何可能的CSS冲突
+    notification.style.cssText += `
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: flex !important;
+        transform: translateX(0) !important;
+        transition: none !important;
+        animation: none !important;
+    `;
     
     console.log(`📢 通知已创建 [${type}]: ${message} (ID: ${notificationId})`);
     
@@ -15195,7 +15192,7 @@ function showNotification(message, type = 'info') {
             if (notification.parentElement) {
                 console.log(`🗑️ 正在移除通知: ${message} (ID: ${notificationId}) - 总显示时间: ${Math.round(elapsed)}ms`);
                 observer.disconnect(); // 停止监控
-                removeNotification(notification);
+                notification.remove();
             }
         } else {
             requestAnimationFrame(checkRemoval);
@@ -15203,20 +15200,6 @@ function showNotification(message, type = 'info') {
     }
     
     requestAnimationFrame(checkRemoval);
-}
-
-// 移除通知的函数
-function removeNotification(notification) {
-    // 添加退出动画
-    notification.classList.remove('notification-active');
-    notification.classList.add('notification-exit');
-    
-    // 动画完成后删除元素
-    notification.addEventListener('animationend', () => {
-        if (notification.parentElement) {
-            notification.remove();
-        }
-    });
 }
 
 // 获取通知图标
@@ -15281,28 +15264,8 @@ function addNotificationStyles() {
             padding: 12px 16px;
             border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease-out;
             max-width: 100%;
-            transform-origin: right top;
-            will-change: transform, opacity;
-            transition: opacity 0.3s, transform 0.3s;
-        }
-        
-        /* 进入状态 - 初始位置 */
-        .notification-enter {
-            opacity: 0;
-            transform: translateX(100%) scale(0.8);
-        }
-        
-        /* 活动状态 - 可见位置 */
-        .notification-active {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-            animation: notification-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        
-        /* 退出状态 - 隐藏并向上淡出 */
-        .notification-exit {
-            animation: notification-fadeout 0.4s forwards;
         }
         
         .notification-info {
@@ -15343,42 +15306,20 @@ function addNotificationStyles() {
             opacity: 0.6;
             padding: 4px;
             margin-left: 8px;
-            transition: opacity 0.2s, transform 0.2s;
         }
         
         .notification-close:hover {
             opacity: 1;
-            transform: scale(1.15);
         }
         
-        /* 弹跳进入动画 */
-        @keyframes notification-bounce {
-            0% {
-                transform: translateX(80%) scale(0.8);
-                opacity: 0.5;
-            }
-            70% {
-                transform: translateX(-5%) scale(1.05);
-                opacity: 1;
-            }
-            100% {
-                transform: translateX(0) scale(1);
-                opacity: 1;
-            }
-        }
-        
-        /* 淡出退出动画 */
-        @keyframes notification-fadeout {
-            0% {
-                opacity: 1;
-                transform: translateX(0) scale(1);
-            }
-            20% {
-                transform: translateX(-5%) scale(1.05);
-            }
-            100% {
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
                 opacity: 0;
-                transform: translateX(100%) scale(0.9);
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
             }
         }
     `;
@@ -16165,7 +16106,7 @@ function applyUnitSettings() {
 }
 
 // ===============================
-// 我的工作间相关功能
+// 示例文件管理相关功能
 // ===============================
 
 // 示例文件数据存储
@@ -16173,21 +16114,9 @@ let exampleFilesData = [];
 let currentPreviewFile = null;
 let isEditingFile = false;
 
-// 筛选功能相关变量
-// 全局变量，存储当前的筛选条件
-let currentFilters = {
-    types: new Set(),
-    sizes: new Set(),
-    extensions: new Set()
-};
-let allFileTypes = new Set();
-let allExtensions = new Set();
-
 // 文件模板
 const FILE_TEMPLATES = {
     empty: "",
-    
-    // 光强分布文件模板
     intensity_simple: `# 简单光强分布样例数据
 # 格式: x坐标 光强值
 # 单位: x(um) I(mW/cm²)
@@ -16202,22 +16131,6 @@ const FILE_TEMPLATES = {
 8.0 14.0
 9.0 13.5
 10.0 12.8`,
-    
-    intensity_gaussian: `# 高斯光强分布数据
-# 参数: 中心位置=5μm, σ=2μm, 峰值强度=20mW/cm²
-# 格式: x(μm) I(mW/cm²)
-0.0 1.35
-1.0 3.68
-2.0 8.11
-3.0 14.65
-4.0 21.46
-5.0 25.00
-6.0 21.46
-7.0 14.65
-8.0 8.11
-9.0 3.68
-10.0 1.35`,
-    
     intensity_complex: `{
     "format": "intensity_distribution",
     "version": "1.0",
@@ -16231,7 +16144,6 @@ const FILE_TEMPLATES = {
         "intensity": [10.0, 10.5, 11.2, 12.0, 12.8, 13.5, 14.0, 14.2, 14.0, 13.5, 12.8]
     }
 }`,
-    
     sine_wave: `{
     "format": "intensity_distribution",
     "version": "1.0",
@@ -16251,278 +16163,10 @@ const FILE_TEMPLATES = {
         "x": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         "intensity": [27.0, 25.6, 22.0, 16.5, 10.2, 4.5, 0.8, 0.0, 2.2, 7.0, 13.5]
     }
-}`,
-    
-    // CSV数据模板
-    csv_basic: `文件名,扩展名,大小(KB),创建时间,描述
-intensity_example.txt,txt,1.2,2024-01-15 10:30:00,简单光强分布数据
-intensity_complex.json,json,2.8,2024-01-15 11:15:00,复杂光强分布JSON格式
-gaussian_profile.dat,dat,1.8,2024-01-15 12:00:00,高斯分布轮廓数据`,
-    
-    csv_experiment: `实验编号,样品名称,曝光时间(s),光强(mW/cm²),温度(°C),湿度(%),结果
-EXP001,Sample_A,30,15.5,25.2,45,成功
-EXP002,Sample_B,45,18.2,24.8,47,成功
-EXP003,Sample_C,60,12.1,26.1,43,失败
-EXP004,Sample_D,30,20.0,25.0,44,成功`,
-    
-    // 配置文件模板
-    config_json: `{
-    "experiment": {
-        "name": "光刻实验配置",
-        "version": "1.0",
-        "created": "2024-01-15T10:00:00Z"
-    },
-    "parameters": {
-        "wavelength": 405,
-        "exposure_time": 30,
-        "intensity": 15.5,
-        "temperature": 25.0
-    },
-    "materials": {
-        "photoresist": "AZ_1518",
-        "substrate": "Silicon",
-        "developer": "AZ_400K"
-    },
-    "output": {
-        "format": "txt",
-        "precision": 3,
-        "units": {
-            "length": "μm",
-            "intensity": "mW/cm²",
-            "time": "seconds"
-        }
-    }
-}`,
-    
-    // 日志文件模板
-    log_experiment: `[2024-01-15 10:00:00] INFO: 实验开始 - 光刻工艺测试
-[2024-01-15 10:00:01] INFO: 加载配置文件: config.json
-[2024-01-15 10:00:02] INFO: 初始化设备连接
-[2024-01-15 10:00:05] INFO: 设备状态检查完成
-[2024-01-15 10:00:10] INFO: 开始曝光过程
-[2024-01-15 10:00:40] INFO: 曝光完成, 时长: 30s
-[2024-01-15 10:00:45] WARN: 温度略高于设定值 (26.2°C vs 25.0°C)
-[2024-01-15 10:01:00] INFO: 显影过程开始
-[2024-01-15 10:03:00] INFO: 显影完成
-[2024-01-15 10:03:30] INFO: 实验结束 - 结果：成功`,
-    
-    // MATLAB脚本模板
-    matlab_analysis: `% 光强分布数据分析脚本
-% 作者: DILL系统
-% 创建时间: 2024-01-15
-
-function result = analyze_intensity_distribution(filename)
-    % 加载数据文件
-    data = load(filename);
-    x = data(:,1);
-    intensity = data(:,2);
-    
-    % 基本统计分析
-    max_intensity = max(intensity);
-    min_intensity = min(intensity);
-    mean_intensity = mean(intensity);
-    std_intensity = std(intensity);
-    
-    % 查找峰值位置
-    [peaks, peak_indices] = findpeaks(intensity);
-    peak_positions = x(peak_indices);
-    
-    % 计算FWHM (半高全宽)
-    half_max = max_intensity / 2;
-    indices = find(intensity >= half_max);
-    if ~isempty(indices)
-        fwhm = x(indices(end)) - x(indices(1));
-    else
-        fwhm = 0;
-    end
-    
-    % 生成结果结构
-    result.max_intensity = max_intensity;
-    result.min_intensity = min_intensity;
-    result.mean_intensity = mean_intensity;
-    result.std_intensity = std_intensity;
-    result.peak_positions = peak_positions;
-    result.fwhm = fwhm;
-    
-    % 绘制结果
-    figure;
-    plot(x, intensity, 'b-', 'LineWidth', 2);
-    hold on;
-    plot(peak_positions, peaks, 'ro', 'MarkerSize', 8);
-    xlabel('位置 (μm)');
-    ylabel('光强 (mW/cm²)');
-    title('光强分布分析');
-    grid on;
-    
-    fprintf('分析完成:\\n');
-    fprintf('最大光强: %.2f mW/cm²\\n', max_intensity);
-    fprintf('平均光强: %.2f mW/cm²\\n', mean_intensity);
-    fprintf('FWHM: %.2f μm\\n', fwhm);
-end`,
-    
-    // Python脚本模板
-    python_analysis: `#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-光强分布数据分析工具
-作者: DILL系统
-创建时间: 2024-01-15
-"""
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
-from scipy.optimize import curve_fit
-import pandas as pd
-
-class IntensityAnalyzer:
-    def __init__(self, filename):
-        """初始化分析器"""
-        self.filename = filename
-        self.data = self.load_data()
-        
-    def load_data(self):
-        """加载数据文件"""
-        try:
-            # 尝试加载为CSV
-            data = pd.read_csv(self.filename)
-            return data
-        except:
-            # 尝试加载为文本文件
-            data = np.loadtxt(self.filename)
-            return pd.DataFrame(data, columns=['x', 'intensity'])
-    
-    def gaussian_fit(self, x, a, mu, sigma, offset):
-        """高斯拟合函数"""
-        return a * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) + offset
-    
-    def analyze(self):
-        """执行完整分析"""
-        x = self.data['x']
-        intensity = self.data['intensity']
-        
-        # 基本统计
-        stats = {
-            'max_intensity': intensity.max(),
-            'min_intensity': intensity.min(),
-            'mean_intensity': intensity.mean(),
-            'std_intensity': intensity.std()
-        }
-        
-        # 峰值检测
-        peaks, _ = find_peaks(intensity, height=intensity.mean())
-        peak_positions = x.iloc[peaks].values
-        
-        # 高斯拟合
-        try:
-            popt, _ = curve_fit(self.gaussian_fit, x, intensity, 
-                              p0=[intensity.max(), x.iloc[intensity.idxmax()], 1, intensity.min()])
-            fit_params = {
-                'amplitude': popt[0],
-                'center': popt[1], 
-                'sigma': popt[2],
-                'offset': popt[3]
-            }
-        except:
-            fit_params = None
-        
-        return {
-            'statistics': stats,
-            'peaks': peak_positions,
-            'gaussian_fit': fit_params
-        }
-    
-    def plot_results(self, results):
-        """绘制分析结果"""
-        x = self.data['x']
-        intensity = self.data['intensity']
-        
-        plt.figure(figsize=(10, 6))
-        plt.plot(x, intensity, 'b-', linewidth=2, label='原始数据')
-        
-        # 绘制峰值
-        peaks = results['peaks']
-        if len(peaks) > 0:
-            peak_intensities = [intensity.iloc[np.argmin(np.abs(x - p))] for p in peaks]
-            plt.plot(peaks, peak_intensities, 'ro', markersize=8, label='峰值')
-        
-        # 绘制高斯拟合
-        if results['gaussian_fit']:
-            params = results['gaussian_fit']
-            x_fit = np.linspace(x.min(), x.max(), 200)
-            y_fit = self.gaussian_fit(x_fit, **params)
-            plt.plot(x_fit, y_fit, 'r--', linewidth=2, label='高斯拟合')
-        
-        plt.xlabel('位置 (μm)')
-        plt.ylabel('光强 (mW/cm²)')
-        plt.title('光强分布分析')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.show()
-
-# 使用示例
-if __name__ == "__main__":
-    analyzer = IntensityAnalyzer("intensity_data.txt")
-    results = analyzer.analyze()
-    analyzer.plot_results(results)
-    print("分析完成！")`,
-    
-    // Markdown文档模板
-    markdown_doc: `# 光刻实验文档
-
-## 概述
-本文档记录了光刻实验的详细流程和结果分析。
-
-## 实验参数
-
-| 参数 | 数值 | 单位 |
-|------|------|------|
-| 波长 | 405 | nm |
-| 曝光时间 | 30 | s |
-| 光强 | 15.5 | mW/cm² |
-| 温度 | 25.0 | °C |
-
-## 实验流程
-
-1. **设备准备**
-   - 检查光源稳定性
-   - 校准功率计
-   - 清洁样品台
-
-2. **样品制备**
-   - 涂覆光刻胶
-   - 软烘处理
-   - 厚度测量
-
-3. **曝光过程**
-   - 样品对准
-   - 设置曝光参数
-   - 执行曝光
-
-4. **后处理**
-   - 曝光后烘烤
-   - 显影处理
-   - 结果检测
-
-## 数据分析
-
-### 光强分布特征
-- 最大光强: 20.5 mW/cm²
-- 平均光强: 15.2 mW/cm²
-- 均匀性: 95.2%
-
-### 结果评估
-实验结果符合预期，光强分布均匀，工艺参数优化成功。
-
-## 结论
-本次实验验证了优化后的光刻工艺参数的有效性，可用于后续批量生产。
-
----
-*文档生成时间: 2024-01-15 14:30:00*
-*版本: v1.0*`
+}`
 };
 
-// 初始化我的工作间
+// 初始化示例文件管理
 function initExampleFilesManager() {
     const exampleFilesBtn = document.getElementById('example-files-btn');
     if (exampleFilesBtn) {
@@ -16532,10 +16176,6 @@ function initExampleFilesManager() {
     // 绑定模态框事件
     bindExampleFilesModalEvents();
     bindFilePreviewModalEvents();
-    bindFilterEvents();
-    
-    // 检查筛选按钮是否正确显示
-    checkFilterButtonDisplay();
 }
 
 // 绑定示例文件模态框事件
@@ -16545,8 +16185,6 @@ function bindExampleFilesModalEvents() {
     const refreshBtn = document.getElementById('refresh-files-btn');
     const searchInput = document.getElementById('file-search-input');
     const createFileBtn = document.getElementById('create-file-btn');
-    const uploadFileBtn = document.getElementById('upload-file-btn');
-    const uploadFileInput = document.getElementById('upload-file-input');
     
     // 关闭模态框
     closeBtn.addEventListener('click', closeExampleFilesModal);
@@ -16564,14 +16202,6 @@ function bindExampleFilesModalEvents() {
     
     // 新增按钮功能
     createFileBtn.addEventListener('click', showCreateFileModal);
-    
-    // 上传按钮功能
-    uploadFileBtn.addEventListener('click', () => {
-        uploadFileInput.click();
-    });
-    
-    // 文件选择事件
-    uploadFileInput.addEventListener('change', handleExampleFileUpload);
 }
 
 // 绑定文件预览模态框事件
@@ -16603,110 +16233,17 @@ function bindFilePreviewModalEvents() {
     cancelBtn.addEventListener('click', cancelEditMode);
 }
 
-// 绑定筛选功能事件
-function bindFilterEvents() {
-    const filterToggleBtn = document.getElementById('filter-toggle-btn');
-    const filterDropdown = document.getElementById('filter-dropdown');
-    const clearAllFiltersBtn = document.getElementById('clear-all-filters');
-    const applyFiltersBtn = document.getElementById('apply-filters');
-    
-    // 筛选按钮点击事件
-    filterToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleFilterDropdown();
-    });
-    
-    // 点击外部关闭筛选下拉框
-    document.addEventListener('click', (e) => {
-        if (!filterDropdown.contains(e.target) && !filterToggleBtn.contains(e.target)) {
-            hideFilterDropdown();
-        }
-    });
-    
-    // 清除所有筛选
-    clearAllFiltersBtn.addEventListener('click', clearAllFilters);
-    
-    // 应用筛选
-    applyFiltersBtn.addEventListener('click', applyFilters);
-    
-    // 单独清除筛选按钮事件
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('clear-filter')) {
-            const filterType = e.target.getAttribute('data-filter');
-            clearSpecificFilter(filterType);
-        }
-    });
-    
-    // 窗口大小变化时关闭筛选下拉菜单
-    window.addEventListener('resize', () => {
-        const filterDropdown = document.getElementById('filter-dropdown');
-        if (filterDropdown.style.display === 'block') {
-            hideFilterDropdown();
-        }
-    });
-    
-    // 在绑定事件时初始化筛选计数状态
-    initFilterCountStatus();
-}
-
-// 初始化筛选计数状态
-function initFilterCountStatus() {
-    // 确保筛选条件为空
-    currentFilters.types.clear();
-    currentFilters.sizes.clear();
-    currentFilters.extensions.clear();
-    
-    // 更新筛选计数显示
-    const filterCount = document.getElementById('filter-count');
-    if (filterCount) {
-        filterCount.style.display = 'none';
-        filterCount.textContent = '';
-    }
-    
-    console.log('✅ 已初始化筛选计数状态');
-}
-
-// 打开我的工作间模态框
+// 打开示例文件管理模态框
 function openExampleFilesModal() {
     const modal = document.getElementById('example-files-modal');
     modal.style.display = 'flex';
-    
-    // 每次打开模态框时重置筛选计数和状态
-    resetFilterCount();
-    
-    // 加载文件列表
     loadExampleFiles();
 }
 
-// 关闭我的工作间模态框
+// 关闭示例文件管理模态框
 function closeExampleFilesModal() {
     const modal = document.getElementById('example-files-modal');
     modal.style.display = 'none';
-    
-    // 重置筛选计数和筛选条件
-    resetFilterCount();
-}
-
-// 重置筛选计数器和状态
-function resetFilterCount() {
-    // 清除所有筛选条件
-    currentFilters.types.clear();
-    currentFilters.sizes.clear();
-    currentFilters.extensions.clear();
-    
-    // 更新筛选计数显示
-    const filterCount = document.getElementById('filter-count');
-    if (filterCount) {
-        filterCount.style.display = 'none';
-    }
-    
-    // 取消选中所有筛选复选框
-    const checkboxes = document.querySelectorAll('#filter-dropdown input[type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
-    });
-    
-    console.log('✅ 已重置筛选状态和计数');
 }
 
 // 加载示例文件列表
@@ -16728,7 +16265,6 @@ async function loadExampleFiles() {
         
         const files = responseData.data || [];
         exampleFilesData = files;
-        updateFilterOptions(files);
         renderFileList(files);
         
     } catch (error) {
@@ -16762,131 +16298,6 @@ function showErrorInFileList(message) {
     `;
 }
 
-// 文件自动分类函数
-function categorizeFilesByType(files) {
-    // 定义文件类型分类和优先级
-    const fileTypeCategories = {
-        'intensity': {
-            name: '光强分布文件',
-            extensions: ['txt', 'dat', 'asc'],
-            priority: 1,
-            icon: 'fas fa-chart-line',
-            color: '#4CAF50'
-        },
-        'json': {
-            name: 'JSON数据文件',
-            extensions: ['json'],
-            priority: 2,
-            icon: 'fas fa-file-code',
-            color: '#2196F3'
-        },
-        'backup': {
-            name: '备份文件',
-            extensions: ['backup', 'bak'],
-            priority: 3,
-            icon: 'fas fa-file-archive',
-            color: '#FF9800'
-        },
-        'table': {
-            name: '表格数据文件',
-            extensions: ['csv', 'tsv', 'tab', 'xlsx', 'xls'],
-            priority: 4,
-            icon: 'fas fa-table',
-            color: '#4CAF50'
-        },
-        'document': {
-            name: '文档文件',
-            extensions: ['pdf', 'doc', 'docx', 'md', 'rtf'],
-            priority: 5,
-            icon: 'fas fa-file-alt',
-            color: '#607D8B'
-        },
-        'code': {
-            name: '代码文件',
-            extensions: ['js', 'py', 'html', 'css', 'xml', 'php', 'cpp', 'c', 'java'],
-            priority: 6,
-            icon: 'fas fa-file-code',
-            color: '#2196F3'
-        },
-        'simulation': {
-            name: '仿真文件',
-            extensions: ['pli', 'ldf', 'msk', 'int', 'pro', 'sim', 'slf', 'fdt', 'mat', 'm'],
-            priority: 7,
-            icon: 'fas fa-microchip',
-            color: '#9C27B0'
-        },
-        'log': {
-            name: '日志文件',
-            extensions: ['log', 'out', 'lis'],
-            priority: 8,
-            icon: 'fas fa-file-lines',
-            color: '#9E9E9E'
-        },
-        'archive': {
-            name: '压缩文件',
-            extensions: ['zip', 'rar', '7z', 'tar', 'gz', 'bin'],
-            priority: 9,
-            icon: 'fas fa-file-archive',
-            color: '#424242'
-        },
-        'media': {
-            name: '媒体文件',
-            extensions: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'tiff', 'mp4', 'avi', 'mov', 'wmv', 'mp3', 'wav', 'flac', 'aac'],
-            priority: 10,
-            icon: 'fas fa-file-image',
-            color: '#FF7043'
-        },
-        'other': {
-            name: '其他文件',
-            extensions: [],
-            priority: 999,
-            icon: 'fas fa-file',
-            color: '#607D8B'
-        }
-    };
-    
-    // 为每个文件分配类型
-    const categorizedFiles = {};
-    
-    files.forEach(file => {
-        const extension = file.extension.toLowerCase();
-        let categoryKey = 'other';
-        
-        // 查找匹配的文件类型
-        for (const [key, category] of Object.entries(fileTypeCategories)) {
-            if (category.extensions.includes(extension)) {
-                categoryKey = key;
-                break;
-            }
-        }
-        
-        // 初始化分类数组
-        if (!categorizedFiles[categoryKey]) {
-            categorizedFiles[categoryKey] = {
-                category: fileTypeCategories[categoryKey],
-                files: []
-            };
-        }
-        
-        categorizedFiles[categoryKey].files.push(file);
-    });
-    
-    // 按优先级排序类别，并在每个类别内按文件名排序
-    const sortedCategories = Object.keys(categorizedFiles)
-        .sort((a, b) => {
-            const categoryA = fileTypeCategories[a];
-            const categoryB = fileTypeCategories[b];
-            return categoryA.priority - categoryB.priority;
-        });
-    
-    // 对每个类别内的文件按名称排序
-    sortedCategories.forEach(categoryKey => {
-        categorizedFiles[categoryKey].files.sort((a, b) => a.name.localeCompare(b.name));
-    });
-    
-    return { categorizedFiles, sortedCategories };
-}
-
 // 渲染文件列表
 function renderFileList(files) {
     const filesList = document.getElementById('example-files-list');
@@ -16900,9 +16311,6 @@ function renderFileList(files) {
         `;
         return;
     }
-    
-    // 文件自动分类 - 按文件类型分组
-    const { categorizedFiles, sortedCategories } = categorizeFilesByType(files);
     
     // 获取文件类型的备用文本
     const getFallbackText = (extension) => {
@@ -16922,87 +16330,37 @@ function renderFileList(files) {
         return fallbackMap[extension.toLowerCase()] || extension.toUpperCase().substring(0, 3);
     };
     
-    // 生成分类后的HTML
-    let categorizedHtml = '';
-    
-    sortedCategories.forEach(categoryKey => {
-        const categoryData = categorizedFiles[categoryKey];
-        const category = categoryData.category;
-        const categoryFiles = categoryData.files;
-        
-        // 分类标题 - 修改样式，去掉左侧颜色实心栏，改为简洁现代的样式
-        categorizedHtml += `
-            <div class="file-category-header" style="
-                display: flex; 
-                align-items: center; 
-                margin: 20px 0 10px 0; 
-                padding: 12px 15px; 
-                background: linear-gradient(135deg, ${category.color}10, ${category.color}05);
-                border-bottom: 1px solid ${category.color}40;
-                border-radius: 8px;
-                font-weight: 600;
-                color: #333;
-                position: sticky;
-                top: 0;
-                z-index: 5;
-                backdrop-filter: blur(10px);
-                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            ">
-                <i class="${category.icon}" style="color: ${category.color}; margin-right: 10px; font-size: 16px;"></i>
-                <span>${category.name}</span>
-                <span style="
-                    margin-left: auto; 
-                    background: ${category.color}; 
-                    color: white; 
-                    padding: 2px 8px; 
-                    border-radius: 12px; 
-                    font-size: 12px; 
-                    font-weight: 500;
-                ">${categoryFiles.length}</span>
-            </div>
-        `;
-        
-        // 该分类下的文件
-        const categoryFilesHtml = categoryFiles.map((file, index) => `
-            <div class="file-item" data-filename="${file.name}" data-category="${categoryKey}" data-index="${index}" draggable="true">
-                <div class="drag-handle" title="拖拽排序">
-                    <i class="fas fa-grip-vertical"></i>
+    const filesHtml = files.map(file => `
+        <div class="file-item" data-filename="${file.name}">
+            <div class="file-info-left">
+                <div class="file-icon fallback-icon" style="background-color: ${getFileColorByType(file.extension)}; color: white;" data-fallback="${getFallbackText(file.extension)}">
+                    <i class="fas ${getFileIcon(file.extension)}"></i>
                 </div>
-                <div class="file-info-left">
-                    <div class="file-icon fallback-icon" style="background-color: ${getFileColorByType(file.extension)}; color: white;" data-fallback="${getFallbackText(file.extension)}">
-                        <i class="fas ${getFileIcon(file.extension)}"></i>
-                    </div>
-                    <div class="file-details">
-                        <div class="file-name">${file.name}</div>
-                        <div class="file-meta">${file.extension.toUpperCase()} • ${formatFileSize(file.size)} • ${file.description || '示例数据文件'}</div>
-                    </div>
-                </div>
-                <div class="file-actions">
-                    <button class="file-action-btn preview-btn" onclick="previewFile('${file.name}')" type="button" title="预览">
-                        <i class="fas fa-eye"></i> 预览
-                    </button>
-                    <button class="file-action-btn use-btn" onclick="useFileDirectly('${file.name}')" type="button" title="使用">
-                        <i class="fas fa-check"></i> 使用
-                    </button>
-                    <button class="file-action-btn delete-btn" onclick="confirmDeleteFile('${file.name}')" type="button" title="删除">
-                        <i class="fas fa-times"></i> 删除
-                    </button>
-                    <!-- 备用删除链接，如果JavaScript方法失效可以直接点击 -->
-                    <a href="/api/example-files/action?action=delete&filename=${encodeURIComponent(file.name)}" 
-                       class="backup-delete-link" 
-                       onclick="event.preventDefault(); confirmDeleteFile('${file.name}'); return false;" 
-                       style="display:none;">删除</a>
+                <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-meta">${file.extension.toUpperCase()} • ${formatFileSize(file.size)} • ${file.description || '示例数据文件'}</div>
                 </div>
             </div>
-        `).join('');
-        
-        categorizedHtml += categoryFilesHtml;
-    });
+            <div class="file-actions">
+                <button class="file-action-btn preview-btn" onclick="previewFile('${file.name}')" type="button" title="预览">
+                    <i class="fas fa-eye"></i> 预览
+                </button>
+                <button class="file-action-btn use-btn" onclick="useFileDirectly('${file.name}')" type="button" title="使用">
+                    <i class="fas fa-check"></i> 使用
+                </button>
+                <button class="file-action-btn delete-btn" onclick="confirmDeleteFile('${file.name}')" type="button" title="删除">
+                    <i class="fas fa-times"></i> 删除
+                </button>
+                <!-- 备用删除链接，如果JavaScript方法失效可以直接点击 -->
+                <a href="/api/example-files/action?action=delete&filename=${encodeURIComponent(file.name)}" 
+                   class="backup-delete-link" 
+                   onclick="event.preventDefault(); confirmDeleteFile('${file.name}'); return false;" 
+                   style="display:none;">删除</a>
+            </div>
+        </div>
+    `).join('');
     
-    filesList.innerHTML = categorizedHtml;
-    
-    // 初始化拖拽功能
-    initializeDragAndDrop();
+    filesList.innerHTML = filesHtml;
 }
 
 // 获取文件颜色
@@ -17715,484 +17073,6 @@ function hideNotification() {
     });
 }
 
-// ===============================
-// 文件拖拽排序功能实现
-// ===============================
-
-let draggedElement = null;
-let draggedCategory = null;
-let dragPlaceholder = null;
-
-// 初始化拖拽功能
-function initializeDragAndDrop() {
-    const fileItems = document.querySelectorAll('.file-item');
-    
-    fileItems.forEach(item => {
-        // 拖拽开始
-        item.addEventListener('dragstart', handleDragStart);
-        // 拖拽结束
-        item.addEventListener('dragend', handleDragEnd);
-        // 拖拽经过
-        item.addEventListener('dragover', handleDragOver);
-        // 拖拽进入
-        item.addEventListener('dragenter', handleDragEnter);
-        // 拖拽离开
-        item.addEventListener('dragleave', handleDragLeave);
-        // 放置
-        item.addEventListener('drop', handleDrop);
-    });
-}
-
-// 处理拖拽开始
-function handleDragStart(e) {
-    draggedElement = this;
-    draggedCategory = this.getAttribute('data-category');
-    this.classList.add('dragging');
-    
-    // 创建拖拽占位符
-    dragPlaceholder = document.createElement('div');
-    dragPlaceholder.className = 'drag-placeholder';
-    
-    // 设置拖拽数据
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', this.outerHTML);
-    
-    // 添加半透明效果
-    setTimeout(() => {
-        this.style.display = 'none';
-    }, 0);
-}
-
-// 处理拖拽结束
-function handleDragEnd(e) {
-    this.classList.remove('dragging');
-    this.style.display = '';
-    
-    // 清除所有拖拽状态
-    document.querySelectorAll('.file-item').forEach(item => {
-        item.classList.remove('drag-over', 'drag-forbidden');
-    });
-    
-    // 移除占位符
-    if (dragPlaceholder && dragPlaceholder.parentNode) {
-        dragPlaceholder.parentNode.removeChild(dragPlaceholder);
-    }
-    
-    draggedElement = null;
-    draggedCategory = null;
-    dragPlaceholder = null;
-}
-
-// 处理拖拽经过
-function handleDragOver(e) {
-    if (e.preventDefault) {
-        e.preventDefault();
-    }
-    
-    const targetCategory = this.getAttribute('data-category');
-    
-    // 只允许在同一分类内拖拽
-    if (draggedCategory === targetCategory) {
-        e.dataTransfer.dropEffect = 'move';
-        return false;
-    } else {
-        e.dataTransfer.dropEffect = 'none';
-        return false;
-    }
-}
-
-// 处理拖拽进入
-function handleDragEnter(e) {
-    const targetCategory = this.getAttribute('data-category');
-    
-    if (draggedCategory === targetCategory) {
-        this.classList.add('drag-over');
-        // 显示插入位置
-        if (dragPlaceholder && !this.contains(dragPlaceholder)) {
-            const rect = this.getBoundingClientRect();
-            const middle = rect.top + rect.height / 2;
-            
-            if (e.clientY < middle) {
-                this.parentNode.insertBefore(dragPlaceholder, this);
-            } else {
-                this.parentNode.insertBefore(dragPlaceholder, this.nextSibling);
-            }
-        }
-    } else {
-        this.classList.add('drag-forbidden');
-    }
-}
-
-// 处理拖拽离开
-function handleDragLeave(e) {
-    // 检查是否真的离开了元素
-    if (!this.contains(e.relatedTarget)) {
-        this.classList.remove('drag-over', 'drag-forbidden');
-    }
-}
-
-// 处理放置
-function handleDrop(e) {
-    if (e.stopPropagation) {
-        e.stopPropagation();
-    }
-    
-    const targetCategory = this.getAttribute('data-category');
-    
-    // 只允许在同一分类内拖拽
-    if (draggedCategory !== targetCategory) {
-        showNotification('只能在同一文件类型内调整顺序', 'warning');
-        return false;
-    }
-    
-    // 执行拖拽排序
-    if (draggedElement !== this) {
-        const draggedFilename = draggedElement.getAttribute('data-filename');
-        const targetFilename = this.getAttribute('data-filename');
-        
-        // 更新文件顺序
-        updateFileOrder(draggedCategory, draggedFilename, targetFilename);
-        
-        showNotification('文件顺序已更新', 'success');
-    }
-    
-    this.classList.remove('drag-over', 'drag-forbidden');
-    return false;
-}
-
-// 更新文件顺序
-function updateFileOrder(category, draggedFilename, targetFilename) {
-    // 找到对应分类的文件数组
-    const { categorizedFiles } = categorizeFilesByType(exampleFilesData);
-    
-    if (!categorizedFiles[category]) return;
-    
-    const files = categorizedFiles[category].files;
-    const draggedIndex = files.findIndex(file => file.name === draggedFilename);
-    const targetIndex = files.findIndex(file => file.name === targetFilename);
-    
-    if (draggedIndex === -1 || targetIndex === -1) return;
-    
-    // 移动文件位置
-    const draggedFile = files[draggedIndex];
-    files.splice(draggedIndex, 1);
-    files.splice(targetIndex, 0, draggedFile);
-    
-    // 重新渲染列表
-    renderFileList(exampleFilesData);
-}
-
-// ===============================
-// 文件筛选功能实现
-// ===============================
-
-// 更新筛选选项
-function updateFilterOptions(files) {
-    // 重置数据
-    allFileTypes.clear();
-    allExtensions.clear();
-    
-    // 收集所有文件类型和扩展名
-    files.forEach(file => {
-        const extension = file.extension.toLowerCase();
-        allExtensions.add(extension);
-        
-        // 根据分类算法确定文件类型
-        const category = getFileCategory(extension);
-        allFileTypes.add(category);
-    });
-    
-    // 更新界面选项
-    updateTypeFilterOptions();
-    updateExtensionFilterOptions();
-}
-
-// 获取文件类别
-function getFileCategory(extension) {
-    const fileTypeCategories = {
-        'intensity': ['txt', 'dat', 'asc'],
-        'json': ['json'],
-        'backup': ['backup', 'bak'],
-        'table': ['csv', 'tsv', 'tab', 'xlsx', 'xls'],
-        'document': ['pdf', 'doc', 'docx', 'md', 'rtf'],
-        'code': ['js', 'py', 'html', 'css', 'xml', 'php', 'cpp', 'c', 'java'],
-        'simulation': ['pli', 'ldf', 'msk', 'int', 'pro', 'sim', 'slf', 'fdt', 'mat', 'm'],
-        'log': ['log', 'out', 'lis'],
-        'archive': ['zip', 'rar', '7z', 'tar', 'gz', 'bin'],
-        'media': ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'tiff', 'mp4', 'avi', 'mov', 'wmv', 'mp3', 'wav', 'flac', 'aac']
-    };
-    
-    for (const [category, extensions] of Object.entries(fileTypeCategories)) {
-        if (extensions.includes(extension)) {
-            return category;
-        }
-    }
-    return 'other';
-}
-
-// 获取文件类别的中文名称
-function getFileCategoryName(category) {
-    const categoryNames = {
-        'intensity': '光强分布文件',
-        'json': 'JSON数据文件',
-        'backup': '备份文件',
-        'table': '表格数据文件',
-        'document': '文档文件',
-        'code': '代码文件',
-        'simulation': '仿真文件',
-        'log': '日志文件',
-        'archive': '压缩文件',
-        'media': '媒体文件',
-        'other': '其他文件'
-    };
-    return categoryNames[category] || '其他文件';
-}
-
-// 更新文件类型筛选选项
-function updateTypeFilterOptions() {
-    const typeFiltersContainer = document.getElementById('type-filters');
-    typeFiltersContainer.innerHTML = '';
-    
-    Array.from(allFileTypes).sort().forEach(type => {
-        const label = document.createElement('label');
-        label.className = 'filter-option';
-        label.innerHTML = `
-            <input type="checkbox" value="${type}" data-filter="type">
-            <span>${getFileCategoryName(type)}</span>
-        `;
-        typeFiltersContainer.appendChild(label);
-    });
-}
-
-// 更新扩展名筛选选项
-function updateExtensionFilterOptions() {
-    const extensionFiltersContainer = document.getElementById('extension-filters');
-    extensionFiltersContainer.innerHTML = '';
-    
-    Array.from(allExtensions).sort().forEach(ext => {
-        const label = document.createElement('label');
-        label.className = 'filter-option';
-        label.innerHTML = `
-            <input type="checkbox" value="${ext}" data-filter="extension">
-            <span>.${ext.toUpperCase()}</span>
-        `;
-        extensionFiltersContainer.appendChild(label);
-    });
-}
-
-// 切换筛选下拉框显示
-function toggleFilterDropdown() {
-    const filterDropdown = document.getElementById('filter-dropdown');
-    const filterToggleBtn = document.getElementById('filter-toggle-btn');
-    
-    if (filterDropdown.style.display === 'none' || !filterDropdown.style.display) {
-        filterDropdown.style.display = 'block';
-        filterToggleBtn.classList.add('active');
-    } else {
-        hideFilterDropdown();
-    }
-}
-
-// 隐藏筛选下拉框
-function hideFilterDropdown() {
-    const filterDropdown = document.getElementById('filter-dropdown');
-    const filterToggleBtn = document.getElementById('filter-toggle-btn');
-    
-    filterDropdown.style.display = 'none';
-    filterToggleBtn.classList.remove('active');
-    
-    // 检查筛选数量是否为零，如果是则重置筛选计数显示
-    const totalFilters = currentFilters.types.size + currentFilters.sizes.size + currentFilters.extensions.size;
-    if (totalFilters === 0) {
-        const filterCount = document.getElementById('filter-count');
-        if (filterCount) {
-            filterCount.style.display = 'none';
-            filterCount.textContent = '';
-        }
-    }
-}
-
-// 清除所有筛选
-function clearAllFilters() {
-    currentFilters.types.clear();
-    currentFilters.sizes.clear();
-    currentFilters.extensions.clear();
-    
-    // 清除所有复选框
-    const checkboxes = document.querySelectorAll('#filter-dropdown input[type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
-    });
-    
-    updateFilterCount();
-    applyFilters();
-}
-
-// 清除特定类型的筛选
-function clearSpecificFilter(filterType) {
-    if (filterType === 'type') {
-        currentFilters.types.clear();
-        const typeCheckboxes = document.querySelectorAll('#type-filters input[type="checkbox"]');
-        typeCheckboxes.forEach(checkbox => checkbox.checked = false);
-    } else if (filterType === 'size') {
-        currentFilters.sizes.clear();
-        const sizeCheckboxes = document.querySelectorAll('input[data-filter="size"]');
-        sizeCheckboxes.forEach(checkbox => checkbox.checked = false);
-    } else if (filterType === 'extension') {
-        currentFilters.extensions.clear();
-        const extensionCheckboxes = document.querySelectorAll('#extension-filters input[type="checkbox"]');
-        extensionCheckboxes.forEach(checkbox => checkbox.checked = false);
-    }
-    
-    updateFilterCount();
-    applyFilters();
-}
-
-// 应用筛选
-function applyFilters() {
-    // 收集当前选中的筛选条件
-    collectFilterValues();
-    
-    // 筛选文件
-    let filteredFiles = [...exampleFilesData];
-    
-    // 按文件类型筛选
-    if (currentFilters.types.size > 0) {
-        filteredFiles = filteredFiles.filter(file => {
-            const category = getFileCategory(file.extension.toLowerCase());
-            return currentFilters.types.has(category);
-        });
-    }
-    
-    // 按文件大小筛选
-    if (currentFilters.sizes.size > 0) {
-        filteredFiles = filteredFiles.filter(file => {
-            const sizeCategory = getFileSizeCategory(file.size);
-            return currentFilters.sizes.has(sizeCategory);
-        });
-    }
-    
-    // 按扩展名筛选
-    if (currentFilters.extensions.size > 0) {
-        filteredFiles = filteredFiles.filter(file => {
-            return currentFilters.extensions.has(file.extension.toLowerCase());
-        });
-    }
-    
-    // 同时应用搜索筛选
-    const searchTerm = document.getElementById('file-search-input').value.toLowerCase();
-    if (searchTerm) {
-        filteredFiles = filteredFiles.filter(file => 
-            file.name.toLowerCase().includes(searchTerm) ||
-            file.extension.toLowerCase().includes(searchTerm) ||
-            (file.description && file.description.toLowerCase().includes(searchTerm))
-        );
-    }
-    
-    renderFileList(filteredFiles);
-    updateFilterCount();
-    hideFilterDropdown();
-}
-
-// 收集筛选值
-function collectFilterValues() {
-    // 清空当前筛选
-    currentFilters.types.clear();
-    currentFilters.sizes.clear();
-    currentFilters.extensions.clear();
-    
-    // 收集文件类型筛选
-    const typeCheckboxes = document.querySelectorAll('#type-filters input[type="checkbox"]:checked');
-    typeCheckboxes.forEach(checkbox => {
-        currentFilters.types.add(checkbox.value);
-    });
-    
-    // 收集文件大小筛选
-    const sizeCheckboxes = document.querySelectorAll('input[data-filter="size"]:checked');
-    sizeCheckboxes.forEach(checkbox => {
-        currentFilters.sizes.add(checkbox.value);
-    });
-    
-    // 收集扩展名筛选
-    const extensionCheckboxes = document.querySelectorAll('#extension-filters input[type="checkbox"]:checked');
-    extensionCheckboxes.forEach(checkbox => {
-        currentFilters.extensions.add(checkbox.value);
-    });
-}
-
-// 获取文件大小类别
-function getFileSizeCategory(sizeBytes) {
-    const KB = 1024;
-    const size = sizeBytes / KB;
-    
-    if (size < 1) return 'small';
-    if (size <= 100) return 'medium';
-    return 'large';
-}
-
-// 更新筛选计数
-function updateFilterCount() {
-    const filterCount = document.getElementById('filter-count');
-    if (!filterCount) return;
-    
-    const totalFilters = currentFilters.types.size + currentFilters.sizes.size + currentFilters.extensions.size;
-    
-    if (totalFilters > 0) {
-        // 更新计数值
-        filterCount.textContent = totalFilters;
-        filterCount.style.display = 'block';
-        console.log(`筛选计数器更新: ${totalFilters} 个筛选条件`);
-    } else {
-        // 隐藏计数器
-        filterCount.style.display = 'none';
-        filterCount.textContent = '';
-        console.log('筛选计数器已隐藏 (无筛选条件)');
-    }
-}
-
-// 更新原有的筛选文件列表函数，使其与新筛选功能兼容
-function filterFileList() {
-    applyFilters(); // 直接调用新的筛选功能
-}
-
-// 检查筛选按钮显示状态
-function checkFilterButtonDisplay() {
-    setTimeout(() => {
-        const filterBtn = document.getElementById('filter-toggle-btn');
-        const filterIcon = filterBtn ? filterBtn.querySelector('i') : null;
-        
-        if (filterBtn && filterIcon) {
-            // 检查按钮是否可见
-            const btnRect = filterBtn.getBoundingClientRect();
-            const isVisible = btnRect.width > 0 && btnRect.height > 0;
-            
-            if (!isVisible) {
-                console.warn('筛选按钮不可见，调整样式...');
-                // 强制显示按钮
-                filterBtn.style.display = 'flex';
-                filterBtn.style.visibility = 'visible';
-                filterBtn.style.opacity = '1';
-            }
-            
-            // 检查Font Awesome图标是否加载
-            const iconStyles = window.getComputedStyle(filterIcon, '::before');
-            const content = iconStyles.getPropertyValue('content');
-            
-            if (!content || content === 'none' || content === '""') {
-                console.warn('Font Awesome图标未正确加载，使用备用方案...');
-                // 添加备用图标
-                filterIcon.innerHTML = '⧨';
-                filterIcon.style.fontFamily = 'Arial, sans-serif';
-                filterIcon.style.fontSize = '12px';
-            }
-            
-            console.log('✅ 筛选按钮检查完成');
-        } else {
-            console.error('❌ 找不到筛选按钮元素');
-        }
-    }, 500);
-}
-
 // 在页面加载完成后初始化示例文件管理
 document.addEventListener('DOMContentLoaded', function() {
     // 检查Font Awesome加载状态
@@ -18327,97 +17207,5 @@ async function createNewFile() {
     } catch (error) {
         console.error('创建文件失败:', error);
         showNotification('创建文件失败: ' + error.message, 'error');
-    }
-}
-
-// 处理示例文件上传
-async function handleExampleFileUpload(event) {
-    const files = event.target.files;
-    if (!files || files.length === 0) {
-        return;
-    }
-    
-    // 准备FormData
-    const formData = new FormData();
-    
-    // 检查文件类型和数量
-    const allowedExtensions = ['.txt', '.csv', '.json', '.dat', '.xls', '.xlsx', '.mat', '.pli', '.ldf', '.msk', '.int', '.pro', '.sim', '.tab', '.tsv', '.asc', '.lis', '.log', '.out', '.fdt', '.slf'];
-    let validFiles = 0;
-    let invalidFiles = [];
-    
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
-        
-        if (allowedExtensions.includes(fileExt)) {
-            formData.append('files', file);
-            validFiles++;
-        } else {
-            invalidFiles.push(file.name);
-        }
-    }
-    
-    if (validFiles === 0) {
-        showNotification('没有有效的文件可上传。支持的格式：' + allowedExtensions.join(', '), 'warning');
-        return;
-    }
-    
-    if (invalidFiles.length > 0) {
-        showNotification(`已忽略不支持的文件: ${invalidFiles.join(', ')}`, 'warning');
-    }
-    
-    try {
-        // 显示上传中的提示
-        showNotification(`正在上传 ${validFiles} 个文件...`, 'info');
-        
-        const response = await fetch('/api/example-files/upload', {
-            method: 'POST',
-            body: formData
-        });
-        
-        // 检查响应状态和内容类型
-        if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `上传失败，状态码: ${response.status}`);
-            } else {
-                // 非JSON响应，可能是HTML错误页面
-                const errorText = await response.text();
-                throw new Error(`上传失败，状态码: ${response.status} (${response.statusText})`);
-            }
-        }
-        
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
-            // 上传成功
-            if (result.data.total_uploaded > 0) {
-                showNotification(result.message, 'success');
-                // 刷新文件列表
-                loadExampleFiles();
-            }
-            
-            // 如果有失败的文件，显示详细信息
-            if (result.data.total_failed > 0) {
-                const failedList = result.data.failed.map(f => `${f.filename}: ${f.error}`).join('\n');
-                console.warn('部分文件上传失败:', failedList);
-            }
-        } else {
-            // 上传失败
-            showNotification(result.message || '上传失败', 'error');
-            
-            // 显示失败的文件详情
-            if (result.data && result.data.failed && result.data.failed.length > 0) {
-                const failedList = result.data.failed.map(f => `${f.filename}: ${f.error}`).join('\n');
-                console.error('文件上传失败详情:', failedList);
-            }
-        }
-    } catch (error) {
-        console.error('上传文件时发生错误:', error);
-        showNotification('上传文件失败: ' + error.message, 'error');
-    } finally {
-        // 清空文件输入框，允许重复选择相同文件
-        event.target.value = '';
     }
 }
