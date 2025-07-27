@@ -2554,150 +2554,8 @@ function showPointDetailsPopup(point, plotType, container, eventData) {
     // 获取点的详细信息
     const pointInfo = getPointDetailedInfo(point, plotType, eventData);
     
-    // 创建弹窗元素
-    const popup = document.createElement('div');
-    popup.id = 'point-details-popup';
-    popup.className = 'point-details-popup';
-    
-    popup.innerHTML = `
-        <div class="point-details-content">
-            <div class="point-details-header">
-                <span class="point-details-title">📊 点详细信息</span>
-                <button class="point-details-close" onclick="removePointDetailsPopup()">×</button>
-            </div>
-            <div class="point-details-body">
-                ${pointInfo.html}
-            </div>
-            <div class="point-details-footer">
-                <small>💡 提示：点击其他位置关闭弹窗</small>
-            </div>
-        </div>
-    `;
-    
-    // 获取视口尺寸
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // 获取页面滚动位置
-    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-    
-    // 获取图表容器的位置信息
-    const containerRect = container.getBoundingClientRect();
-    
-    // 获取图表的实际绘图区域
-    const plotArea = container._fullLayout || {};
-    const margin = plotArea.margin || { l: 80, r: 50, t: 80, b: 80 };
-    
-    // 计算实际绘图区域的尺寸
-    const plotWidth = containerRect.width - margin.l - margin.r;
-    const plotHeight = containerRect.height - margin.t - margin.b;
-    
-    // 获取x和y轴的范围
-    const xRange = plotArea.xaxis ? (plotArea.xaxis.range || [0, 10]) : [0, 10];
-    const yRange = plotArea.yaxis ? (plotArea.yaxis.range || [0, 100]) : [0, 100];
-    
-    // 将数据坐标转换为像素坐标（相对于视口）
-    const xPixel = containerRect.left + margin.l + ((point.x - xRange[0]) / (xRange[1] - xRange[0])) * plotWidth;
-    const yPixel = containerRect.top + margin.t + ((yRange[1] - point.y) / (yRange[1] - yRange[0])) * plotHeight;
-    
-    // 弹窗尺寸设置 - 根据视口大小动态调整
-    const maxPopupWidth = Math.min(450, viewportWidth * 0.9);
-    const maxPopupHeight = Math.min(600, viewportHeight * 0.8);
-    
-    // 智能位置计算 - 确保弹窗完全在视口内
-    let popupX, popupY;
-    
-    // 水平位置计算
-    if (xPixel + maxPopupWidth / 2 > viewportWidth - 20) {
-        // 如果右侧空间不足，放在左侧
-        popupX = Math.max(20, xPixel - maxPopupWidth - 20);
-    } else if (xPixel - maxPopupWidth / 2 < 20) {
-        // 如果左侧空间不足，放在右侧
-        popupX = Math.max(20, xPixel + 20);
-    } else {
-        // 居中显示
-        popupX = xPixel - maxPopupWidth / 2;
-    }
-    
-    // 垂直位置计算
-    if (yPixel + maxPopupHeight + 20 > viewportHeight) {
-        // 如果下方空间不足，放在上方
-        popupY = Math.max(20, yPixel - maxPopupHeight - 20);
-    } else {
-        // 放在下方，稍微偏移避免遮挡点击点
-        popupY = Math.max(20, yPixel + 20);
-    }
-    
-    // 最终边界检查，确保弹窗完全在视口内
-    popupX = Math.max(20, Math.min(popupX, viewportWidth - maxPopupWidth - 20));
-    popupY = Math.max(20, Math.min(popupY, viewportHeight - maxPopupHeight - 20));
-    
-    // 设置弹窗样式和位置（使用fixed定位相对于视口）
-    popup.style.cssText = `
-        position: fixed;
-        left: ${popupX}px;
-        top: ${popupY}px;
-        width: ${maxPopupWidth}px;
-        max-height: ${maxPopupHeight}px;
-        background: rgba(255, 255, 255, 0.98);
-        border: 2px solid #3498db;
-        border-radius: 12px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        z-index: 10000;
-        font-family: 'Roboto', Arial, sans-serif;
-        font-size: 13px;
-        line-height: 1.4;
-        animation: popupFadeIn 0.3s ease-out;
-        overflow: hidden;
-        backdrop-filter: blur(10px);
-    `;
-    
-    // 添加到body而不是容器，避免容器overflow限制
-    document.body.appendChild(popup);
-    
-    // 阻止弹窗内部的点击事件冒泡
-    popup.addEventListener('click', function(event) {
-        event.stopPropagation();
-    });
-    
-    // 添加窗口大小变化监听，自动调整弹窗位置
-    function handleResize() {
-        const newViewportWidth = window.innerWidth;
-        const newViewportHeight = window.innerHeight;
-        
-        // 重新计算位置
-        const newMaxWidth = Math.min(450, newViewportWidth * 0.9);
-        const newMaxHeight = Math.min(600, newViewportHeight * 0.8);
-        
-        let newX = Math.max(20, Math.min(popupX, newViewportWidth - newMaxWidth - 20));
-        let newY = Math.max(20, Math.min(popupY, newViewportHeight - newMaxHeight - 20));
-        
-        popup.style.left = newX + 'px';
-        popup.style.top = newY + 'px';
-        popup.style.width = newMaxWidth + 'px';
-        popup.style.maxHeight = newMaxHeight + 'px';
-    }
-    
-    window.addEventListener('resize', handleResize);
-    popup._resizeHandler = handleResize;
-    
-    // 延迟更长时间再添加点击外部关闭功能，确保弹窗完全显示
-    setTimeout(() => {
-        function handleOutsideClick(event) {
-            // 检查点击是否在弹窗外部
-            if (!popup.contains(event.target) && event.target !== popup) {
-                removePointDetailsPopup();
-                document.removeEventListener('click', handleOutsideClick);
-                window.removeEventListener('resize', handleResize);
-            }
-        }
-        
-        document.addEventListener('click', handleOutsideClick);
-        
-        // 存储事件处理器引用，以便后续清理
-        popup._outsideClickHandler = handleOutsideClick;
-    }, 500); // 增加延迟时间到500毫秒
+    // 使用新的可拖拽缩放弹窗组件，默认显示在屏幕中央
+    window.showDraggablePopup('📊 点详细信息', pointInfo.html);
 }
 
 /**
@@ -3004,23 +2862,8 @@ function getCarPopupHtml(x, y, setName, params, plotType) {
  * 移除点的详细信息弹窗
  */
 function removePointDetailsPopup() {
-    const existingPopup = document.getElementById('point-details-popup');
-    if (existingPopup) {
-        // 清理事件监听器
-        if (existingPopup._outsideClickHandler) {
-            document.removeEventListener('click', existingPopup._outsideClickHandler);
-        }
-        if (existingPopup._resizeHandler) {
-            window.removeEventListener('resize', existingPopup._resizeHandler);
-        }
-        
-        existingPopup.style.animation = 'popupFadeOut 0.2s ease-in';
-        setTimeout(() => {
-            if (existingPopup.parentNode) {
-                existingPopup.remove();
-            }
-        }, 200);
-    }
+    // 使用新的可拖拽缩放弹窗组件的移除函数
+    window.removeDraggablePopup();
 }
 
 // 将函数设为全局可访问

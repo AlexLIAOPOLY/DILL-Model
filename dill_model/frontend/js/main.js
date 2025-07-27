@@ -4840,75 +4840,13 @@ function showSinglePointDetailsPopup(point, plotType, container, eventData) {
     const params = getParameterValues();
     const pointInfo = getSinglePointDetailedInfo(point, plotType, params);
 
-    // 创建弹窗元素
-    const popup = document.createElement('div');
-    popup.id = 'single-point-details-popup';
-    popup.className = 'point-details-popup';
-    popup.innerHTML = `
-        <div class="point-details-content">
-            <div class="point-details-header">
-                <span class="point-details-title">📊 点详细信息</span>
-                <button class="point-details-close" onclick="removeSinglePointDetailsPopup()">×</button>
-            </div>
-            <div class="point-details-body">
-                ${pointInfo.html}
-            </div>
-            <div class="point-details-footer">
-                <small>💡 提示：点击其他位置关闭弹窗</small>
-            </div>
-        </div>
-    `;
-    // 使用CSS文件中的统一弹窗样式，只设置初始位置
-    popup.style.position = 'fixed';
-    popup.style.left = '0px';
-    popup.style.top = '0px';
-    document.body.appendChild(popup);
-
-    // 计算弹窗显示位置（基于鼠标点击点或图表容器中心）
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 2;
-    if (eventData && eventData.event && eventData.event.clientX !== undefined) {
-        mouseX = eventData.event.clientX;
-        mouseY = eventData.event.clientY;
-    } else if (container) {
-        // fallback: 容器中心
-        const rect = container.getBoundingClientRect();
-        mouseX = rect.left + rect.width / 2;
-        mouseY = rect.top + rect.height / 2;
-    }
-    // 弹窗尺寸（与CSS文件中的样式保持一致）
-    const popupWidth = 350;
-    const popupHeight = parseInt(window.innerHeight * 0.8); // max-height: 80vh
-    // 计算 left/top，避免超出屏幕
-    let left = mouseX - popupWidth / 2;
-    let top = mouseY - popupHeight - 20;
-    if (left < 10) left = 10;
-    if (left + popupWidth > window.innerWidth - 10) left = window.innerWidth - popupWidth - 10;
-    if (top < 10) top = mouseY + 20;
-    if (top + popupHeight > window.innerHeight - 10) top = window.innerHeight - popupHeight - 10;
-    popup.style.left = `${left}px`;
-    popup.style.top = `${top}px`;
-
-    // 延迟绑定外部点击关闭事件，防止 plotly_click 误触发
-    setTimeout(() => {
-        document.addEventListener('mousedown', handleOutsideClick, {capture:true});
-    }, 300);
-    function handleOutsideClick(event) {
-        if (!popup.contains(event.target)) {
-            removeSinglePointDetailsPopup();
-            document.removeEventListener('mousedown', handleOutsideClick, {capture:true});
-        }
-    }
+    // 使用新的可拖拽缩放弹窗组件，默认显示在屏幕中央
+    window.showDraggablePopup('📊 点详细信息', pointInfo.html);
 }
 
 function removeSinglePointDetailsPopup() {
-    const existingPopup = document.getElementById('single-point-details-popup');
-    if (existingPopup) {
-        existingPopup.style.animation = 'popupFadeOut 0.2s ease-in';
-        setTimeout(() => {
-            if (existingPopup.parentNode) existingPopup.parentNode.removeChild(existingPopup);
-        }, 200);
-    }
+    // 使用新的可拖拽缩放弹窗组件的移除函数
+    window.removeDraggablePopup();
 }
 
 // 将函数设为全局可访问

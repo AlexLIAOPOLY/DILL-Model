@@ -1,0 +1,374 @@
+/**
+ * 可拖拽和缩放的弹窗样式
+ */
+
+/* 弹窗容器 */
+.draggable-resizable-popup {
+    position: fixed !important;
+    z-index: 10000 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3) !important;
+    border-radius: 16px !important;
+    overflow: visible !important;
+    user-select: none !important;
+    min-width: 300px !important;
+    min-height: 200px !important;
+}
+
+/* 弹窗内容区域 */
+.draggable-resizable-popup .popup-content {
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    border: 2px solid transparent !important;
+    background-clip: padding-box !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    backdrop-filter: blur(20px) !important;
+}
+
+.draggable-resizable-popup .popup-content::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(135deg, #3498db, #2980b9, #8e44ad, #9b59b6) !important;
+    z-index: -1 !important;
+    border-radius: 16px !important;
+}
+
+/* 弹窗头部 */
+.draggable-resizable-popup .popup-header {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 50%, #8e44ad 100%) !important;
+    color: white !important;
+    padding: 20px 28px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-weight: 600 !important;
+    position: relative !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    cursor: grab !important;
+    border-radius: 14px 14px 0 0 !important;
+}
+
+.draggable-resizable-popup .popup-header:active {
+    cursor: grabbing !important;
+}
+
+.draggable-resizable-popup .popup-header::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
+    animation: headerShine 3s ease-in-out infinite !important;
+}
+
+@keyframes headerShine {
+    0% { left: -100%; }
+    50% { left: 100%; }
+    100% { left: 100%; }
+}
+
+.draggable-resizable-popup .popup-title {
+    font-size: 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    position: relative !important;
+    z-index: 2 !important;
+    pointer-events: none !important;
+}
+
+.draggable-resizable-popup .popup-close {
+    background: none !important;
+    border: none !important;
+    color: white !important;
+    font-size: 22px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+.draggable-resizable-popup .popup-close:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 弹窗主体 */
+.draggable-resizable-popup .popup-body {
+    padding: 28px !important;
+    overflow-y: auto !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    flex: 1 !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #3498db #f1f1f1 !important;
+    border-radius: 0 0 14px 14px !important;
+    transition: font-size 0.3s ease, padding 0.3s ease !important;
+}
+
+/* 自定义滚动条样式 */
+.draggable-resizable-popup .popup-body::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.draggable-resizable-popup .popup-body::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 4px !important;
+}
+
+.draggable-resizable-popup .popup-body::-webkit-scrollbar-thumb {
+    background: #3498db !important;
+    border-radius: 4px !important;
+}
+
+.draggable-resizable-popup .popup-body::-webkit-scrollbar-thumb:hover {
+    background: #2980b9 !important;
+}
+
+/* 缩放手柄 */
+.draggable-resizable-popup .popup-resize-handle {
+    position: absolute !important;
+    background: transparent !important;
+    border: none !important;
+    z-index: 10001 !important;
+}
+
+/* 角部缩放手柄 */
+.draggable-resizable-popup .resize-nw {
+    top: -5px !important;
+    left: -5px !important;
+    width: 15px !important;
+    height: 15px !important;
+    cursor: nw-resize !important;
+}
+
+.draggable-resizable-popup .resize-ne {
+    top: -5px !important;
+    right: -5px !important;
+    width: 15px !important;
+    height: 15px !important;
+    cursor: ne-resize !important;
+}
+
+.draggable-resizable-popup .resize-sw {
+    bottom: -5px !important;
+    left: -5px !important;
+    width: 15px !important;
+    height: 15px !important;
+    cursor: sw-resize !important;
+}
+
+.draggable-resizable-popup .resize-se {
+    bottom: -5px !important;
+    right: -5px !important;
+    width: 15px !important;
+    height: 15px !important;
+    cursor: se-resize !important;
+}
+
+/* 边缘缩放手柄 */
+.draggable-resizable-popup .resize-n {
+    top: -5px !important;
+    left: 15px !important;
+    right: 15px !important;
+    height: 10px !important;
+    cursor: n-resize !important;
+}
+
+.draggable-resizable-popup .resize-s {
+    bottom: -5px !important;
+    left: 15px !important;
+    right: 15px !important;
+    height: 10px !important;
+    cursor: s-resize !important;
+}
+
+.draggable-resizable-popup .resize-w {
+    left: -5px !important;
+    top: 15px !important;
+    bottom: 15px !important;
+    width: 10px !important;
+    cursor: w-resize !important;
+}
+
+.draggable-resizable-popup .resize-e {
+    right: -5px !important;
+    top: 15px !important;
+    bottom: 15px !important;
+    width: 10px !important;
+    cursor: e-resize !important;
+}
+
+/* 缩放手柄悬停效果 */
+.draggable-resizable-popup .popup-resize-handle:hover::after {
+    content: '' !important;
+    position: absolute !important;
+    inset: 2px !important;
+    background: rgba(52, 152, 219, 0.3) !important;
+    border-radius: 2px !important;
+    border: 1px solid rgba(52, 152, 219, 0.6) !important;
+}
+
+/* 弹窗内容区域样式 - 继承原有样式 */
+.draggable-resizable-popup .point-info-section {
+    margin-bottom: 20px !important;
+    padding-bottom: 16px !important;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.draggable-resizable-popup .point-info-section:last-child {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+}
+
+.draggable-resizable-popup .point-info-section h4 {
+    margin: 0 0 12px 0 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.draggable-resizable-popup .info-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+}
+
+.draggable-resizable-popup .info-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    border: 1px solid #e9ecef !important;
+    transition: all 0.3s ease !important;
+}
+
+.draggable-resizable-popup .info-item:hover {
+    background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%) !important;
+    border-color: #3498db !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.1) !important;
+}
+
+.draggable-resizable-popup .info-label {
+    font-weight: 500 !important;
+    color: #495057 !important;
+}
+
+.draggable-resizable-popup .info-value {
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    font-family: 'Courier New', monospace !important;
+}
+
+/* 公式容器样式 */
+.draggable-resizable-popup .formula-container {
+    background: #f8f9fa !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
+    border: 1px solid #e9ecef !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+    margin: 16px 0 !important;
+}
+
+.draggable-resizable-popup .formula-title {
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    margin-bottom: 12px !important;
+    font-size: 15px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.draggable-resizable-popup .formula-math {
+    background: white !important;
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    font-family: 'Courier New', monospace !important;
+    color: #2c3e50 !important;
+    border: 1px solid #dee2e6 !important;
+    margin-bottom: 12px !important;
+    text-align: left !important;
+    font-weight: 500 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    line-height: 1.6 !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .draggable-resizable-popup {
+        min-width: 280px !important;
+    }
+    
+    .draggable-resizable-popup .popup-header {
+        padding: 16px 20px !important;
+    }
+    
+    .draggable-resizable-popup .popup-title {
+        font-size: 16px !important;
+    }
+    
+    .draggable-resizable-popup .popup-body {
+        padding: 20px !important;
+    }
+    
+    .draggable-resizable-popup .info-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* 动画效果 */
+@keyframes popupFadeIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes popupFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+    }
+}
