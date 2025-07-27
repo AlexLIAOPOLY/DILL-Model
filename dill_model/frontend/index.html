@@ -3272,11 +3272,38 @@ intensity3
                         <option value="car">CAR模型</option>
                         <option value="system">系统</option>
                     </select>
+                    <select id="log-type-filter" class="log-filter-select" title="过滤日志类型" aria-label="过滤日志类型">
+                        <option value="">所有类型</option>
+                        <optgroup label="基本类型">
+                            <option value="info">信息</option>
+                            <option value="success">成功</option>
+                            <option value="warning">警告</option>
+                            <option value="error">错误</option>
+                        </optgroup>
+                        <optgroup label="操作类型">
+                            <option value="data_received">数据接收</option>
+                            <option value="data_processing">数据处理</option>
+                            <option value="parameter">参数配置</option>
+                            <option value="calculation">计算过程</option>
+                            <option value="result">结果输出</option>
+                            <option value="validation">验证检测</option>
+                        </optgroup>
+                        <optgroup label="系统类型">
+                            <option value="system">系统信息</option>
+                            <option value="performance">性能监控</option>
+                            <option value="debug">调试信息</option>
+                            <option value="progress">进度更新</option>
+                        </optgroup>
+                    </select>
+                    <input type="text" id="log-search-input" class="log-search-input" placeholder="搜索日志内容..." title="搜索日志内容" aria-label="搜索日志内容">
                     <button id="refresh-logs-btn" class="log-control-btn" title="刷新日志">
                         <i class="fas fa-sync-alt"></i>
                     </button>
                     <button id="clear-logs-btn" class="log-control-btn" title="清空日志">
                         <i class="fas fa-trash"></i>
+                    </button>
+                    <button id="export-logs-btn" class="log-control-btn" title="导出日志">
+                        <i class="fas fa-download"></i>
                     </button>
                     <button id="close-logs-modal" class="close-modal-btn" title="关闭">
                         <i class="fas fa-times"></i>

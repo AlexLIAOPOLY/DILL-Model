@@ -232,15 +232,7 @@ function getLogTypeIcon(type) {
         'warning': 'fas fa-exclamation-triangle',
         'error': 'fas fa-times-circle',
         'progress': 'fas fa-clock',
-        'debug': 'fas fa-bug',
-        'data_received': 'fas fa-download',
-        'data_processing': 'fas fa-cogs',
-        'parameter': 'fas fa-sliders-h',
-        'calculation': 'fas fa-calculator',
-        'result': 'fas fa-chart-line',
-        'system': 'fas fa-server',
-        'validation': 'fas fa-check-double',
-        'performance': 'fas fa-tachometer-alt'
+        'debug': 'fas fa-bug'
     };
     
     return typeIconMap[type] || typeIconMap['info'];
@@ -260,12 +252,11 @@ function createGroupedLogsHtml(logs) {
         const sessionType = group.sessionType;
         
         // 创建会话标题
-        const calculationType = group.calculationType || '通用操作';
         const sessionHeader = `
             <div class="log-session-header">
                 <div class="log-session-info">
                     <i class="fas fa-play-circle"></i>
-                    <span class="log-session-title">${sessionType} - ${calculationType}</span>
+                    <span class="log-session-title">${sessionType} 计算会话</span>
                     <span class="log-session-time">${groupStartTime}</span>
                     ${groupDuration ? `<span class="log-session-duration">耗时: ${groupDuration}</span>` : ''}
                 </div>
@@ -277,11 +268,11 @@ function createGroupedLogsHtml(logs) {
         const sessionContent = `
             <div class="log-session-content">
                 ${createSessionSummary(groupLogs)}
-                <div class="log-session-details" style="display: block;">
+                <div class="log-session-details" style="display: none;">
                     ${groupLogs.map(log => createLogEntryHtml(log)).join('')}
                 </div>
                 <button class="log-session-toggle" onclick="toggleSessionDetails(this)">
-                    <i class="fas fa-chevron-up"></i> 隐藏详细日志
+                    <i class="fas fa-chevron-down"></i> 查看详细日志
                 </button>
             </div>
         `;
@@ -307,34 +298,15 @@ function groupLogsBySession(logs) {
         const isCalculationStart = log.message && (
             log.message.includes('开始计算') || 
             log.message.includes('一维计算') ||
-            log.message.includes('二维计算') ||
-            log.message.includes('三维计算') ||
             log.message.includes('Dill模型') ||
-            log.message.includes('Enhanced') ||
-            log.message.includes('CAR模型') ||
-            log.message.includes('计算完成') ||
-            log.message.includes('开始加载') ||
-            log.message.includes('参数设置')
+            log.message.includes('计算完成')
         );
         
-        const isNewSession = log.message && (
-            log.message.includes('========') ||
-            log.message.includes('新建会话') ||
-            log.message.includes('会话开始') ||
-            (log.type === 'info' && log.message.includes('模型'))
-        );
-        
-        // 更智能的会话分组逻辑
-        const shouldCreateNewGroup = !currentGroup || 
-            isCalculationStart || 
-            isNewSession ||
+        // 如果是新的计算开始，或者时间间隔超过5分钟，创建新组
+        if (!currentGroup || isCalculationStart || 
             (currentGroup.logs.length > 0 && 
-             logTime - new Date(currentGroup.logs[currentGroup.logs.length - 1].timestamp) > 3 * 60 * 1000) || // 降低到3分钟
-            (currentGroup.logs.length > 0 && 
-             isDifferentCalculationType(currentGroup.logs[0], log)) ||
-            (currentGroup.logs.length > 20); // 限制单个会话的日志数量
-        
-        if (shouldCreateNewGroup) {
+             logTime - new Date(currentGroup.logs[currentGroup.logs.length - 1].timestamp) > 5 * 60 * 1000)) {
+            
             if (currentGroup) {
                 // 完成上一个组
                 finishGroup(currentGroup);
@@ -345,8 +317,7 @@ function groupLogsBySession(logs) {
             currentGroup = {
                 startTime: formatTime(logTime),
                 logs: [],
-                sessionType: getSessionType(log),
-                calculationType: getCalculationType(log)
+                sessionType: getSessionType(log)
             };
         }
         
@@ -360,31 +331,6 @@ function groupLogsBySession(logs) {
     }
     
     return groups.reverse(); // 最新的在前面
-}
-
-/**
- * 判断是否为不同类型的计算
- */
-function isDifferentCalculationType(firstLog, currentLog) {
-    const firstType = getCalculationType(firstLog);
-    const currentType = getCalculationType(currentLog);
-    return firstType !== currentType && currentType !== '未知';
-}
-
-/**
- * 获取计算类型
- */
-function getCalculationType(log) {
-    if (!log.message) return '未知';
-    
-    if (log.message.includes('一维') || log.message.includes('1D')) return '一维计算';
-    if (log.message.includes('二维') || log.message.includes('2D')) return '二维计算';
-    if (log.message.includes('三维') || log.message.includes('3D')) return '三维计算';
-    if (log.message.includes('Enhanced')) return 'Enhanced计算';
-    if (log.message.includes('CAR')) return 'CAR计算';
-    if (log.message.includes('Dill')) return 'Dill计算';
-    
-    return '通用操作';
 }
 
 /**
@@ -431,10 +377,8 @@ function createSessionSummary(logs) {
     };
     
     logs.forEach(log => {
-        const analyzedType = analyzeLogType(log);
-        switch (analyzedType) {
+        switch (log.type) {
             case 'success':
-            case 'result':
                 summary.successCount++;
                 break;
             case 'error':
@@ -493,104 +437,12 @@ function formatDuration(ms) {
 }
 
 /**
- * 智能分析日志内容并分类
- */
-function analyzeLogType(log) {
-    if (!log.message) return log.type || 'info';
-    
-    const message = log.message.toLowerCase();
-    
-    // 数据接收类型
-    if (message.includes('收到') || message.includes('接收') || message.includes('received') || 
-        message.includes('前端数据') || message.includes('用户输入')) {
-        return 'data_received';
-    }
-    
-    // 参数相关
-    if (message.includes('参数') || message.includes('parameter') || message.includes('配置') ||
-        message.includes('设置') || message.includes('值为') || message.includes('设定')) {
-        return 'parameter';
-    }
-    
-    // 数据处理
-    if (message.includes('处理') || message.includes('转换') || message.includes('解析') ||
-        message.includes('预处理') || message.includes('数据清洗')) {
-        return 'data_processing';
-    }
-    
-    // 计算相关
-    if (message.includes('计算') || message.includes('求解') || message.includes('运算') ||
-        message.includes('迭代') || message.includes('算法')) {
-        return 'calculation';
-    }
-    
-    // 结果输出
-    if (message.includes('结果') || message.includes('输出') || message.includes('完成') ||
-        message.includes('光敏速率') || message.includes('分辨率') || message.includes('对比度')) {
-        return 'result';
-    }
-    
-    // 验证检测
-    if (message.includes('检测') || message.includes('验证') || message.includes('校验') ||
-        message.includes('cv=') || message.includes('质量') || message.includes('有效性')) {
-        return 'validation';
-    }
-    
-    // 性能相关
-    if (message.includes('耗时') || message.includes('时间') || message.includes('性能') ||
-        message.includes('速度') || message.includes('优化')) {
-        return 'performance';
-    }
-    
-    // 调试信息
-    if (message.includes('debug') || message.includes('调试') || message.includes('跟踪') ||
-        message.includes('trace') || log.type === 'debug') {
-        return 'debug';
-    }
-    
-    // 系统信息
-    if (message.includes('系统') || message.includes('启动') || message.includes('初始化') ||
-        message.includes('system') || message.includes('服务')) {
-        return 'system';
-    }
-    
-    return log.type || 'info';
-}
-
-/**
- * 获取日志类型的中文显示名称
- */
-function getLogTypeDisplayName(type) {
-    const typeNames = {
-        'info': '信息',
-        'success': '成功',
-        'warning': '警告',
-        'error': '错误',
-        'progress': '进度',
-        'debug': '调试',
-        'data_received': '数据接收',
-        'data_processing': '数据处理',
-        'parameter': '参数配置',
-        'calculation': '计算过程',
-        'result': '结果输出',
-        'system': '系统信息',
-        'validation': '验证检测',
-        'performance': '性能监控'
-    };
-    
-    return typeNames[type] || typeNames['info'];
-}
-
-/**
  * 创建日志条目HTML
  */
 function createLogEntryHtml(log) {
-    const originalType = log.type || 'info';
-    const analyzedType = analyzeLogType(log);
-    const typeClass = analyzedType;
+    const typeClass = log.type || 'info';
     const modelClass = log.model || 'system';
     const typeIcon = getLogTypeIcon(typeClass);
-    const typeDisplayName = getLogTypeDisplayName(typeClass);
     
     return `
         <div class="log-entry ${typeClass}">
@@ -600,7 +452,7 @@ function createLogEntryHtml(log) {
             <div class="log-content">
                 <div class="log-header">
                     <span class="log-timestamp">[${log.timestamp}]</span>
-                    <span class="log-type ${typeClass}">${typeDisplayName}</span>
+                    <span class="log-type ${typeClass}">${typeClass.toUpperCase()}</span>
                     <span class="log-model ${modelClass}">${getModelDisplayName(log.model)}</span>
                 </div>
                 <div class="log-message">${escapeHtml(log.message)}</div>
@@ -677,7 +529,7 @@ function toggleSessionDetails(button) {
     const details = sessionContent.querySelector('.log-session-details');
     const icon = button.querySelector('i');
     
-    if (details.style.display === 'none' || details.style.display === '') {
+    if (details.style.display === 'none') {
         details.style.display = 'block';
         icon.className = 'fas fa-chevron-up';
         button.innerHTML = '<i class="fas fa-chevron-up"></i> 隐藏详细日志';
@@ -815,9 +667,6 @@ async function exportLogs() {
         alert('导出日志失败: ' + error.message);
     }
 }
-
-// 将切换函数设为全局，以便HTML onclick调用
-window.toggleSessionDetails = toggleSessionDetails;
 
 // 页面加载完成后初始化日志功能
 document.addEventListener('DOMContentLoaded', function() {
