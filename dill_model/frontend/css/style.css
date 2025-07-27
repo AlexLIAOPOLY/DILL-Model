@@ -4469,6 +4469,10 @@ div[data-i18n="car_formula_ref"] {
     transition: transform 0.2s ease;
 }
 
+.log-session-toggle.expanded i {
+    transform: rotate(180deg);
+}
+
 .log-timestamp {
     color: #7f8c8d;
     font-weight: normal;
@@ -7718,156 +7722,548 @@ input:checked + .toggle-slider:hover {
 
 /* 更强制的按钮显示规则 */
 .logs-modal .modal-header {
-    padding: 15px 20px !important;
+    padding: 24px 28px !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e2e6ea 100%) !important;
+    border-bottom: 2px solid #c8d1d9 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    min-height: 74px !important;
+    border-radius: 12px 12px 0 0 !important;
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    flex-wrap: nowrap !important;
-    min-height: 60px;
+    flex-wrap: wrap !important;
+    position: relative !important;
+    z-index: 2 !important;
 }
 
+/* 美化标题 - 增强视觉层次感 */
 .logs-modal .modal-title {
-    flex-shrink: 1;
-    min-width: 0;
-    margin-right: 15px;
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    color: #2c3e50 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-right: 20px !important;
+    text-shadow: 0 1px 1px rgba(255,255,255,0.8) !important;
+    position: relative !important;
+    padding-bottom: 4px !important;
 }
 
-.logs-modal .modal-controls {
-    flex-shrink: 0 !important;
-    min-width: auto !important;
-    overflow: visible !important;
+.logs-modal .modal-title::after {
+    content: "" !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 36px !important;
+    width: 70% !important;
+    height: 3px !important;
+    background: linear-gradient(90deg, #3498db 0%, rgba(52,152,219,0.1) 100%) !important;
+    border-radius: 2px !important;
 }
 
-.log-control-btn, .close-modal-btn {
-    min-width: 36px !important;
-    width: auto !important;
-    flex-shrink: 0 !important;
+.logs-modal .modal-title i {
+    color: #3498db !important;
+    font-size: 1.25rem !important;
+    filter: drop-shadow(0 1px 1px rgba(255,255,255,0.8)) !important;
+}
+
+/* 确保标题图标始终显示 - 使用CSS备用图标 */
+.logs-modal .modal-title i.fa-file-alt {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 8px 12px !important;
-    font-size: 0.85rem !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    position: relative !important;
 }
 
-/* 日志模态框响应式设计 */
-@media (max-width: 1024px) {
-    .modal-controls {
-        flex-wrap: wrap !important;
-        gap: 6px !important;
-        overflow-x: visible;
-    }
-    
-    .log-filter-select {
-        min-width: 80px;
-        flex: 1;
-    }
-    
-    .log-search-input {
-        min-width: 120px;
-        flex: 1;
-        max-width: 150px;
+.logs-modal .modal-title i.fa-file-alt::before {
+    content: "📋" !important; /* 使用Unicode字符作为备用 */
+    font-family: system-ui, -apple-system, sans-serif !important;
+    font-style: normal !important;
+}
+
+/* 美化控制区域 - 提升布局和间距 */
+.logs-modal .modal-controls {
+    display: flex !important;
+    gap: 14px !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    margin-top: 10px !important;
+}
+
+/* 美化下拉框 - 增强交互体验 */
+.logs-modal .log-filter-select {
+    padding: 10px 14px !important;
+    border: 2px solid #e9ecef !important;
+    border-radius: 8px !important;
+    background: white !important;
+    color: #495057 !important;
+    font-size: 0.95rem !important;
+    min-width: 130px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+}
+
+.logs-modal .log-filter-select:hover {
+    border-color: #3498db !important;
+    box-shadow: 0 3px 6px rgba(52,152,219,0.15) !important;
+}
+
+.logs-modal .log-filter-select:focus {
+    outline: none !important;
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2) !important;
+}
+
+/* 美化搜索框 - 优化视觉风格 */
+.logs-modal .log-search-input {
+    padding: 10px 14px !important;
+    border: 2px solid #e9ecef !important;
+    border-radius: 8px !important;
+    background: white !important;
+    color: #495057 !important;
+    font-size: 0.95rem !important;
+    min-width: 200px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+}
+
+.logs-modal .log-search-input:hover {
+    border-color: #3498db !important;
+    box-shadow: 0 3px 6px rgba(52,152,219,0.15) !important;
+}
+
+.logs-modal .log-search-input:focus {
+    outline: none !important;
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2) !important;
+}
+
+/* 重新设计控制按钮 - 确保按钮和图标可见 */
+.logs-modal .log-control-btn,
+.logs-modal .close-modal-btn {
+    min-width: 48px !important;
+    height: 48px !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.1rem !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12) !important;
+}
+
+/* 刷新按钮样式 - 带可靠的CSS图标 */
+.logs-modal #refresh-logs-btn {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
+    color: white !important;
+    box-shadow: 0 3px 10px rgba(39, 174, 96, 0.25) !important;
+}
+
+.logs-modal #refresh-logs-btn:hover {
+    background: linear-gradient(135deg, #229954 0%, #27ae60 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(39, 174, 96, 0.35) !important;
+}
+
+/* 使用CSS图标确保按钮显示 - 刷新按钮 */
+.logs-modal #refresh-logs-btn::before {
+    content: "" !important;
+    display: block !important;
+    width: 20px !important;
+    height: 20px !important;
+    border: 3px solid white !important;
+    border-radius: 50% !important;
+    border-top-color: transparent !important;
+    position: relative !important;
+}
+
+.logs-modal #refresh-logs-btn:hover::before {
+    animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
     }
 }
 
+/* 清空按钮样式 - 带可靠的CSS图标 */
+.logs-modal #clear-logs-btn {
+    background: linear-gradient(135deg, #e74c3c 0%, #f05e4e 100%) !important;
+    color: white !important;
+    box-shadow: 0 3px 10px rgba(231, 76, 60, 0.25) !important;
+}
+
+.logs-modal #clear-logs-btn:hover {
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.35) !important;
+}
+
+/* 使用CSS图标确保按钮显示 - 清空按钮 */
+.logs-modal #clear-logs-btn::before {
+    content: "" !important;
+    display: block !important;
+    width: 20px !important;
+    height: 20px !important;
+    background: transparent !important;
+    border: 2px solid white !important;
+    position: relative !important;
+}
+
+.logs-modal #clear-logs-btn::after {
+    content: "" !important;
+    position: absolute !important;
+    width: 16px !important;
+    height: 3px !important;
+    background: white !important;
+    transform: rotate(45deg) !important;
+    top: 50% !important;
+    left: 50% !important;
+    margin-top: -1.5px !important;
+    margin-left: -8px !important;
+}
+
+/* 导出按钮样式 - 带可靠的CSS图标 */
+.logs-modal #export-logs-btn {
+    background: linear-gradient(135deg, #3498db 0%, #4aacec 100%) !important;
+    color: white !important;
+    box-shadow: 0 3px 10px rgba(52, 152, 219, 0.25) !important;
+}
+
+.logs-modal #export-logs-btn:hover {
+    background: linear-gradient(135deg, #2980b9 0%, #3498db 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.35) !important;
+}
+
+/* 使用CSS图标确保按钮显示 - 导出按钮 */
+.logs-modal #export-logs-btn::before {
+    content: "" !important;
+    display: block !important;
+    width: 16px !important;
+    height: 12px !important;
+    border: 2px solid white !important;
+    border-bottom: none !important;
+    border-radius: 2px 2px 0 0 !important;
+    position: relative !important;
+    margin-bottom: 4px !important;
+}
+
+.logs-modal #export-logs-btn::after {
+    content: "" !important;
+    display: block !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-left: 6px solid transparent !important;
+    border-right: 6px solid transparent !important;
+    border-top: 8px solid white !important;
+    position: absolute !important;
+    bottom: 13px !important;
+}
+
+/* 关闭按钮样式 - 带可靠的CSS图标 */
+.logs-modal #close-logs-modal {
+    background: linear-gradient(135deg, #95a5a6 0%, #b4c2c2 100%) !important;
+    color: white !important;
+    box-shadow: 0 3px 10px rgba(149, 165, 166, 0.25) !important;
+}
+
+.logs-modal #close-logs-modal:hover {
+    background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(149, 165, 166, 0.35) !important;
+}
+
+/* 使用CSS图标确保按钮显示 - 关闭按钮 */
+.logs-modal #close-logs-modal::before {
+    content: "" !important;
+    position: absolute !important;
+    width: 20px !important;
+    height: 3px !important;
+    background: white !important;
+    transform: rotate(45deg) !important;
+}
+
+.logs-modal #close-logs-modal::after {
+    content: "" !important;
+    position: absolute !important;
+    width: 20px !important;
+    height: 3px !important;
+    background: white !important;
+    transform: rotate(-45deg) !important;
+}
+
+/* 确保所有原始Font Awesome图标在备用CSS图标成功显示时隐藏 */
+.logs-modal #refresh-logs-btn i,
+.logs-modal #clear-logs-btn i,
+.logs-modal #export-logs-btn i,
+.logs-modal #close-logs-modal i {
+    display: none !important;
+}
+
+/* 响应式调整 - 更好的移动设备兼容性 */
 @media (max-width: 768px) {
-    .logs-modal-content {
-        width: 95vw;
-        height: 90vh;
-        margin: 5vh auto;
+    .logs-modal .modal-header {
+        padding: 20px 22px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 15px !important;
     }
     
-    .modal-header {
-        padding: 15px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
+    .logs-modal .modal-title {
+        margin-bottom: 5px !important;
+        width: 100% !important;
     }
     
-    .modal-title {
-        font-size: 1.1rem;
+    .logs-modal .modal-controls {
+        width: 100% !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        margin-top: 0 !important;
     }
     
-    .modal-controls {
-        width: 100%;
-        justify-content: flex-start;
-        gap: 6px;
-        flex-wrap: wrap;
+    .logs-modal .log-filter-select,
+    .logs-modal .log-search-input {
+        flex: 1 1 100% !important;
+        min-width: 0 !important;
+        margin-bottom: 10px !important;
     }
     
-    .log-filter-select {
-        flex: 1;
-        min-width: 80px;
-        max-width: 120px;
+    .logs-modal .log-control-btn,
+    .logs-modal .close-modal-btn {
+        min-width: 42px !important;
+        height: 42px !important;
+        flex: 0 0 auto !important;
+    }
+}
+
+/* 超小屏幕调整 */
+@media (max-width: 480px) {
+    .logs-modal .modal-controls {
+        flex-direction: column !important;
+        align-items: stretch !important;
     }
     
-    .log-search-input {
-        flex: 1;
-        min-width: 100px;
-        max-width: 140px;
+    .logs-modal .log-filter-select,
+    .logs-modal .log-search-input {
+        margin-bottom: 10px !important;
     }
     
-    .log-control-btn, .close-modal-btn {
-        padding: 6px 8px;
-        font-size: 0.8rem;
-        min-width: 32px;
-        flex-shrink: 0;
+    .logs-modal .log-control-btn,
+    .logs-modal .close-modal-btn {
+        width: 100% !important;
+        height: 46px !important;
+        margin-bottom: 8px !important;
+        justify-content: center !important;
+        position: relative !important;
     }
     
-    .log-control-btn i, .close-modal-btn i {
-        font-size: 0.9rem;
+    /* 在小屏幕上添加文字标签，提高可用性 */
+    .logs-modal #refresh-logs-btn::after {
+        content: "刷新" !important;
+        position: absolute !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        bottom: 4px !important;
+        font-size: 12px !important;
     }
     
-    /* 分组日志响应式 */
-    .log-session-header {
-        padding: 12px 16px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+    .logs-modal #clear-logs-btn::after {
+        content: "清空" !important;
+        position: absolute !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        bottom: 4px !important;
+        font-size: 12px !important;
     }
     
-    .log-session-info {
-        gap: 8px;
-        font-size: 0.9rem;
+    .logs-modal #export-logs-btn::after {
+        content: "导出" !important;
+        position: absolute !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        bottom: 4px !important;
+        font-size: 12px !important;
     }
     
-    .log-session-title {
-        font-size: 0.9rem;
+    .logs-modal #close-logs-modal::after {
+        content: "关闭" !important;
+        position: absolute !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        bottom: 4px !important;
+        font-size: 12px !important;
+    }
+}
+
+/* ===== 顶部日志按钮样式 - 修复按钮显示问题 ===== */
+.view-logs-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px 16px !important;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 0.9rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+    text-decoration: none !important;
+    margin-left: 8px !important;
+}
+
+.view-logs-btn i {
+    margin-right: 6px !important;
+    font-size: 1rem !important;
+    display: inline-block !important;
+}
+
+.view-logs-btn i::before {
+    content: "📋" !important;
+    font-style: normal !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.view-logs-btn:hover {
+    background: linear-gradient(135deg, #2980b9 0%, #1a5276 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 修复右上角四个按钮图标问题 - 极简可靠版本 */
+.logs-modal .log-control-btn,
+.logs-modal .close-modal-btn {
+    width: 40px !important;
+    height: 40px !important;
+    margin: 0 4px !important;
+    border-radius: 6px !important;
+    position: relative !important;
+    display: inline-block !important;
+    cursor: pointer !important;
+    font-size: 20px !important;
+    line-height: 40px !important;
+    text-align: center !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    border: none !important;
+    text-decoration: none !important;
+    font-weight: bold !important;
+}
+
+/* 给每个按钮一个独特的颜色和文字标签 */
+#refresh-logs-btn {
+    background-color: #27ae60 !important;
+    color: white !important;
+}
+#refresh-logs-btn:after {
+    content: "刷新" !important;
+    font-size: 14px !important;
+}
+
+#clear-logs-btn {
+    background-color: #e74c3c !important;
+    color: white !important;
+}
+#clear-logs-btn:after {
+    content: "清空" !important;
+    font-size: 14px !important;
+}
+
+#export-logs-btn {
+    background-color: #3498db !important;
+    color: white !important;
+}
+#export-logs-btn:after {
+    content: "导出" !important;
+    font-size: 14px !important;
+}
+
+#close-logs-modal {
+    background-color: #95a5a6 !important;
+    color: white !important;
+}
+#close-logs-modal:after {
+    content: "关闭" !important;
+    font-size: 14px !important;
+}
+
+/* 隐藏所有原始图标 */
+.logs-modal .log-control-btn i,
+.logs-modal .close-modal-btn i {
+    display: none !important;
+}
+
+/* 确保主页右上角的按钮也能正常显示 - 简化版 */
+.view-logs-btn {
+    display: inline-block !important;
+    padding: 8px 16px !important;
+    background-color: #3498db !important;
+    color: white !important;
+    border-radius: 6px !important;
+    font-weight: bold !important;
+    text-decoration: none !important;
+    text-align: center !important;
+    border: none !important;
+    font-size: 14px !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+    margin: 4px !important;
+    cursor: pointer !important;
+}
+
+.view-logs-btn:before {
+    content: "" !important;
+    display: none !important;
+}
+
+.view-logs-btn i {
+    display: none !important;
+}
+
+/* 确保按钮在不同分辨率下依然可见 */
+@media (max-width: 768px) {
+    .logs-modal .modal-controls {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-end !important;
+        gap: 8px !important;
     }
     
-    .log-session-content {
-        padding: 16px;
-    }
-    
-    .summary-info-item {
-        font-size: 0.85rem;
+    .logs-modal .log-control-btn,
+    .logs-modal .close-modal-btn {
+        width: 40px !important;
+        height: 40px !important;
+        margin: 0 3px !important;
     }
 }
 
 @media (max-width: 480px) {
-    .modal-controls {
-        flex-direction: column;
-        width: 100%;
-        gap: 8px;
+    .logs-modal .modal-controls {
+        flex-direction: row !important;
+        justify-content: space-between !important;
     }
     
-    .log-filter-select,
-    .log-search-input {
-        width: 100%;
-        max-width: none;
-        flex: none;
+    .logs-modal .log-filter-select,
+    .logs-modal .log-search-input {
+        width: 100% !important;
+        margin-bottom: 8px !important;
     }
     
-    .modal-controls .log-control-btn,
-    .modal-controls .close-modal-btn {
-        width: 100%;
-        justify-content: center;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    }
-    
-    .modal-controls .log-control-btn i,
-    .modal-controls .close-modal-btn i {
-        margin-right: 5px;
+    .logs-modal .log-control-btn,
+    .logs-modal .close-modal-btn {
+        width: calc(25% - 6px) !important;
+        height: 40px !important;
+        margin: 0 !important;
     }
 }
