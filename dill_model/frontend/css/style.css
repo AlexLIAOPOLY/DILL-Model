@@ -537,18 +537,40 @@ header::before {
     border-color: var(--primary-color);
 }
 
-/* 参数描述样式 */
+/* 参数描述样式 - 现代层次设计 */
 .parameter-description {
     font-size: 0.8rem;
-    color: #666;
+    color: #555;
     font-style: italic;
     margin-top: 0.5rem;
-    padding: 0.4rem 0.8rem;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    border: 1px solid #e9ecef;
-    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
+    padding: 0.6rem 1rem;
+    background: linear-gradient(135deg, #fdfdfe 0%, #fafbfc 100%);
+    border-radius: 6px;
+    border: 1px solid #f0f2f4;
+    box-shadow: 
+        0 2px 8px rgba(52, 152, 219, 0.03),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
     line-height: 1.4;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.parameter-description:hover {
+    transform: translateY(-1px);
+    box-shadow: 
+        0 4px 12px rgba(52, 152, 219, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    border-color: #e8eef3;
+}
+
+.parameter-description::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.08), transparent);
 }
 
 /* 按钮 */
