@@ -26,13 +26,14 @@
     line-height: 1.6;
 }
 
-/* CAR模型参数说明样式 */
+/* CAR模型参数说明样式 - 现代化简约设计 */
 .car-parameter-explanation {
-    background-color: #f1f8ff;
-    border-left: 4px solid #0078d7;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
     padding: 15px;
     margin-bottom: 25px;
-    border-radius: 0 6px 6px 0;
+    border-radius: 4px;
 }
 
 .car-parameter-explanation h4 {

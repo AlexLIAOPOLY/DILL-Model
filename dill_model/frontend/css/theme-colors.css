@@ -112,20 +112,20 @@ body.theme-car .section-title {
     border-bottom: 2px solid rgba(150, 220, 150, 0.3); /* 原来是 rgba(100, 200, 100, 0.5)，调浅 */
 }
 
-/* 模型描述卡片边框和渐变效果 (更浅) - 交换颜色 */
+/* 模型描述卡片边框和渐变效果 - 现代化简约设计 */
 body.theme-dill #dill-desc {
-    border-left: 4px solid rgba(150, 180, 255, 0.5); /* 蓝色系边框 */
-    box-shadow: 0 2px 8px rgba(150, 180, 255, 0.08); /* 蓝色系阴影 */
+    border: 1px solid #e3f2fd;
+    box-shadow: 0 2px 6px rgba(25, 118, 210, 0.08);
 }
 
 body.theme-enhanced-dill #enhanced-dill-desc {
-    border-left: 4px solid rgba(255, 150, 150, 0.5); /* 红色系边框 */
-    box-shadow: 0 2px 8px rgba(255, 150, 150, 0.08); /* 红色系阴影 */
+    border: 1px solid #ffebee;
+    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.08);
 }
 
 body.theme-car #car-desc {
-    border-left: 4px solid rgba(150, 220, 150, 0.5); /* 原来是 rgba(100, 200, 100, 0.7)，调浅 */
-    box-shadow: 0 2px 8px rgba(150, 220, 150, 0.08); /* 原来是 rgba(100, 200, 100, 0.15)，调浅 */
+    border: 1px solid #e8f5e8;
+    box-shadow: 0 2px 6px rgba(76, 175, 80, 0.08);
 }
 
 /* 结果图表外框样式 - 交换颜色 */

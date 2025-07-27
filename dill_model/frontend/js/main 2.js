@@ -5520,7 +5520,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                         padding: 12px;
                         background-color: #f8f9fa;
                         border-radius: 6px;
-                        border-left: 4px solid #007bff;
+                        border: 1px solid #e9ecef;
+                        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.08);
                     }
                     .step-title {
                         font-weight: bold;
@@ -6112,7 +6113,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                         padding: 12px;
                         background-color: #f8f9fa;
                         border-radius: 6px;
-                        border-left: 4px solid #007bff;
+                        border: 1px solid #e9ecef;
+                        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.08);
                     }
                     .step-title {
                         font-weight: bold;
@@ -6406,7 +6408,8 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                         padding: 12px;
                         background-color: #f8f9fa;
                         border-radius: 6px;
-                        border-left: 4px solid #007bff;
+                        border: 1px solid #e9ecef;
+                        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.08);
                     }
                     .step-title {
                         font-weight: bold;
@@ -15269,26 +15272,30 @@ function addNotificationStyles() {
         }
         
         .notification-info {
-            background: #d1ecf1;
-            border-left: 4px solid #17a2b8;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(23, 162, 184, 0.08);
             color: #0c5460;
         }
         
         .notification-success {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(40, 167, 69, 0.08);
             color: #155724;
         }
         
         .notification-warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(255, 193, 7, 0.08);
             color: #856404;
         }
         
         .notification-error {
-            background: #f8d7da;
-            border-left: 4px solid #dc3545;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(220, 53, 69, 0.08);
             color: #721c24;
         }
         

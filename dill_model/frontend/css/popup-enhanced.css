@@ -248,9 +248,10 @@
     justify-content: space-between !important;
     align-items: center !important;
     padding: 10px 14px !important;
-    background: linear-gradient(135deg, #e8f4fd, #f0f8ff) !important;
-    border-radius: 8px !important;
-    border-left: 4px solid #3498db !important;
+    background: #f8f9fa !important;
+    border: 1px solid #e9ecef !important;
+    border-radius: 4px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
     font-size: 14px !important;
     transition: all 0.3s ease !important;
 }
@@ -275,11 +276,11 @@
 
 /* 公式容器样式增强 */
 .formula-container {
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
-    border-radius: 12px !important;
+    background: #f8f9fa !important;
+    border-radius: 4px !important;
     padding: 16px !important;
-    border-left: 4px solid #3498db !important;
     border: 1px solid #e9ecef !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
     margin: 16px 0 !important;
 }
 

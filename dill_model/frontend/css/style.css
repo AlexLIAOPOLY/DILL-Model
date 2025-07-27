@@ -401,7 +401,8 @@ header::before {
     background-color: #f8f9fa;
     padding: 1rem;
     border-radius: var(--border-radius);
-    border-left: 4px solid var(--primary-color);
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
 }
 
 .parameters-grid {
@@ -545,7 +546,8 @@ header::before {
     padding: 0.4rem 0.8rem;
     background-color: #f8f9fa;
     border-radius: 4px;
-    border-left: 3px solid var(--primary-color);
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
     line-height: 1.4;
 }
 
@@ -731,7 +733,8 @@ header::before {
     background-color: #f8f9fa;
     padding: 1rem;
     border-radius: var(--border-radius);
-    border-left: 4px solid var(--primary-color);
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
 }
 
 .parameter-sets-container {
@@ -1187,7 +1190,8 @@ footer {
 }
 
 .threshold-control.active-threshold {
-    border-left: 4px solid var(--secondary-color);
+    border: 1px solid #e8f5e8;
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.08);
     background-color: rgba(46, 204, 113, 0.05);
 }
 
@@ -1497,7 +1501,8 @@ footer {
     background-color: #f8f9fa;
     border-radius: var(--border-radius);
     padding: 1.5rem;
-    border-left: 4px solid var(--primary-color);
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
 }
 
 .model-description-title {
@@ -1603,9 +1608,8 @@ footer {
     padding-top: 0;
     padding-bottom: 0;
     margin-top: 0;
-    border-left: 5px solid var(--primary-color);
-    border-top: 1.5px solid #e3eaf3;
-    border-bottom: 1.5px solid #e3eaf3;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
     transition: all 0.4s cubic-bezier(.4,0,.2,1);
 }
 
@@ -1624,7 +1628,8 @@ footer {
     font-size: 1.13rem;
     font-weight: 700;
     letter-spacing: 0.5px;
-    border-left: 4px solid #2ecc71;
+    border: 1px solid #e8f5e8;
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.08);
     padding-left: 10px;
     background: linear-gradient(90deg, #eaf6ff 60%, transparent 100%);
     border-radius: 6px;
@@ -1672,7 +1677,8 @@ footer {
 .inner-formula-card {
     margin-top: 18px;
     background: linear-gradient(135deg, #fafdff 0%, #eaf6ff 100%);
-    border-left: 4px solid #3498db;
+    border: 1px solid #e3f2fd;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
     border-radius: 10px;
     padding: 22px 18px 18px 18px;
     box-shadow: 0 2px 16px rgba(52, 152, 219, 0.07);
@@ -1710,7 +1716,8 @@ footer {
     margin-bottom: 0;
     padding: 8px 12px;
     background: #f3f9ff;
-    border-left: 3px solid #2ecc71;
+    border: 1px solid #e8f5e8;
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.08);
     border-radius: 6px;
     font-size: 0.98rem;
     display: flex;
@@ -1943,7 +1950,8 @@ footer {
     padding: 6px 10px;
     background: linear-gradient(135deg, #e8f4fd, #f0f8ff);
     border-radius: 6px;
-    border-left: 3px solid #3498db;
+    border: 1px solid #e3f2fd;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
     font-size: 12px;
 }
 
@@ -1963,7 +1971,8 @@ footer {
     background: #f8f9fa;
     border-radius: 8px;
     padding: 12px;
-    border-left: 4px solid #3498db;
+    border: 1px solid #e3f2fd;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
 }
 
 .formula-title {
@@ -3241,7 +3250,8 @@ input[type="number"]:hover {
     padding: 25px;
     margin-bottom: 20px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border-left: 4px solid #3498db;
+    border: 1px solid #e3f2fd;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
 }
 
 .model-card:hover {
@@ -3347,7 +3357,8 @@ input[type="number"]:hover {
     padding: 8px 0 8px 15px;
     margin-bottom: 8px;
     line-height: 1.5;
-    border-left: 3px solid rgba(52, 152, 219, 0.5);
+    border: 1px solid #e3f2fd;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
     padding-left: 15px;
     background-color: rgba(52, 152, 219, 0.03);
     border-radius: 0 5px 5px 0;
@@ -3460,7 +3471,8 @@ div[data-i18n="car_formula_ref"] {
     font-style: italic;
     padding: 10px 15px;
     background-color: rgba(236, 240, 241, 0.5);
-    border-left: 3px solid #7f8c8d;
+    border: 1px solid #ecf0f1;
+    box-shadow: 0 2px 4px rgba(127, 140, 141, 0.08);
     border-radius: 0 5px 5px 0;
     margin: 15px 0;
 }
@@ -4407,7 +4419,8 @@ input:checked + .toggle-slider:hover {
 
 #dill-1d-v-evaluation-section .section-title {
     color: #f39c12;
-    border-left: 4px solid #f39c12;
+    border: 1px solid #fff3e0;
+    box-shadow: 0 2px 4px rgba(243, 156, 18, 0.08);
     padding-left: 15px;
 }
 
@@ -4641,7 +4654,8 @@ input:checked + .toggle-slider:hover {
     font-size: 12px;
     line-height: 1.4;
     color: #ecf0f1;
-    border-left: 3px solid #3498db;
+    border: 1px solid #e3f2fd;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
     word-break: break-all;
 }
 
@@ -4726,7 +4740,8 @@ input:checked + .toggle-slider:hover {
 
 /* 曝光时间窗口控制样式优化 */
 #exposure-time-window-control {
-    border-left: 3px solid #4caf50;
+    border: 1px solid #e8f5e8;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.08);
     padding-left: 12px;
     margin: 8px 0;
     background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(76, 175, 80, 0.02));
@@ -4823,7 +4838,8 @@ input:checked + .toggle-slider:hover {
     border-radius: 4px;
     font-family: 'Courier New', monospace;
     font-size: 11px;
-    border-left: 3px solid rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 4px rgba(255, 255, 255, 0.08);
 }
 
 .k-calculation-notice .close-notice {
@@ -5395,7 +5411,8 @@ input:checked + .toggle-slider:hover {
     padding: 0.75rem;
     background: #f8f9fa;
     border-radius: 4px;
-    border-left: 3px solid var(--primary-color);
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
 }
 
 .format-item strong {

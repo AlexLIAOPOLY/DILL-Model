@@ -339,10 +339,10 @@
     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.8);
 }
 
-/* Dill模型特定样式 */
+/* Dill模型特定样式 - 现代化简约设计 */
 #dill-4d-animation-section {
-    border-left: 4px solid #3498db;
-    border-color: rgba(52, 152, 219, 0.5);
+    border: 1px solid #e3f2fd;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.08);
 }
 
 /* DILL 1D动画区域专门样式 */
@@ -650,9 +650,10 @@
     }
 }
 
-/* Enhanced Dill模型特定样式 */
+/* Enhanced Dill模型特定样式 - 现代化简约设计 */
 #enhanced-dill-4d-animation-section {
-    border-left: 4px solid #9b59b6;
+    border: 1px solid #f3e5f5;
+    box-shadow: 0 2px 4px rgba(155, 89, 182, 0.08);
 }
 
 #enhanced-dill-4d-animation-section .time-slider {
@@ -689,9 +690,10 @@
     color: #8e44ad;
 }
 
-/* CAR模型特定样式 */
+/* CAR模型特定样式 - 现代化简约设计 */
 #car-4d-animation-section {
-    border-left: 4px solid #e67e22;
+    border: 1px solid #fff3e0;
+    box-shadow: 0 2px 4px rgba(230, 126, 34, 0.08);
 }
 
 #car-4d-animation-section .time-slider {
