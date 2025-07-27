@@ -9083,6 +9083,7 @@ function createLoadingLogItem(type, message, timestamp) {
     item.className = `loading-log-item ${type}`;
     
     const timeStr = timestamp ? formatTime(timestamp) : formatTime(new Date());
+    const typeInfo = getLogTypeInfo(type);
 
     let displayMessage = escapeHtml(message);
     
@@ -9107,8 +9108,13 @@ function createLoadingLogItem(type, message, timestamp) {
     }
     
     item.innerHTML = `
-        <span class="loading-log-timestamp">[${timeStr}]</span>
-        <span class="loading-log-message">${displayMessage}</span>
+        <div class="loading-log-icon">
+            <i class="${typeInfo.icon}"></i>
+        </div>
+        <div class="loading-log-content">
+            <div class="loading-log-timestamp">[${timeStr}]</div>
+            <div class="loading-log-message">${displayMessage}</div>
+        </div>
     `;
     
     return item;
@@ -9162,6 +9168,21 @@ function getLogType(message) {
     }
     
     return 'info';
+}
+
+/**
+ * 获取日志类型对应的图标信息
+ */
+function getLogTypeInfo(type) {
+    const typeInfoMap = {
+        'info': { icon: 'fas fa-info-circle', color: '#3498db' },
+        'success': { icon: 'fas fa-check-circle', color: '#28a745' },
+        'warning': { icon: 'fas fa-exclamation-triangle', color: '#ffc107' },
+        'error': { icon: 'fas fa-times-circle', color: '#dc3545' },
+        'progress': { icon: 'fas fa-clock', color: '#3498db' }
+    };
+    
+    return typeInfoMap[type] || typeInfoMap['info'];
 }
 
 /**

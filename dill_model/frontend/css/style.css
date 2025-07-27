@@ -385,13 +385,13 @@ header::before {
 
 /* 第1层：最外层参数区域 - 大容器主框架 */
 .parameters-section {
-    background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
-    border-radius: 16px;
-    border: 1px solid #e8eaed;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+    border-radius: 20px;
+    border: 1px solid #e1e5e9;
     box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.04),
-        0 2px 8px rgba(0, 0, 0, 0.02),
-        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        0 12px 48px rgba(0, 0, 0, 0.06),
+        0 4px 16px rgba(0, 0, 0, 0.03),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
     padding: 2.5rem;
     margin-bottom: 2rem;
     position: relative;
@@ -400,10 +400,10 @@ header::before {
 
 .parameters-section:hover {
     box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.06),
-        0 4px 12px rgba(0, 0, 0, 0.03),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    transform: translateY(-2px);
+        0 16px 64px rgba(0, 0, 0, 0.08),
+        0 6px 20px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    transform: translateY(-3px);
 }
 
 .parameters-section::before {
@@ -2352,9 +2352,9 @@ footer {
     padding: 2px;
   }
   .parameters-section, .results-section, .model-selection-section {
-    padding: 0.7rem 0.3rem;
-    border-radius: 0;
-    box-shadow: none;
+    padding: 1.2rem 0.8rem;
+    border-radius: 12px; /* 移动设备保留适中圆角 */
+    /* 保留阴影效果 */
   }
   .parameters-grid {
     grid-template-columns: 1fr;
@@ -3226,14 +3226,15 @@ input[type="number"]:hover {
 
 /* 第2层：参数组容器 - 中等层级框架 */
 .parameter-group-container {
-    background: linear-gradient(135deg, #fcfcfd 0%, #f7f9fb 100%);
-    border: 1px solid #eff1f4;
-    border-radius: 12px;
+    background: linear-gradient(135deg, #fafbfc 0%, #f0f2f5 100%);
+    border: 1px solid #e8ecf0;
+    border-radius: 14px;
     padding: 1.8rem;
     margin: 1.5rem 0;
     box-shadow: 
-        0 4px 16px rgba(0, 0, 0, 0.02),
-        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        0 6px 24px rgba(0, 0, 0, 0.03),
+        0 2px 8px rgba(0, 0, 0, 0.015),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -3243,9 +3244,10 @@ input[type="number"]:hover {
 
 .parameter-group-container:hover {
     box-shadow: 
-        0 6px 20px rgba(0, 0, 0, 0.03),
-        inset 0 1px 0 rgba(255, 255, 255, 0.7);
-    transform: translateY(-1px);
+        0 8px 32px rgba(0, 0, 0, 0.04),
+        0 3px 12px rgba(0, 0, 0, 0.02),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    transform: translateY(-2px);
 }
 
 .parameter-group-container:before {
@@ -3266,8 +3268,15 @@ input[type="number"]:hover {
 /* 移动设备上的参数组容器样式 */
 @media (max-width: 767px) {
     .parameter-group-container {
-        padding: 10px 12px;
-        margin: 12px 0;
+        padding: 1.2rem 1rem;
+        margin: 1rem 0;
+        border-radius: 10px; /* 移动设备中等圆角 */
+    }
+    
+    .formula-params-container {
+        padding: 1rem;
+        margin: 0.6rem 0;
+        border-radius: 8px; /* 移动设备较小圆角 */
     }
 }
 
@@ -3972,6 +3981,8 @@ div[data-i18n="car_formula_ref"] {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0; /* 允许弹性收缩 */
 }
 
 .log-filter-select {
@@ -5732,12 +5743,13 @@ input:checked + .toggle-slider:hover {
 
 /* 第3层：公式参数容器 - 最内层参数框架 */
 .formula-params-container {
-    background: linear-gradient(135deg, #fefefe 0%, #f9fafb 100%);
-    border-radius: 8px;
-    border: 1px solid #f6f8fa;
+    background: linear-gradient(135deg, #fdfdfe 0%, #f7f8fa 100%);
+    border-radius: 10px;
+    border: 1px solid #f1f3f5;
     box-shadow: 
-        0 2px 6px rgba(0, 0, 0, 0.015),
-        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        0 3px 12px rgba(0, 0, 0, 0.02),
+        0 1px 4px rgba(0, 0, 0, 0.01),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
     padding: 1.2rem;
     margin: 0.8rem 0;
     position: relative;
@@ -5746,9 +5758,10 @@ input:checked + .toggle-slider:hover {
 
 .formula-params-container:hover {
     box-shadow: 
-        0 3px 8px rgba(0, 0, 0, 0.02),
-        inset 0 1px 0 rgba(255, 255, 255, 0.6);
-    transform: translateY(-0.5px);
+        0 4px 16px rgba(0, 0, 0, 0.025),
+        0 2px 6px rgba(0, 0, 0, 0.015),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    transform: translateY(-1px);
 }
 
 .formula-params-container::before {
@@ -7263,4 +7276,64 @@ input:checked + .toggle-slider:hover {
     z-index: 5;
     backdrop-filter: blur(10px);
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* 日志模态框响应式设计 */
+@media (max-width: 768px) {
+    .logs-modal-content {
+        width: 95vw;
+        height: 90vh;
+        margin: 5vh auto;
+    }
+    
+    .modal-header {
+        padding: 15px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .modal-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-controls {
+        width: 100%;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    
+    .log-filter-select {
+        flex: 1;
+        max-width: 150px;
+    }
+    
+    .log-control-btn, .close-modal-btn {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+        min-width: 36px;
+    }
+    
+    .log-control-btn i, .close-modal-btn i {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-controls {
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+    }
+    
+    .log-filter-select {
+        width: 100%;
+        max-width: none;
+    }
+    
+    .modal-controls .log-control-btn,
+    .modal-controls .close-modal-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
