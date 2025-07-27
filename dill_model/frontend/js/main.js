@@ -312,7 +312,7 @@ function showRecalculationNotice() {
         padding: 12px 20px;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
-        z-index: 10000;
+        z-index: 20000;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         font-size: 14px;
         opacity: 0;
@@ -12451,7 +12451,7 @@ function showExportSuccessMessage(filename) {
         padding: 12px 20px;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 10000;
+        z-index: 20000;
         font-family: Arial, sans-serif;
         font-size: 14px;
         display: flex;
@@ -15264,7 +15264,7 @@ function getOrCreateNotificationContainer() {
             position: fixed;
             top: 20px;
             right: 20px;
-            z-index: 10000;
+            z-index: 20000;
             display: flex;
             flex-direction: column;
             gap: 10px;

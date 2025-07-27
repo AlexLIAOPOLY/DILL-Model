@@ -479,7 +479,7 @@
         /* 文件内容编辑器 */
         .file-content-editor {
             width: 100%;
-            height: 200px;
+            height: 500px;
             font-family: monospace;
             border: 1px solid #ddd;
             border-radius: 4px;
@@ -487,6 +487,11 @@
             resize: vertical;
             font-size: 14px;
             line-height: 1.5;
+        }
+        
+        /* 创建新文件对话框中的文本框保持原始高度 */
+        #new-file-content.file-content-editor {
+            height: 200px;
         }
         
         /* 通知样式 */
