@@ -84,18 +84,28 @@ function initExposureCalculationMethodSelector() {
             standardContainer.style.display = 'block';
             cumulativeContainer.style.display = 'none';
             
-            // 显示曝光时间窗口控制
-            if (exposureTimeWindowControl) {
-                exposureTimeWindowControl.style.display = 'block';
+            // 检查是否同时选择了自定义向量
+            const intensityMethodSelect = document.getElementById('intensity_input_method');
+            const isCustomIntensity = intensityMethodSelect && intensityMethodSelect.value === 'custom';
+            
+            if (!isCustomIntensity) {
+                // 仅在非自定义向量模式下显示控制框
+                if (exposureTimeWindowControl) {
+                    exposureTimeWindowControl.style.display = 'block';
+                }
+                
+                if (timeAnimationControl) {
+                    timeAnimationControl.style.display = 'block';
+                }
+                
+                if (vEvaluationControl) {
+                    vEvaluationControl.style.display = 'block';
+                }
             }
             
-            // 显示1D时间动画控制和1D V评估控制
-            if (timeAnimationControl) {
-                timeAnimationControl.style.display = 'block';
-            }
-            
-            if (vEvaluationControl) {
-                vEvaluationControl.style.display = 'block';
+            // 恢复所有必要元素的显示
+            if (typeof showAllNecessaryElements === 'function') {
+                showAllNecessaryElements();
             }
             
             // 显示切换到标准模式的通知（使用蓝色样式）
@@ -108,28 +118,42 @@ function initExposureCalculationMethodSelector() {
             standardContainer.style.display = 'none';
             cumulativeContainer.style.display = 'block';
             
-            // 隐藏曝光时间窗口控制
-            if (exposureTimeWindowControl) {
-                exposureTimeWindowControl.style.display = 'none';
-            }
+            // 检查是否同时选择了自定义向量
+            const intensityMethodSelect = document.getElementById('intensity_input_method');
+            const isCustomIntensity = intensityMethodSelect && intensityMethodSelect.value === 'custom';
             
-            // 隐藏1D时间动画控制和1D V评估控制
-            if (timeAnimationControl) {
-                timeAnimationControl.style.display = 'none';
-            }
-            
-            if (vEvaluationControl) {
-                vEvaluationControl.style.display = 'none';
+            if (isCustomIntensity) {
+                // 同时选择自定义向量和多段曝光时间累计：隐藏所有多余元素
+                if (typeof hideAllUnnecessaryElements === 'function') {
+                    hideAllUnnecessaryElements();
+                }
+                // 只在非初始化状态下显示通知
+                if (typeof showNotification === 'function' && !window.isPageInitializing) {
+                    showNotification('已切换到自定义向量+多段曝光时间累计模式，所有多余元素已隐藏', 'info');
+                }
+                console.log('🔒 自定义向量+多段曝光时间累计模式：已隐藏所有多余元素');
+            } else {
+                // 仅选择多段曝光时间累计：隐藏特定控制框
+                if (exposureTimeWindowControl) {
+                    exposureTimeWindowControl.style.display = 'none';
+                }
+                
+                if (timeAnimationControl) {
+                    timeAnimationControl.style.display = 'none';
+                }
+                
+                if (vEvaluationControl) {
+                    vEvaluationControl.style.display = 'none';
+                }
+                
+                if (typeof showNotification === 'function') {
+                    showNotification('已切换到多段曝光时间累计模式，请设置段落参数', 'info');
+                }
             }
             
             // 检查是否需要初始化段落输入框
             if (cumulativeExposureSegments.intensities.length === 0) {
                 generateSegmentInputs();
-            }
-            
-            // 显示切换到多段曝光时间累计模式的通知
-            if (typeof showNotification === 'function') {
-                showNotification('已切换到多段曝光时间累计模式，请设置段落参数', 'info');
             }
         }
     });

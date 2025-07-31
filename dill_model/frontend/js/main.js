@@ -180,6 +180,9 @@ let loadingTimeText = null;
 let loadingStartTime = null;
 let loadingTimeInterval = null;
 
+// 页面初始化标志，用于区分是初始化还是用户主动修改
+window.isPageInitializing = true;
+
 // 全局变量，用于存储当前计算的模型和维度信息
 window.currentCalculationInfo = {
     model: 'dill',
@@ -227,6 +230,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化应用
     initApp();
+    
+    // 延迟设置初始化标志为false，确保所有初始化完成
+    setTimeout(() => {
+        window.isPageInitializing = false;
+        console.log('📖 页面初始化完成，现在用户修改选项时将显示通知');
+    }, 500);
 });
 
 // 初始化自定义向量控制框状态
@@ -248,15 +257,24 @@ function initCustomVectorControlsState() {
         applyBtn.disabled = !customIntensityData || !customIntensityData.loaded;
     }
     
+    // 检查默认选项并执行相应的逻辑
     if (methodSelect && methodSelect.value === 'custom') {
-        // 如果当前已选择自定义向量模式，确保正确设置界面状态
-        // 延迟执行，确保DOM完全加载
+        // 延迟执行，确保DOM完全加载和曝光计算方式选择器也初始化完成
         setTimeout(() => {
             if (typeof handleIntensityMethodChange === 'function') {
                 handleIntensityMethodChange();
                 console.log('🔒 页面加载时检测到自定义向量模式，已正确初始化界面状态');
             }
-        }, 100);
+            
+            // 检查是否同时是多段曝光时间累计模式
+            const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+            if (exposureMethodSelect && exposureMethodSelect.value === 'cumulative') {
+                console.log('🔒 页面加载时检测到自定义向量+多段曝光时间累计模式，执行特殊初始化');
+                if (typeof hideAllUnnecessaryElements === 'function') {
+                    hideAllUnnecessaryElements();
+                }
+            }
+        }, 200);
     }
 }
 
@@ -2148,7 +2166,7 @@ function displayInteractiveResults(data) {
             if (thicknessTitleElement) thicknessTitleElement.textContent = '光刻胶厚度分布 (2D) (Y, Z平面)';
         }
     } else {
-        if (exposureTitleElement) exposureTitleElement.textContent = '曝光计量分布 (1D)';
+        if (exposureTitleElement) exposureTitleElement.textContent = '光强分布 (1D)';
         if (thicknessTitleElement) thicknessTitleElement.textContent = '刻蚀深度分布 (1D)';
     }
 
@@ -3586,8 +3604,16 @@ function createExposurePlot(container, data) {
             // 🔥 多段曝光模式下的标题
             let titleText = 'DILL模型 - 光强分布';
             if (isCumulativeMode) {
+                // 检查是否启用了自定义多段曝光时间比较
+                const enableExposureTimeWindow = document.getElementById('enable_exposure_time_window_dill');
+                const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked;
+                
                 const totalTime = data.segment_count * data.segment_duration;
-                titleText = `DILL模型 - 光强分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
+                if (showMultiSegmentText) {
+                    titleText = `DILL模型 - 光强分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
+                } else {
+                    titleText = `DILL模型 - 光强分布 t=${totalTime.toFixed(1)}s`;
+                }
             }
             
             const layout = {
@@ -3655,7 +3681,7 @@ function createExposurePlot(container, data) {
         }
 
         const layout = {
-            title: '曝光计量分布 (1D)',
+            title: '光强分布 (1D)',
             xaxis: { title: xAxisTitle },
             yaxis: { title: (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].exposure_dose_trace_name) || '曝光剂量 (mJ/cm²)' },
             margin: { l: 60, r: 20, t: 60, b: 60 },
@@ -3736,7 +3762,11 @@ function createThicknessPlot(container, data) {
             const exposureMethodSelect = document.getElementById('exposure_calculation_method');
             const isCumulativeExposure = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
             
-            let titleText = 'DILL模型 - 蚀刻深度分布 (多曝光时间)';
+            // 检查是否启用了自定义多段曝光时间比较
+            const enableExposureTimeWindow = document.getElementById('enable_exposure_time_window_dill');
+            const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked;
+            
+            let titleText = showMultiSegmentText ? 'DILL模型 - 刻蚀深度分布 (多曝光时间)' : 'DILL模型 - 刻蚀深度分布';
             if (isCumulativeExposure) {
                 // 获取多段曝光的总时间
                 const segmentCountInput = document.getElementById('segment_count');
@@ -3745,7 +3775,11 @@ function createThicknessPlot(container, data) {
                 const segmentDuration = segmentDurationInput ? parseFloat(segmentDurationInput.value) || 1 : 1;
                 const totalTime = segmentCount * segmentDuration;
                 
-                titleText = `DILL模型 - 刻蚀深度分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
+                if (showMultiSegmentText) {
+                    titleText = `DILL模型 - 刻蚀深度分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
+                } else {
+                    titleText = `DILL模型 - 刻蚀深度分布 t=${totalTime.toFixed(1)}s`;
+                }
             }
             
             const layout = {
@@ -3753,7 +3787,7 @@ function createThicknessPlot(container, data) {
                 xaxis: { title: '位置 (mm)' },
                 yaxis: { title: '蚀刻深度' },
                 margin: { l: 70, r: 20, t: 80, b: 60 },
-                showlegend: true,
+                showlegend: showMultiSegmentText, // 只有在启用自定义多段曝光时间比较时才显示图例
                 legend: {
                     x: 1.02,
                     y: 1,
@@ -3804,6 +3838,10 @@ function createThicknessPlot(container, data) {
         const exposureMethodSelect = document.getElementById('exposure_calculation_method');
         const isCumulativeExposure = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
         
+        // 检查是否启用了自定义多段曝光时间比较
+        const enableExposureTimeWindow = document.getElementById('enable_exposure_time_window_dill');
+        const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked;
+        
         let traceName = (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].thickness_trace_name) || '相对厚度';
         if (isCumulativeExposure) {
             // 获取多段曝光的总时间
@@ -3839,7 +3877,11 @@ function createThicknessPlot(container, data) {
         if (isCumulativeExposure) {
             // 使用前面计算的总时间
             const totalTime = (segmentCount * segmentDuration);
-            titleText = `刻蚀深度分布 (1D) - 多段曝光时间累积 t=${totalTime.toFixed(1)}s`;
+            if (showMultiSegmentText) {
+                titleText = `刻蚀深度分布 (1D) - 多段曝光时间累积 t=${totalTime.toFixed(1)}s`;
+            } else {
+                titleText = `刻蚀深度分布 (1D) t=${totalTime.toFixed(1)}s`;
+            }
         }
         
         const layout = {
@@ -3847,7 +3889,7 @@ function createThicknessPlot(container, data) {
             xaxis: { title: xAxisTitle },
             yaxis: { title: (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].thickness_trace_name) || '相对厚度' },
             margin: { l: 60, r: 20, t: 60, b: 60 },
-            showlegend: isCumulativeExposure // 只在多段曝光模式下显示图例
+            showlegend: isCumulativeExposure && showMultiSegmentText // 只在多段曝光模式且启用自定义多段曝光时间比较时显示图例
         };
         
         Plotly.newPlot(container, [trace], layout, {responsive: true});
@@ -12912,43 +12954,62 @@ function handleIntensityMethodChange() {
         customContainer.style.display = 'block';
         formulaContainer.classList.add('hidden');
         
-        // 隐藏三个控制框
-        if (exposureTimeWindowControl) {
-            exposureTimeWindowControl.style.display = 'none';
-            exposureTimeWindowControl.classList.add('hidden-by-custom-vector');
-        }
-        if (animationParamsContainer) {
-            animationParamsContainer.style.display = 'none';
-            animationParamsContainer.classList.add('hidden-by-custom-vector');
-        }
-        if (vEvaluationParamsContainer) {
-            vEvaluationParamsContainer.style.display = 'none';
-            vEvaluationParamsContainer.classList.add('hidden-by-custom-vector');
+        // 检查是否同时选择了多段曝光时间累积
+        const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+        const isCumulative = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+        
+        if (isCumulative) {
+            // 同时选择自定义向量和多段曝光时间累计：隐藏所有多余元素
+            hideAllUnnecessaryElements();
+            // 只在非初始化状态下显示通知
+            if (!window.isPageInitializing) {
+                showNotification('已切换到自定义向量+多段曝光时间累计模式，所有多余元素已隐藏', 'info');
+            }
+            console.log('🔒 自定义向量+多段曝光时间累计模式：已隐藏所有多余元素');
+        } else {
+            // 仅选择自定义向量：隐藏三个控制框
+            if (exposureTimeWindowControl) {
+                exposureTimeWindowControl.style.display = 'none';
+                exposureTimeWindowControl.classList.add('hidden-by-custom-vector');
+            }
+            if (animationParamsContainer) {
+                animationParamsContainer.style.display = 'none';
+                animationParamsContainer.classList.add('hidden-by-custom-vector');
+            }
+            if (vEvaluationParamsContainer) {
+                vEvaluationParamsContainer.style.display = 'none';
+                vEvaluationParamsContainer.classList.add('hidden-by-custom-vector');
+            }
+            
+            showNotification('已切换到自定义向量模式，请上传文件或手动输入光强分布数据。三个控制框已隐藏', 'info');
+            console.log('🔒 已隐藏三个控制框：曝光时间窗口控制、1D时间动画控制、1D对比度评估控制');
         }
         
         // 清空图表
         clearAllCharts();
         
-        // 显示提示
-        showNotification('已切换到自定义向量模式，请上传文件或手动输入光强分布数据。三个控制框已隐藏', 'info');
-        console.log('🔒 已隐藏三个控制框：曝光时间窗口控制、1D时间动画控制、1D对比度评估控制');
     } else {
         // 显示公式参数，隐藏自定义输入
         customContainer.style.display = 'none';
         formulaContainer.classList.remove('hidden');
         
-        // 显示三个控制框
-        if (exposureTimeWindowControl) {
-            exposureTimeWindowControl.style.display = '';
-            exposureTimeWindowControl.classList.remove('hidden-by-custom-vector');
-        }
-        if (animationParamsContainer) {
-            animationParamsContainer.style.display = '';
-            animationParamsContainer.classList.remove('hidden-by-custom-vector');
-        }
-        if (vEvaluationParamsContainer) {
-            vEvaluationParamsContainer.style.display = '';
-            vEvaluationParamsContainer.classList.remove('hidden-by-custom-vector');
+        // 恢复显示三个控制框（如果不是多段曝光时间累计模式）
+        const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+        const isCumulative = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+        
+        if (!isCumulative) {
+            if (exposureTimeWindowControl) {
+                exposureTimeWindowControl.style.display = '';
+                exposureTimeWindowControl.classList.remove('hidden-by-custom-vector');
+            }
+            if (animationParamsContainer) {
+                animationParamsContainer.style.display = '';
+                animationParamsContainer.classList.remove('hidden-by-custom-vector');
+            }
+            if (vEvaluationParamsContainer) {
+                vEvaluationParamsContainer.style.display = '';
+                vEvaluationParamsContainer.classList.remove('hidden-by-custom-vector');
+            }
         }
         
         // 清除自定义数据
@@ -12960,6 +13021,134 @@ function handleIntensityMethodChange() {
         // 显示提示
         showNotification('已切换到公式计算模式，所有控制框已恢复显示', 'info');
         console.log('🔓 已恢复显示三个控制框：曝光时间窗口控制、1D时间动画控制、1D对比度评估控制');
+    }
+}
+
+// 隐藏所有多余元素（当同时选择自定义向量和多段曝光时间累计时）
+function hideAllUnnecessaryElements() {
+    // 隐藏曝光时间窗口控制
+    const exposureTimeWindowControl = document.getElementById('exposure-time-window-control');
+    if (exposureTimeWindowControl) {
+        exposureTimeWindowControl.style.display = 'none';
+        exposureTimeWindowControl.classList.add('hidden-by-special-mode');
+    }
+    
+    // 隐藏1D动画参数容器
+    const animationParamsContainer = document.getElementById('dill-1d-animation-params-container');
+    if (animationParamsContainer) {
+        animationParamsContainer.style.display = 'none';
+        animationParamsContainer.classList.add('hidden-by-special-mode');
+    }
+    
+    // 隐藏1D V评估参数容器
+    const vEvaluationParamsContainer = document.getElementById('dill-1d-v-evaluation-params-container');
+    if (vEvaluationParamsContainer) {
+        vEvaluationParamsContainer.style.display = 'none';
+        vEvaluationParamsContainer.classList.add('hidden-by-special-mode');
+    }
+    
+    // 隐藏动画播放区域
+    const animationSections = [
+        'dill-1d-animation-section',
+        'dill-1d-v-evaluation-section',
+        'dill-4d-animation-section',
+        'enhanced-dill-4d-animation-section',
+        'car-4d-animation-section'
+    ];
+    
+    animationSections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+            section.style.display = 'none';
+            section.classList.add('hidden-by-special-mode');
+        }
+    });
+    
+    // 隐藏可能打开的模态框
+    const modals = [
+        'logs-modal',
+        'example-files-modal',
+        'file-preview-modal',
+        'create-file-modal'
+    ];
+    
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.add('hidden-by-special-mode');
+        }
+    });
+    
+    console.log('🔒 特殊模式：已隐藏所有多余元素（动画区域、模态框等）');
+}
+
+// 显示所有必要元素（当退出特殊模式时）
+function showAllNecessaryElements() {
+    // 获取当前的模式状态
+    const intensityMethodSelect = document.getElementById('intensity_input_method');
+    const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+    
+    const isCustomIntensity = intensityMethodSelect && intensityMethodSelect.value === 'custom';
+    const isCumulative = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+    
+    // 如果不是特殊模式（同时选择两个），则恢复显示
+    if (!isCustomIntensity || !isCumulative) {
+        // 恢复显示曝光时间窗口控制
+        const exposureTimeWindowControl = document.getElementById('exposure-time-window-control');
+        if (exposureTimeWindowControl && exposureTimeWindowControl.classList.contains('hidden-by-special-mode')) {
+            exposureTimeWindowControl.style.display = '';
+            exposureTimeWindowControl.classList.remove('hidden-by-special-mode');
+        }
+        
+        // 恢复显示1D动画参数容器
+        const animationParamsContainer = document.getElementById('dill-1d-animation-params-container');
+        if (animationParamsContainer && animationParamsContainer.classList.contains('hidden-by-special-mode')) {
+            animationParamsContainer.style.display = '';
+            animationParamsContainer.classList.remove('hidden-by-special-mode');
+        }
+        
+        // 恢复显示1D V评估参数容器
+        const vEvaluationParamsContainer = document.getElementById('dill-1d-v-evaluation-params-container');
+        if (vEvaluationParamsContainer && vEvaluationParamsContainer.classList.contains('hidden-by-special-mode')) {
+            vEvaluationParamsContainer.style.display = '';
+            vEvaluationParamsContainer.classList.remove('hidden-by-special-mode');
+        }
+        
+        // 恢复显示动画播放区域（但不主动显示）
+        const animationSections = [
+            'dill-1d-animation-section',
+            'dill-1d-v-evaluation-section',
+            'dill-4d-animation-section',
+            'enhanced-dill-4d-animation-section',
+            'car-4d-animation-section'
+        ];
+        
+        animationSections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section && section.classList.contains('hidden-by-special-mode')) {
+                // 移除特殊模式标记，但保持隐藏状态（由其他逻辑控制）
+                section.classList.remove('hidden-by-special-mode');
+            }
+        });
+        
+        // 恢复模态框（移除特殊模式标记，但不主动显示）
+        const modals = [
+            'logs-modal',
+            'example-files-modal',
+            'file-preview-modal',
+            'create-file-modal'
+        ];
+        
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (modal && modal.classList.contains('hidden-by-special-mode')) {
+                modal.classList.remove('hidden-by-special-mode');
+                // 模态框默认保持隐藏，由用户操作显示
+            }
+        });
+        
+        console.log('🔓 已退出特殊模式，恢复必要元素的显示');
     }
 }
 
