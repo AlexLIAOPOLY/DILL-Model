@@ -1582,8 +1582,12 @@ function getParameterValues() {
             const enableExposureTimeWindowElem = document.getElementById('enable_exposure_time_window_dill');
             const enableExposureTimeWindow = enableExposureTimeWindowElem ? enableExposureTimeWindowElem.checked || false : false;
             
-            // 根据曝光时间窗口开关状态设置参数
-            if (enableExposureTimeWindow) {
+            // 检查当前是否为累积模式
+            const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+            const isCumulativeMode = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+            
+            // 根据曝光时间窗口开关状态设置参数（但在累积模式下应该禁用）
+            if (enableExposureTimeWindow && !isCumulativeMode) {
                 // 启用窗口模式：使用自定义曝光时间列表
                 const customExposureTimes = getCustomExposureTimes();
                 if (customExposureTimes && customExposureTimes.length > 0) {
@@ -1595,8 +1599,11 @@ function getParameterValues() {
                     params.enable_exposure_time_window = false;
                 }
             } else {
-                // 未启用窗口模式：使用上方的单一曝光时间值
+                // 未启用窗口模式或处于累积模式：使用上方的单一曝光时间值
                 params.enable_exposure_time_window = false;
+                if (enableExposureTimeWindow && isCumulativeMode) {
+                    console.log('🔒 累积模式下禁用曝光时间窗口功能，使用累积计算逻辑');
+                }
                 // 确保使用params.t_exp（已在前面设置）作为单一曝光时间
                 console.log('DILL模型1D模式使用单一曝光时间:', params.t_exp, 's');
             }
@@ -3604,16 +3611,9 @@ function createExposurePlot(container, data) {
             // 🔥 多段曝光模式下的标题
             let titleText = 'DILL模型 - 光强分布';
             if (isCumulativeMode) {
-                // 检查是否启用了自定义多段曝光时间比较
-                const enableExposureTimeWindow = document.getElementById('enable_exposure_time_window_dill');
-                const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked;
-                
+                // 累积模式下直接使用累积时间标题，不需要检查曝光时间窗口开关
                 const totalTime = data.segment_count * data.segment_duration;
-                if (showMultiSegmentText) {
-                    titleText = `DILL模型 - 光强分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
-                } else {
-                    titleText = `DILL模型 - 光强分布 t=${totalTime.toFixed(1)}s`;
-                }
+                titleText = `DILL模型 - 光强分布 (累积模式) t=${totalTime.toFixed(1)}s`;
             }
             
             const layout = {
@@ -3762,9 +3762,9 @@ function createThicknessPlot(container, data) {
             const exposureMethodSelect = document.getElementById('exposure_calculation_method');
             const isCumulativeExposure = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
             
-            // 检查是否启用了自定义多段曝光时间比较
+            // 检查是否启用了自定义多段曝光时间比较（但在累积模式下应该禁用）
             const enableExposureTimeWindow = document.getElementById('enable_exposure_time_window_dill');
-            const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked;
+            const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked && !isCumulativeExposure;
             
             let titleText = showMultiSegmentText ? 'DILL模型 - 刻蚀深度分布 (多曝光时间)' : 'DILL模型 - 刻蚀深度分布';
             if (isCumulativeExposure) {
@@ -3838,9 +3838,9 @@ function createThicknessPlot(container, data) {
         const exposureMethodSelect = document.getElementById('exposure_calculation_method');
         const isCumulativeExposure = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
         
-        // 检查是否启用了自定义多段曝光时间比较
+        // 检查是否启用了自定义多段曝光时间比较（但在累积模式下应该禁用）
         const enableExposureTimeWindow = document.getElementById('enable_exposure_time_window_dill');
-        const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked;
+        const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked && !isCumulativeExposure;
         
         let traceName = (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].thickness_trace_name) || '相对厚度';
         if (isCumulativeExposure) {
@@ -7835,15 +7835,24 @@ function initSineWaveTypeSelectors() {
                 if (this.value === 'single') {
                     // 只有在single模式（薄胶1D）下才显示1D动画参数
                     dill1DAnimationGroup.style.display = 'block';
+                    
+                    // 智能恢复1D动画面板显示：根据复选框状态决定
+                    const enable1dCheckbox = document.getElementById('enable_1d_animation_dill');
+                    const dill1dParams = document.getElementById('dill_1d_time_params');
+                    if (enable1dCheckbox && dill1dParams && enable1dCheckbox.checked) {
+                        dill1dParams.style.display = 'block';
+                        console.log('📋 恢复1D动画面板显示（复选框已勾选）');
+                    }
+                    
                     console.log('✅ DILL 1D模式：1D动画参数组已显示');
                 } else {
                     // 切换到其他模式时隐藏1D动画参数
                     dill1DAnimationGroup.style.display = 'none';
                     
-                    // 如果切换到非1D模式，取消勾选1D动画并隐藏动画区域
+                    // 如果切换到非1D模式，隐藏动画面板但保持复选框状态
                     const enable1dCheckbox = document.getElementById('enable_1d_animation_dill');
                     if (enable1dCheckbox) {
-                        enable1dCheckbox.checked = false;
+                        // 不修改复选框状态，只隐藏面板
                         const dill1dParams = document.getElementById('dill_1d_time_params');
                         if (dill1dParams) dill1dParams.style.display = 'none';
                         
@@ -7859,6 +7868,8 @@ function initSineWaveTypeSelectors() {
                             dill1DAnimationState.intervalId = null;
                             dill1DAnimationState.isPlaying = false;
                         }
+                        
+                        console.log('🔒 保持1D动画复选框状态，仅隐藏面板');
                     }
                     console.log('DILL 非1D模式：1D动画参数组已隐藏');
                 }
@@ -7870,15 +7881,24 @@ function initSineWaveTypeSelectors() {
                 if (this.value === 'single') {
                     // 只有在single模式（薄胶1D）下才显示1D V评估参数
                     dill1DVEvaluationGroup.style.display = 'block';
+                    
+                    // 智能恢复1D V评估面板显示：根据复选框状态决定
+                    const enable1dVCheckbox = document.getElementById('enable_1d_v_evaluation_dill');
+                    const dillVParams = document.getElementById('dill_1d_v_params');
+                    if (enable1dVCheckbox && dillVParams && enable1dVCheckbox.checked) {
+                        dillVParams.style.display = 'block';
+                        console.log('📋 恢复1D V评估面板显示（复选框已勾选）');
+                    }
+                    
                     console.log('✅ DILL 1D模式：V评估参数组已显示');
                 } else {
                     // 切换到其他模式时隐藏1D V评估参数
                     dill1DVEvaluationGroup.style.display = 'none';
                     
-                    // 如果切换到非1D模式，取消勾选V评估并隐藏评估区域
+                    // 如果切换到非1D模式，隐藏V评估面板但保持复选框状态
                     const enable1dVEvaluationCheckbox = document.getElementById('enable_1d_v_evaluation_dill');
                     if (enable1dVEvaluationCheckbox) {
-                        enable1dVEvaluationCheckbox.checked = false;
+                        // 不修改复选框状态，只隐藏面板
                         const dillVParams = document.getElementById('dill_1d_v_params');
                         if (dillVParams) dillVParams.style.display = 'none';
                         
@@ -7894,6 +7914,8 @@ function initSineWaveTypeSelectors() {
                             dill1DVEvaluationState.intervalId = null;
                             dill1DVEvaluationState.isPlaying = false;
                         }
+                        
+                        console.log('🔒 保持1D V评估复选框状态，仅隐藏面板');
                     }
                     console.log('DILL 非1D模式：V评估参数组已隐藏');
                 }
@@ -7905,17 +7927,28 @@ function initSineWaveTypeSelectors() {
                 if (this.value === 'single') {
                     // 只有在single模式（薄胶1D）下才显示曝光时间窗口选择器
                     dill1DExposureTimeGroup.style.display = 'block';
+                    
+                    // 智能恢复曝光时间窗口面板显示：根据复选框状态决定
+                    const enableExposureCheckbox = document.getElementById('enable_exposure_time_window_dill');
+                    const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
+                    if (enableExposureCheckbox && exposureTimeParams && enableExposureCheckbox.checked) {
+                        exposureTimeParams.style.display = 'block';
+                        console.log('📋 恢复曝光时间窗口面板显示（复选框已勾选）');
+                    }
+                    
                     console.log('✅ DILL 1D模式：曝光时间窗口选择器已显示');
                 } else {
                     // 切换到其他模式时隐藏曝光时间窗口选择器
                     dill1DExposureTimeGroup.style.display = 'none';
                     
-                    // 如果切换到非1D模式，取消勾选曝光时间窗口
+                    // 如果切换到非1D模式，隐藏曝光时间窗口面板但保持复选框状态
                     const enableExposureTimeWindowCheckbox = document.getElementById('enable_exposure_time_window_dill');
                     if (enableExposureTimeWindowCheckbox) {
-                        enableExposureTimeWindowCheckbox.checked = false;
+                        // 不修改复选框状态，只隐藏面板
                         const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
                         if (exposureTimeParams) exposureTimeParams.style.display = 'none';
+                        
+                        console.log('🔒 保持曝光时间窗口复选框状态，仅隐藏面板');
                     }
                     console.log('DILL 非1D模式：曝光时间窗口选择器已隐藏');
                 }
@@ -9476,6 +9509,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('DILL模型4D动画已禁用');
             }
         });
+        
+        // 添加便捷关闭按钮事件监听器
+        const closeDill4DTimeParamsBtn = document.getElementById('close_dill_4d_time_params');
+        if (closeDill4DTimeParamsBtn) {
+            closeDill4DTimeParamsBtn.addEventListener('click', function() {
+                // 取消勾选复选框并隐藏面板
+                enable4DAnimationDill.checked = false;
+                dill4DTimeParams.style.display = 'none';
+                
+                // 隐藏4D动画区域
+                const animationSection = document.getElementById('dill-4d-animation-section');
+                if (animationSection) {
+                    animationSection.style.display = 'none';
+                }
+                
+                // 停止当前播放的动画
+                if (dill4DAnimationState.intervalId) {
+                    clearInterval(dill4DAnimationState.intervalId);
+                    dill4DAnimationState.intervalId = null;
+                    dill4DAnimationState.isPlaying = false;
+                }
+                
+                console.log('用户点击关闭按钮，已隐藏DILL 4D动画面板和动画区域');
+            });
+        }
     }
     
     // 增强DILL模型4D动画复选框事件
@@ -9508,6 +9566,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Enhanced DILL模型4D动画已禁用');
             }
         });
+        
+        // 添加便捷关闭按钮事件监听器
+        const closeEnhancedDill4DTimeParamsBtn = document.getElementById('close_enhanced_dill_4d_time_params');
+        if (closeEnhancedDill4DTimeParamsBtn) {
+            closeEnhancedDill4DTimeParamsBtn.addEventListener('click', function() {
+                // 取消勾选复选框并隐藏面板
+                enable4DAnimationEnhancedDill.checked = false;
+                enhancedDill4DTimeParams.style.display = 'none';
+                
+                // 隐藏4D动画区域
+                const animationSection = document.getElementById('enhanced-dill-4d-animation-section');
+                if (animationSection) {
+                    animationSection.style.display = 'none';
+                }
+                
+                // 停止当前播放的动画
+                if (enhancedDill4DAnimationState.intervalId) {
+                    clearInterval(enhancedDill4DAnimationState.intervalId);
+                    enhancedDill4DAnimationState.intervalId = null;
+                    enhancedDill4DAnimationState.isPlaying = false;
+                }
+                
+                console.log('用户点击关闭按钮，已隐藏Enhanced DILL 4D动画面板和动画区域');
+            });
+        }
     }
     
     // CAR模型4D动画复选框事件 (如果存在)
@@ -9537,6 +9620,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('CAR模型4D动画已禁用');
             }
         });
+        
+        // 添加便捷关闭按钮事件监听器
+        const closeCar4DParamsBtn = document.getElementById('close_car_4d_params');
+        if (closeCar4DParamsBtn) {
+            closeCar4DParamsBtn.addEventListener('click', function() {
+                // 取消勾选复选框并隐藏面板
+                carEnable4DAnimation.checked = false;
+                car4DTimeParams.style.display = 'none';
+                
+                // 隐藏4D动画区域
+                const animationSection = document.getElementById('car-4d-animation-section');
+                if (animationSection) {
+                    animationSection.style.display = 'none';
+                }
+                
+                // 停止当前播放的动画
+                if (typeof car4DAnimationState !== 'undefined' && car4DAnimationState.intervalId) {
+                    clearInterval(car4DAnimationState.intervalId);
+                    car4DAnimationState.intervalId = null;
+                    car4DAnimationState.isPlaying = false;
+                }
+                
+                console.log('用户点击关闭按钮，已隐藏CAR 4D动画面板和动画区域');
+            });
+        }
     }
     
     // DILL模型4D动画控制按钮事件
@@ -9634,6 +9742,30 @@ function setupDill1DAnimationControls() {
                 }
             }
         });
+        
+        // 添加便捷关闭按钮事件监听器
+        const close1DTimeParamsBtn = document.getElementById('close_dill_1d_time_params');
+        if (close1DTimeParamsBtn) {
+            close1DTimeParamsBtn.addEventListener('click', function() {
+                // 取消勾选复选框并隐藏面板
+                enable1DAnimationDill.checked = false;
+                dill1DTimeParams.style.display = 'none';
+                
+                // 隐藏1D动画区域
+                const animationSection = document.getElementById('dill-1d-animation-section');
+                if (animationSection) {
+                    animationSection.style.display = 'none';
+                    console.log('用户点击关闭按钮，已隐藏DILL 1D动画面板和动画区域');
+                }
+                
+                // 停止当前播放的动画
+                if (typeof dill1DAnimationState !== 'undefined' && dill1DAnimationState.intervalId) {
+                    clearInterval(dill1DAnimationState.intervalId);
+                    dill1DAnimationState.intervalId = null;
+                    dill1DAnimationState.isPlaying = false;
+                }
+            });
+        }
     }
 }
 
@@ -9952,9 +10084,11 @@ function updateDill1DAnimationFrame(frameIndex) {
         exposureContainer.innerHTML = '';
         
         // 检查是否有多个曝光时间的数据（曝光时间窗口模式）
-        // 需要同时满足：1) 数据中有多个曝光时间 2) 用户启用了曝光时间窗口控制
+        // 需要同时满足：1) 数据中有多个曝光时间 2) 用户启用了曝光时间窗口控制 3) 不在累积模式下
         const enableExposureTimeWindowCheckbox = document.getElementById('enable_exposure_time_window_dill');
-        const isExposureTimeWindowEnabled = enableExposureTimeWindowCheckbox ? enableExposureTimeWindowCheckbox.checked : false;
+        const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+        const isCumulativeMode = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+        const isExposureTimeWindowEnabled = enableExposureTimeWindowCheckbox ? enableExposureTimeWindowCheckbox.checked && !isCumulativeMode : false;
         const hasMultipleExposureTimes = frameData && frameData.etch_depths_data && Array.isArray(frameData.etch_depths_data) && frameData.etch_depths_data.length > 1 && isExposureTimeWindowEnabled;
         
         if (hasMultipleExposureTimes) {
@@ -10075,9 +10209,11 @@ function updateDill1DAnimationFrame(frameIndex) {
         thicknessContainer.innerHTML = '';
         
         // 检查是否有多个曝光时间的数据
-        // 需要同时满足：1) 数据中有多个曝光时间 2) 用户启用了曝光时间窗口控制
+        // 需要同时满足：1) 数据中有多个曝光时间 2) 用户启用了曝光时间窗口控制 3) 不在累积模式下
         const enableExposureTimeWindowCheckbox = document.getElementById('enable_exposure_time_window_dill');
-        const isExposureTimeWindowEnabled = enableExposureTimeWindowCheckbox ? enableExposureTimeWindowCheckbox.checked : false;
+        const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+        const isCumulativeMode = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+        const isExposureTimeWindowEnabled = enableExposureTimeWindowCheckbox ? enableExposureTimeWindowCheckbox.checked && !isCumulativeMode : false;
         const hasMultipleExposureTimes = frameData && frameData.etch_depths_data && Array.isArray(frameData.etch_depths_data) && frameData.etch_depths_data.length > 1 && isExposureTimeWindowEnabled;
         
         if (hasMultipleExposureTimes) {
@@ -11261,21 +11397,39 @@ function initExposureTimeWindowSelector() {
     const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
     
     if (enableExposureTimeWindowCheckbox && exposureTimeParams) {
-        // 初始状态：根据复选框状态显示/隐藏参数和禁用/启用曝光时间输入框
-        exposureTimeParams.style.display = enableExposureTimeWindowCheckbox.checked ? 'block' : 'none';
-        toggleExposureTimeInputState(enableExposureTimeWindowCheckbox.checked);
+        // 检查初始状态是否为累积模式
+        const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+        const isCumulativeMode = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+        
+        // 初始状态：根据复选框状态和累积模式显示/隐藏参数和禁用/启用曝光时间输入框
+        const shouldShowParams = enableExposureTimeWindowCheckbox.checked && !isCumulativeMode;
+        exposureTimeParams.style.display = shouldShowParams ? 'block' : 'none';
+        toggleExposureTimeInputState(shouldShowParams);
         // 初始化时不需要隐藏其他控制框，移除错误的调用
         
         enableExposureTimeWindowCheckbox.addEventListener('change', function() {
-            exposureTimeParams.style.display = this.checked ? 'block' : 'none';
-            // 切换曝光时间输入框的禁用/启用状态
-            toggleExposureTimeInputState(this.checked);
+            // 检查当前是否为累积模式
+            const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+            const isCumulativeMode = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+            
+            // 在累积模式下，即使开关被勾选也不显示参数面板
+            if (this.checked && !isCumulativeMode) {
+                exposureTimeParams.style.display = 'block';
+                // 切换曝光时间输入框的禁用/启用状态
+                toggleExposureTimeInputState(true);
+            } else {
+                exposureTimeParams.style.display = 'none';
+                // 切换曝光时间输入框的禁用/启用状态
+                toggleExposureTimeInputState(false);
+            }
             
             // 注意：这里不需要隐藏其他控制框，只需要控制曝光时间窗口参数的显示
             // 移除了错误的toggleOtherControlsVisibility调用
             
-            if (this.checked) {
+            if (this.checked && !isCumulativeMode) {
                 console.log('启用曝光时间窗口控制 - 将使用自定义曝光时间列表，单一曝光时间输入框已禁用');
+            } else if (this.checked && isCumulativeMode) {
+                console.log('🔒 累积模式下曝光时间窗口功能被禁用，开关状态已保持但参数面板隐藏');
             } else {
                 console.log('禁用曝光时间窗口控制 - 将使用上方单一曝光时间值，单一曝光时间输入框已启用');
             }
@@ -11352,6 +11506,27 @@ function initExposureTimeWindowSelector() {
             if (typeof clearAllCharts === 'function') {
                 clearAllCharts();
                 console.log('已清空结果图表（恢复默认曝光时间）');
+            }
+        });
+    }
+    
+    // 添加便捷关闭按钮事件监听器
+    const closeExposureTimeParamsBtn = document.getElementById('close_dill_exposure_time_params');
+    if (closeExposureTimeParamsBtn && enableExposureTimeWindowCheckbox && exposureTimeParams) {
+        closeExposureTimeParamsBtn.addEventListener('click', function() {
+            // 取消勾选复选框并隐藏面板
+            enableExposureTimeWindowCheckbox.checked = false;
+            exposureTimeParams.style.display = 'none';
+            
+            // 恢复曝光时间输入框的启用状态
+            toggleExposureTimeInputState(false);
+            
+            console.log('用户点击关闭按钮，已隐藏曝光时间窗口面板并恢复单一曝光时间输入框');
+            
+            // 清空结果图
+            if (typeof clearAllCharts === 'function') {
+                clearAllCharts();
+                console.log('已清空结果图表（曝光时间窗口面板关闭）');
             }
         });
     }
@@ -11512,8 +11687,12 @@ function resetExposureTimesToDefault() {
 function getCustomExposureTimes() {
     const enableExposureTimeWindowCheckbox = document.getElementById('enable_exposure_time_window_dill');
     
-    // 只有在明确启用曝光时间窗口时才返回自定义时间
-    if (enableExposureTimeWindowCheckbox && enableExposureTimeWindowCheckbox.checked) {
+    // 检查当前是否为累积模式
+    const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+    const isCumulativeMode = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+    
+    // 只有在明确启用曝光时间窗口且不在累积模式下时才返回自定义时间
+    if (enableExposureTimeWindowCheckbox && enableExposureTimeWindowCheckbox.checked && !isCumulativeMode) {
         if (window.customExposureTimes && window.customExposureTimes.length > 0) {
             return window.customExposureTimes;
         } else {
@@ -12967,18 +13146,51 @@ function handleIntensityMethodChange() {
             }
             console.log('🔒 自定义向量+多段曝光时间累计模式：已隐藏所有多余元素');
         } else {
-            // 仅选择自定义向量：隐藏三个控制框
+            // 仅选择自定义向量：隐藏三个控制框和已弹出的面板
             if (exposureTimeWindowControl) {
                 exposureTimeWindowControl.style.display = 'none';
                 exposureTimeWindowControl.classList.add('hidden-by-custom-vector');
+                
+                // 同时隐藏已经弹出的曝光时间窗口参数面板
+                const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
+                if (exposureTimeParams) {
+                    exposureTimeParams.style.display = 'none';
+                    console.log('🔒 自定义向量模式：已隐藏曝光时间窗口参数面板');
+                }
             }
             if (animationParamsContainer) {
                 animationParamsContainer.style.display = 'none';
                 animationParamsContainer.classList.add('hidden-by-custom-vector');
+                
+                // 同时隐藏已经弹出的1D动画参数面板
+                const dill1dParams = document.getElementById('dill_1d_time_params');
+                if (dill1dParams) {
+                    dill1dParams.style.display = 'none';
+                    console.log('🔒 自定义向量模式：已隐藏1D动画参数面板');
+                }
+                
+                // 隐藏1D动画播放区域
+                const animationSection = document.getElementById('dill-1d-animation-section');
+                if (animationSection) {
+                    animationSection.style.display = 'none';
+                }
             }
             if (vEvaluationParamsContainer) {
                 vEvaluationParamsContainer.style.display = 'none';
                 vEvaluationParamsContainer.classList.add('hidden-by-custom-vector');
+                
+                // 同时隐藏已经弹出的1D V评估参数面板
+                const dillVParams = document.getElementById('dill_1d_v_params');
+                if (dillVParams) {
+                    dillVParams.style.display = 'none';
+                    console.log('🔒 自定义向量模式：已隐藏1D V评估参数面板');
+                }
+                
+                // 隐藏1D V评估播放区域
+                const vEvaluationSection = document.getElementById('dill-1d-v-evaluation-section');
+                if (vEvaluationSection) {
+                    vEvaluationSection.style.display = 'none';
+                }
             }
             
             showNotification('已切换到自定义向量模式，请上传文件或手动输入光强分布数据。三个控制框已隐藏', 'info');
@@ -13001,14 +13213,38 @@ function handleIntensityMethodChange() {
             if (exposureTimeWindowControl) {
                 exposureTimeWindowControl.style.display = '';
                 exposureTimeWindowControl.classList.remove('hidden-by-custom-vector');
+                
+                // 智能恢复曝光时间窗口面板：根据复选框状态决定
+                const enableExposureCheckbox = document.getElementById('enable_exposure_time_window_dill');
+                const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
+                if (enableExposureCheckbox && exposureTimeParams && enableExposureCheckbox.checked) {
+                    exposureTimeParams.style.display = 'block';
+                    console.log('📋 智能恢复曝光时间窗口面板显示（复选框已勾选）');
+                }
             }
             if (animationParamsContainer) {
                 animationParamsContainer.style.display = '';
                 animationParamsContainer.classList.remove('hidden-by-custom-vector');
+                
+                // 智能恢复1D动画面板：根据复选框状态决定
+                const enable1dCheckbox = document.getElementById('enable_1d_animation_dill');
+                const dill1dParams = document.getElementById('dill_1d_time_params');
+                if (enable1dCheckbox && dill1dParams && enable1dCheckbox.checked) {
+                    dill1dParams.style.display = 'block';
+                    console.log('📋 智能恢复1D动画面板显示（复选框已勾选）');
+                }
             }
             if (vEvaluationParamsContainer) {
                 vEvaluationParamsContainer.style.display = '';
                 vEvaluationParamsContainer.classList.remove('hidden-by-custom-vector');
+                
+                // 智能恢复1D V评估面板：根据复选框状态决定
+                const enable1dVCheckbox = document.getElementById('enable_1d_v_evaluation_dill');
+                const dillVParams = document.getElementById('dill_1d_v_params');
+                if (enable1dVCheckbox && dillVParams && enable1dVCheckbox.checked) {
+                    dillVParams.style.display = 'block';
+                    console.log('📋 智能恢复1D V评估面板显示（复选框已勾选）');
+                }
             }
         }
         
@@ -13026,25 +13262,46 @@ function handleIntensityMethodChange() {
 
 // 隐藏所有多余元素（当同时选择自定义向量和多段曝光时间累计时）
 function hideAllUnnecessaryElements() {
-    // 隐藏曝光时间窗口控制
+    // 隐藏曝光时间窗口控制和已弹出的面板
     const exposureTimeWindowControl = document.getElementById('exposure-time-window-control');
     if (exposureTimeWindowControl) {
         exposureTimeWindowControl.style.display = 'none';
         exposureTimeWindowControl.classList.add('hidden-by-special-mode');
+        
+        // 同时隐藏已经弹出的曝光时间窗口参数面板
+        const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
+        if (exposureTimeParams) {
+            exposureTimeParams.style.display = 'none';
+            console.log('🔒 特殊模式：已隐藏曝光时间窗口参数面板');
+        }
     }
     
-    // 隐藏1D动画参数容器
+    // 隐藏1D动画参数容器和已弹出的面板
     const animationParamsContainer = document.getElementById('dill-1d-animation-params-container');
     if (animationParamsContainer) {
         animationParamsContainer.style.display = 'none';
         animationParamsContainer.classList.add('hidden-by-special-mode');
+        
+        // 同时隐藏已经弹出的1D动画参数面板
+        const dill1dParams = document.getElementById('dill_1d_time_params');
+        if (dill1dParams) {
+            dill1dParams.style.display = 'none';
+            console.log('🔒 特殊模式：已隐藏1D动画参数面板');
+        }
     }
     
-    // 隐藏1D V评估参数容器
+    // 隐藏1D V评估参数容器和已弹出的面板
     const vEvaluationParamsContainer = document.getElementById('dill-1d-v-evaluation-params-container');
     if (vEvaluationParamsContainer) {
         vEvaluationParamsContainer.style.display = 'none';
         vEvaluationParamsContainer.classList.add('hidden-by-special-mode');
+        
+        // 同时隐藏已经弹出的1D V评估参数面板
+        const dillVParams = document.getElementById('dill_1d_v_params');
+        if (dillVParams) {
+            dillVParams.style.display = 'none';
+            console.log('🔒 特殊模式：已隐藏1D V评估参数面板');
+        }
     }
     
     // 隐藏动画播放区域
@@ -13092,27 +13349,36 @@ function showAllNecessaryElements() {
     const isCustomIntensity = intensityMethodSelect && intensityMethodSelect.value === 'custom';
     const isCumulative = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
     
-    // 如果不是特殊模式（同时选择两个），则恢复显示
-    if (!isCustomIntensity || !isCumulative) {
-        // 恢复显示曝光时间窗口控制
+    // 修改逻辑：只有在标准模式且非自定义强度时才恢复显示
+    if (!isCustomIntensity && !isCumulative) {
+        // 恢复显示曝光时间窗口控制（仅在标准模式且非自定义强度时）
         const exposureTimeWindowControl = document.getElementById('exposure-time-window-control');
-        if (exposureTimeWindowControl && exposureTimeWindowControl.classList.contains('hidden-by-special-mode')) {
+        if (exposureTimeWindowControl && 
+            (exposureTimeWindowControl.classList.contains('hidden-by-special-mode') || 
+             exposureTimeWindowControl.classList.contains('hidden-by-cumulative-mode'))) {
             exposureTimeWindowControl.style.display = '';
             exposureTimeWindowControl.classList.remove('hidden-by-special-mode');
+            exposureTimeWindowControl.classList.remove('hidden-by-cumulative-mode');
         }
         
-        // 恢复显示1D动画参数容器
+        // 恢复显示1D动画参数容器（仅在标准模式且非自定义强度时）
         const animationParamsContainer = document.getElementById('dill-1d-animation-params-container');
-        if (animationParamsContainer && animationParamsContainer.classList.contains('hidden-by-special-mode')) {
+        if (animationParamsContainer && 
+            (animationParamsContainer.classList.contains('hidden-by-special-mode') || 
+             animationParamsContainer.classList.contains('hidden-by-cumulative-mode'))) {
             animationParamsContainer.style.display = '';
             animationParamsContainer.classList.remove('hidden-by-special-mode');
+            animationParamsContainer.classList.remove('hidden-by-cumulative-mode');
         }
         
-        // 恢复显示1D V评估参数容器
+        // 恢复显示1D V评估参数容器（仅在标准模式且非自定义强度时）
         const vEvaluationParamsContainer = document.getElementById('dill-1d-v-evaluation-params-container');
-        if (vEvaluationParamsContainer && vEvaluationParamsContainer.classList.contains('hidden-by-special-mode')) {
+        if (vEvaluationParamsContainer && 
+            (vEvaluationParamsContainer.classList.contains('hidden-by-special-mode') || 
+             vEvaluationParamsContainer.classList.contains('hidden-by-cumulative-mode'))) {
             vEvaluationParamsContainer.style.display = '';
             vEvaluationParamsContainer.classList.remove('hidden-by-special-mode');
+            vEvaluationParamsContainer.classList.remove('hidden-by-cumulative-mode');
         }
         
         // 恢复显示动画播放区域（但不主动显示）

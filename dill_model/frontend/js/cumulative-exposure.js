@@ -55,18 +55,54 @@ function initExposureCalculationMethodSelector() {
         standardContainer.style.display = 'none';
         cumulativeContainer.style.display = 'block';
         
-        // 隐藏曝光时间窗口控制
+        // 隐藏曝光时间窗口控制和已弹出的面板
         if (exposureTimeWindowControl) {
             exposureTimeWindowControl.style.display = 'none';
+            exposureTimeWindowControl.classList.add('hidden-by-cumulative-mode');
+            
+            // 同时隐藏已经弹出的曝光时间窗口参数面板
+            const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
+            if (exposureTimeParams) {
+                exposureTimeParams.style.display = 'none';
+                console.log('🔒 初始化累积模式：已隐藏曝光时间窗口参数面板');
+            }
         }
         
-        // 隐藏1D时间动画控制和1D V评估控制
+        // 隐藏1D时间动画控制和1D V评估控制，以及已弹出的面板
         if (timeAnimationControl) {
             timeAnimationControl.style.display = 'none';
+            timeAnimationControl.classList.add('hidden-by-cumulative-mode');
+            
+            // 同时隐藏已经弹出的1D动画参数面板
+            const dill1dParams = document.getElementById('dill_1d_time_params');
+            if (dill1dParams) {
+                dill1dParams.style.display = 'none';
+                console.log('🔒 初始化累积模式：已隐藏1D动画参数面板');
+            }
+            
+            // 隐藏1D动画播放区域
+            const animationSection = document.getElementById('dill-1d-animation-section');
+            if (animationSection) {
+                animationSection.style.display = 'none';
+            }
         }
         
         if (vEvaluationControl) {
             vEvaluationControl.style.display = 'none';
+            vEvaluationControl.classList.add('hidden-by-cumulative-mode');
+            
+            // 同时隐藏已经弹出的1D V评估参数面板
+            const dillVParams = document.getElementById('dill_1d_v_params');
+            if (dillVParams) {
+                dillVParams.style.display = 'none';
+                console.log('🔒 初始化累积模式：已隐藏1D V评估参数面板');
+            }
+            
+            // 隐藏1D V评估播放区域
+            const vEvaluationSection = document.getElementById('dill-1d-v-evaluation-section');
+            if (vEvaluationSection) {
+                vEvaluationSection.style.display = 'none';
+            }
         }
         
         // 检查是否需要初始化段落输入框
@@ -89,17 +125,44 @@ function initExposureCalculationMethodSelector() {
             const isCustomIntensity = intensityMethodSelect && intensityMethodSelect.value === 'custom';
             
             if (!isCustomIntensity) {
-                // 仅在非自定义向量模式下显示控制框
+                // 仅在非自定义向量模式下显示控制框，同时移除累积模式的隐藏标记
                 if (exposureTimeWindowControl) {
                     exposureTimeWindowControl.style.display = 'block';
+                    exposureTimeWindowControl.classList.remove('hidden-by-cumulative-mode');
+                    
+                    // 智能恢复曝光时间窗口面板：根据复选框状态决定
+                    const enableExposureCheckbox = document.getElementById('enable_exposure_time_window_dill');
+                    const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
+                    if (enableExposureCheckbox && exposureTimeParams && enableExposureCheckbox.checked) {
+                        exposureTimeParams.style.display = 'block';
+                        console.log('📋 智能恢复曝光时间窗口面板显示（复选框已勾选）');
+                    }
                 }
                 
                 if (timeAnimationControl) {
                     timeAnimationControl.style.display = 'block';
+                    timeAnimationControl.classList.remove('hidden-by-cumulative-mode');
+                    
+                    // 智能恢复1D动画面板：根据复选框状态决定
+                    const enable1dCheckbox = document.getElementById('enable_1d_animation_dill');
+                    const dill1dParams = document.getElementById('dill_1d_time_params');
+                    if (enable1dCheckbox && dill1dParams && enable1dCheckbox.checked) {
+                        dill1dParams.style.display = 'block';
+                        console.log('📋 智能恢复1D动画面板显示（复选框已勾选）');
+                    }
                 }
                 
                 if (vEvaluationControl) {
                     vEvaluationControl.style.display = 'block';
+                    vEvaluationControl.classList.remove('hidden-by-cumulative-mode');
+                    
+                    // 智能恢复1D V评估面板：根据复选框状态决定
+                    const enable1dVCheckbox = document.getElementById('enable_1d_v_evaluation_dill');
+                    const dillVParams = document.getElementById('dill_1d_v_params');
+                    if (enable1dVCheckbox && dillVParams && enable1dVCheckbox.checked) {
+                        dillVParams.style.display = 'block';
+                        console.log('📋 智能恢复1D V评估面板显示（复选框已勾选）');
+                    }
                 }
             }
             
@@ -133,17 +196,53 @@ function initExposureCalculationMethodSelector() {
                 }
                 console.log('🔒 自定义向量+多段曝光时间累计模式：已隐藏所有多余元素');
             } else {
-                // 仅选择多段曝光时间累计：隐藏特定控制框
+                // 仅选择多段曝光时间累计：强制隐藏特定控制框和已弹出的面板
                 if (exposureTimeWindowControl) {
                     exposureTimeWindowControl.style.display = 'none';
+                    exposureTimeWindowControl.classList.add('hidden-by-cumulative-mode');
+                    
+                    // 同时隐藏已经弹出的曝光时间窗口参数面板
+                    const exposureTimeParams = document.getElementById('dill_1d_exposure_time_params');
+                    if (exposureTimeParams) {
+                        exposureTimeParams.style.display = 'none';
+                        console.log('🔒 累积模式：已隐藏曝光时间窗口参数面板');
+                    }
                 }
                 
                 if (timeAnimationControl) {
                     timeAnimationControl.style.display = 'none';
+                    timeAnimationControl.classList.add('hidden-by-cumulative-mode');
+                    
+                    // 同时隐藏已经弹出的1D动画参数面板
+                    const dill1dParams = document.getElementById('dill_1d_time_params');
+                    if (dill1dParams) {
+                        dill1dParams.style.display = 'none';
+                        console.log('🔒 累积模式：已隐藏1D动画参数面板');
+                    }
+                    
+                    // 隐藏1D动画播放区域
+                    const animationSection = document.getElementById('dill-1d-animation-section');
+                    if (animationSection) {
+                        animationSection.style.display = 'none';
+                    }
                 }
                 
                 if (vEvaluationControl) {
                     vEvaluationControl.style.display = 'none';
+                    vEvaluationControl.classList.add('hidden-by-cumulative-mode');
+                    
+                    // 同时隐藏已经弹出的1D V评估参数面板
+                    const dillVParams = document.getElementById('dill_1d_v_params');
+                    if (dillVParams) {
+                        dillVParams.style.display = 'none';
+                        console.log('🔒 累积模式：已隐藏1D V评估参数面板');
+                    }
+                    
+                    // 隐藏1D V评估播放区域
+                    const vEvaluationSection = document.getElementById('dill-1d-v-evaluation-section');
+                    if (vEvaluationSection) {
+                        vEvaluationSection.style.display = 'none';
+                    }
                 }
                 
                 if (typeof showNotification === 'function') {
