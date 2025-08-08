@@ -4125,14 +4125,53 @@ function createExposureHeatmap(container, data) {
             yAxisTitle = LANGS[currentLang].y_position || 'Y 位置 (μm)';
         }
         
+        // 计算数据范围（避免使用flat()）
+        let zMin = Infinity;
+        let zMax = -Infinity;
+        for (let i = 0; i < heatmapZ.length; i++) {
+            for (let j = 0; j < heatmapZ[i].length; j++) {
+                const val = heatmapZ[i][j];
+                if (val < zMin) zMin = val;
+                if (val > zMax) zMax = val;
+            }
+        }
+        
+        // 创建等高线trace
+        const contourTrace = {
+            x: xCoords,
+            y: yCoords,
+            z: heatmapZ,
+            type: 'contour',
+            showscale: false,  // 不显示色标
+            colorscale: [[0, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']],  // 透明填充
+            contours: {
+                coloring: 'none',  // 不填充颜色，只显示线条
+                showlabels: false, // 不显示数值标签
+                start: zMin,
+                end: zMax,
+                size: (zMax - zMin) / 10  // 10条等高线，减少复杂度
+            },
+            line: {
+                color: 'rgba(255,255,255,0.7)',  // 半透明白色线条
+                width: 1
+            },
+            hoverinfo: 'skip'  // 不显示悬停信息
+        };
+
         const layout = {
             title: title,
-            xaxis: { title: xAxisTitle },
-            yaxis: { title: yAxisTitle },
+            xaxis: { 
+                title: xAxisTitle,
+                showgrid: false
+            },
+            yaxis: { 
+                title: yAxisTitle,
+                showgrid: false
+            },
             margin: { l: 60, r: 20, t: 60, b: 60 }
         };
         
-        Plotly.newPlot(container, [trace], layout, {responsive: true});
+        Plotly.newPlot(container, [trace, contourTrace], layout, {responsive: true});
         
         // 添加点击事件处理
         container.on('plotly_click', function(eventData) {
@@ -4215,14 +4254,53 @@ function createThicknessHeatmap(container, data) {
             yAxisTitle = LANGS[currentLang].y_position || 'Y 位置 (μm)';
         }
         
+        // 计算数据范围（避免使用flat()）
+        let zMin = Infinity;
+        let zMax = -Infinity;
+        for (let i = 0; i < heatmapZ.length; i++) {
+            for (let j = 0; j < heatmapZ[i].length; j++) {
+                const val = heatmapZ[i][j];
+                if (val < zMin) zMin = val;
+                if (val > zMax) zMax = val;
+            }
+        }
+        
+        // 创建等高线trace
+        const contourTrace = {
+            x: xCoords,
+            y: yCoords,
+            z: heatmapZ,
+            type: 'contour',
+            showscale: false,  // 不显示色标
+            colorscale: [[0, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']],  // 透明填充
+            contours: {
+                coloring: 'none',  // 不填充颜色，只显示线条
+                showlabels: false, // 不显示数值标签
+                start: zMin,
+                end: zMax,
+                size: (zMax - zMin) / 10  // 10条等高线，减少复杂度
+            },
+            line: {
+                color: 'rgba(255,255,255,0.7)',  // 半透明白色线条
+                width: 1
+            },
+            hoverinfo: 'skip'  // 不显示悬停信息
+        };
+
         const layout = {
             title: title,
-            xaxis: { title: xAxisTitle },
-            yaxis: { title: yAxisTitle },
+            xaxis: { 
+                title: xAxisTitle,
+                showgrid: false
+            },
+            yaxis: { 
+                title: yAxisTitle,
+                showgrid: false
+            },
             margin: { l: 60, r: 20, t: 60, b: 60 }
         };
         
-        Plotly.newPlot(container, [trace], layout, {responsive: true});
+        Plotly.newPlot(container, [trace, contourTrace], layout, {responsive: true});
         
         // 添加点击事件处理
         container.on('plotly_click', function(eventData) {
