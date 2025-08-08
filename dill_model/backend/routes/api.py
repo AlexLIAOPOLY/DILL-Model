@@ -142,6 +142,32 @@ def calculate():
                 plot_data = model.generate_plots(I_avg, V, None, t_exp, C, sine_type=sine_type, 
                                                Kx=Kx, Ky=Ky, phi_expr=phi_expr, y_range=y_range,
                                                custom_intensity_data=custom_intensity_data)
+            elif sine_type == '2d_exposure_pattern':
+                # 处理2D曝光图案参数 (基于MATLAB latent_image2d.m逻辑)
+                add_progress_log('dill', "开始2D曝光图案计算", dimension='2d')
+                
+                # 获取2D曝光图案参数
+                x_min_2d = float(data.get('x_min_2d', -1000))
+                x_max_2d = float(data.get('x_max_2d', 1000))
+                y_min_2d = float(data.get('y_min_2d', -1000))
+                y_max_2d = float(data.get('y_max_2d', 1000))
+                step_size_2d = float(data.get('step_size_2d', 5))
+                
+                # 计算2D曝光图案 - 使用单个曝光时间
+                plots = model.calculate_2d_exposure_pattern(
+                    C=C, 
+                    angle_a_deg=angle_a,
+                    exposure_time=t_exp,  # 使用单个曝光时间而非数组
+                    contrast_ctr=contrast_ctr,
+                    threshold_cd=exposure_threshold,
+                    wavelength_nm=wavelength,
+                    x_min=x_min_2d, x_max=x_max_2d,
+                    y_min=y_min_2d, y_max=y_max_2d,
+                    step_size=step_size_2d
+                )
+                
+                add_success_log('dill', f"2D曝光图案计算完成 (曝光时间: {t_exp}s)", dimension='2d')
+                
             elif sine_type == '3d':
                 # 处理三维正弦波参数
                 Kx = float(data.get('Kx', 0))
@@ -494,6 +520,59 @@ def calculate_data():
                     add_error_log('dill', f"二维计算失败: {str(e)}", dimension='2d')
                     add_log_entry('error', 'dill', f"❌ 二维计算出错: {str(e)}", dimension='2d')
                     add_log_entry('info', 'dill', f"⏱️ 计算耗时: {calc_time:.3f}s", dimension='2d')
+                    raise
+                    
+            elif sine_type == '2d_exposure_pattern':
+                print(f"🎯 DEBUG: 进入2D曝光图案分支(calculate_data)，sine_type = '{sine_type}'")
+                # 处理2D曝光图案参数 (基于MATLAB latent_image2d.m逻辑)
+                add_progress_log('dill', "开始2D曝光图案计算", dimension='2d')
+                
+                # 获取2D曝光图案参数
+                angle_a = float(data.get('angle_a', 11.7))
+                exposure_threshold = float(data.get('exposure_threshold', 25))
+                contrast_ctr = float(data.get('contrast_ctr', 0.9))
+                wavelength = float(data.get('wavelength', 405))
+                
+                x_min_2d = float(data.get('x_min_2d', -1000))
+                x_max_2d = float(data.get('x_max_2d', 1000))
+                y_min_2d = float(data.get('y_min_2d', -1000))
+                y_max_2d = float(data.get('y_max_2d', 1000))
+                step_size_2d = float(data.get('step_size_2d', 5))
+                
+                print(f"Dill模型参数 (2D曝光图案): I_avg={I_avg}, V={V}, t_exp={t_exp}, C={C}")
+                print(f"  2D曝光参数: angle_a={angle_a}, threshold={exposure_threshold}, contrast={contrast_ctr}")
+                print(f"  曝光时间: {t_exp}s")
+                print(f"  X范围: [{x_min_2d}, {x_max_2d}], Y范围: [{y_min_2d}, {y_max_2d}], 步长: {step_size_2d}")
+                
+                calc_start = time.time()
+                try:
+                    # 计算2D曝光图案 - 使用单个曝光时间
+                    plot_data = model.calculate_2d_exposure_pattern(
+                        C=C, 
+                        angle_a_deg=angle_a,
+                        exposure_time=t_exp,  # 使用单个曝光时间而非数组
+                        contrast_ctr=contrast_ctr,
+                        threshold_cd=exposure_threshold,
+                        wavelength_nm=wavelength,
+                        x_min=x_min_2d, x_max=x_max_2d,
+                        y_min=y_min_2d, y_max=y_max_2d,
+                        step_size=step_size_2d
+                    )
+                    calc_time = time.time() - calc_start
+                    
+                    print(f"[Dill-2D曝光] 🎯 2D曝光图案计算完成统计:")
+                    print(f"  ✅ 计算成功")
+                    print(f"  ⏱️  计算时间: {calc_time:.3f}s")
+                    print(f"  💾 数据字段: {list(plot_data.keys())}")
+                    print(f"  📊 曝光时间: {t_exp}")
+                    
+                    add_success_log('dill', f"2D曝光图案计算完成 (t={t_exp}), 用时{calc_time:.3f}s", dimension='2d')
+                    
+                except Exception as e:
+                    calc_time = time.time() - calc_start
+                    print(f"[Dill-2D曝光] ❌ 2D曝光图案计算出错: {str(e)}")
+                    print(f"[Dill-2D曝光] ⏱️  计算耗时: {calc_time:.3f}s")
+                    add_error_log('dill', f"2D曝光图案计算失败: {str(e)}", dimension='2d')
                     raise
                     
             elif sine_type == '3d':

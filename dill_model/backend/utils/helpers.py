@@ -53,6 +53,10 @@ def validate_input(data):
             for field in ['Kx', 'Ky', 'Kz', 'phi_expr']:
                 if field not in data or data[field] in [None, '']:
                     missing_fields.append(field)
+        elif sine_type == '2d_exposure_pattern':
+            # 2D曝光图案模式不需要K参数，使用t_exp而不是exposure_times
+            # t_exp参数已经在required_fields中进行验证
+            pass
         else:
             if 'K' not in data or data['K'] in [None, '']:
                 missing_fields.append('K')
@@ -68,6 +72,9 @@ def validate_input(data):
                 data['Kx'] = float(data['Kx'])
                 data['Ky'] = float(data['Ky'])
                 data['Kz'] = float(data['Kz'])
+            elif sine_type == '2d_exposure_pattern':
+                # 2D曝光图案模式的特殊参数处理
+                pass  # 不需要转换K参数
             else:
                 data['K'] = float(data['K'])
         except ValueError:
@@ -89,6 +96,9 @@ def validate_input(data):
                 return False, "Ky必须为正且不超过100"
             if not (0 < data['Kz'] <= 100):
                 return False, "Kz必须为正且不超过100"
+        elif sine_type == '2d_exposure_pattern':
+            # 2D曝光图案模式的参数校验
+            pass  # 不需要校验K参数
         else:
             if not (0 < data['K'] <= 100):
                 return False, "空间频率K必须为正且不超过100"
@@ -247,9 +257,19 @@ def format_response(success, data=None, message=""):
     # 优化：如果message是dict，自动转为字符串
     if isinstance(message, dict):
         message = json.dumps(message, ensure_ascii=False)
+    # 将可能包含的 numpy 类型安全转换为原生可 JSON 序列化的 Python 类型
+    safe_data = None
+    if data is not None:
+        try:
+            # 先用自定义编码器转换成 JSON 字符串，再还原为 Python 原生对象
+            safe_data = json.loads(json.dumps(data, cls=NumpyEncoder, ensure_ascii=False))
+        except Exception:
+            # 兜底：直接返回原始 data（让上层日志能捕获异常场景）
+            safe_data = data
+
     return {
         'success': success,
-        'data': data,
+        'data': safe_data,
         'message': message
     }
 

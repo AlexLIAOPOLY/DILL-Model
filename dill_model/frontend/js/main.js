@@ -897,6 +897,7 @@ function initApp() {
     const dillSineType = document.getElementById('dill-sine-type');
     const dillMultisineParams = document.getElementById('dill-multisine-params');
     const dill3DSineParams = document.getElementById('dill-3dsine-params');
+    const dill2DExposureParams = document.getElementById('dill-2d-exposure-params-container');
     const dillK = document.getElementById('K') ? document.getElementById('K').closest('.parameter-item') : null;
     
     // 改用正确的参数项选择器 - 添加安全检查
@@ -910,20 +911,48 @@ function initApp() {
         }
     }
     
+    // 控制正弦波类型选择器的显示
+    function updateSineTypeVisibility() {
+        const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+        const sineTypeContainer = document.getElementById('dill-sine-type-container');
+        
+        if (!exposureMethodSelect || !sineTypeContainer) return;
+        
+        // 只有在标准模式下才显示正弦波类型选择器
+        if (exposureMethodSelect.value === 'standard') {
+            sineTypeContainer.style.display = 'block';
+        } else {
+            sineTypeContainer.style.display = 'none';
+            // 自动重置为一维正弦波
+            if (dillSineType) {
+                dillSineType.value = 'single';
+                dillSineType.dispatchEvent(new Event('change'));
+            }
+        }
+    }
+    
     if (dillSineType) {
         dillSineType.addEventListener('change', function() {
             console.log('正弦波类型切换:', this.value);
             if (this.value === 'multi') {
                 if (dillMultisineParams) dillMultisineParams.style.display = 'block';
                 if (dill3DSineParams) dill3DSineParams.style.display = 'none';
+                if (dill2DExposureParams) dill2DExposureParams.style.display = 'none';
                 if (dillK) dillK.style.display = 'none';
             } else if (this.value === '3d') {
                 if (dillMultisineParams) dillMultisineParams.style.display = 'none';
                 if (dill3DSineParams) dill3DSineParams.style.display = 'block';
+                if (dill2DExposureParams) dill2DExposureParams.style.display = 'none';
+                if (dillK) dillK.style.display = 'none';
+            } else if (this.value === '2d_exposure_pattern') {
+                if (dillMultisineParams) dillMultisineParams.style.display = 'none';
+                if (dill3DSineParams) dill3DSineParams.style.display = 'none';
+                if (dill2DExposureParams) dill2DExposureParams.style.display = 'block';
                 if (dillK) dillK.style.display = 'none';
             } else {
                 if (dillMultisineParams) dillMultisineParams.style.display = 'none';
                 if (dill3DSineParams) dill3DSineParams.style.display = 'none';
+                if (dill2DExposureParams) dill2DExposureParams.style.display = 'none';
                 if (dillK) dillK.style.display = '';
             }
             
@@ -938,6 +967,12 @@ function initApp() {
     
     // 初始化时设置K输入框状态
     updateKInputState();
+    
+    // 将正弦波选择器可见性控制函数暴露到全局作用域
+    window.updateSineTypeVisibility = updateSineTypeVisibility;
+    
+    // 初始化时设置正弦波选择器的可见性
+    updateSineTypeVisibility();
     }
     
     // 正弦波类型切换逻辑（增强Dill） - 添加安全检查
@@ -1648,6 +1683,31 @@ function getParameterValues() {
             params.z_min = z_min_3d_elem ? parseFloat(z_min_3d_elem.value) || 0.0 : 0.0;
             params.z_max = z_max_3d_elem ? parseFloat(z_max_3d_elem.value) || 10.0 : 10.0;
             
+        } else if (sineType === '2d_exposure_pattern') {
+            // 处理2D曝光图案参数 - 使用上方的单个曝光时间
+            const x_min_2d_elem = document.getElementById('x_min_2d');
+            const x_max_2d_elem = document.getElementById('x_max_2d');
+            const y_min_2d_elem = document.getElementById('y_min_2d');
+            const y_max_2d_elem = document.getElementById('y_max_2d');
+            const step_size_2d_elem = document.getElementById('step_size_2d');
+            
+            // 直接使用上方的曝光时间参数，不再使用独立的时间数组
+            // params.exposure_times 不再设置，后端将使用 t_exp
+            
+            // 获取2D曝光图案参数
+            params.x_min_2d = x_min_2d_elem ? parseFloat(x_min_2d_elem.value) || -1000 : -1000;
+            params.x_max_2d = x_max_2d_elem ? parseFloat(x_max_2d_elem.value) || 1000 : 1000;
+            params.y_min_2d = y_min_2d_elem ? parseFloat(y_min_2d_elem.value) || -1000 : -1000;
+            params.y_max_2d = y_max_2d_elem ? parseFloat(y_max_2d_elem.value) || 1000 : 1000;
+            params.step_size_2d = step_size_2d_elem ? parseFloat(step_size_2d_elem.value) || 5 : 5;
+            
+            console.log('DILL模型2D曝光图案参数:', {
+                exposure_time: params.t_exp,
+                x_range: [params.x_min_2d, params.x_max_2d],
+                y_range: [params.y_min_2d, params.y_max_2d],
+                step_size: params.step_size_2d
+            });
+            
             // 检查4D动画参数
             const enable4DAnimationElem = document.getElementById('enable_4d_animation_dill');
             const enable4DAnimation = enable4DAnimationElem ? enable4DAnimationElem.checked || false : false;
@@ -2096,6 +2156,71 @@ function displayResults(data) {
 }
 
 /**
+ * 转换2D曝光图案数据为标准2D热图数据格式
+ * 
+ * @param {Object} data 2D曝光图案数据
+ * @returns {Object} 转换后的热图数据
+ */
+function convert2DExposurePatternToHeatmapData(data) {
+    console.log('转换2D曝光图案数据为热图格式...');
+    
+    if (!data.dose_distribution || !data.thickness_distribution || !data.X_grid || !data.Y_grid) {
+        console.error('2D曝光图案数据不完整，无法转换');
+        return data;
+    }
+    
+    // 直接使用单个时间点的数据
+    const exposureData = data.dose_distribution;
+    const thicknessData = data.thickness_distribution;
+    const exposureTime = data.exposure_time;
+    
+    // 从网格数据中提取坐标
+    const x_coords = data.X_grid[0]; // 第一行就是x坐标
+    const y_coords = data.Y_grid.map(row => row[0]); // 第一列就是y坐标
+    
+    console.log('2D曝光图案数据转换结果:', {
+        x_coords_length: x_coords.length,
+        y_coords_length: y_coords.length,
+        exposure_data_shape: `${exposureData.length}x${exposureData[0]?.length}`,
+        thickness_data_shape: `${thicknessData.length}x${thicknessData[0]?.length}`,
+        exposure_time_used: exposureTime,
+        exposure_data_range: exposureData ? (() => {
+            let min = Infinity, max = -Infinity;
+            for (const row of exposureData) {
+                for (const val of row) {
+                    if (val < min) min = val;
+                    if (val > max) max = val;
+                }
+            }
+            return `[${min.toFixed(2)}, ${max.toFixed(2)}]`;
+        })() : 'unknown',
+        thickness_data_range: thicknessData ? (() => {
+            let min = Infinity, max = -Infinity;
+            for (const row of thicknessData) {
+                for (const val of row) {
+                    if (val < min) min = val;
+                    if (val > max) max = val;
+                }
+            }
+            return `[${min.toFixed(4)}, ${max.toFixed(4)}]`;
+        })() : 'unknown'
+    });
+    
+    return {
+        ...data,
+        x_coords: x_coords,
+        y_coords: y_coords,
+        z_exposure_dose: exposureData,
+        z_thickness: thicknessData,
+        is_2d: true,
+        sine_type: '2d_exposure_pattern',
+        // 添加专用标题，确保显示正确的中文标题，包含当前使用的曝光时间
+        exposure_title: `曝光计量分布 (2D) - t=${exposureTime}`,
+        thickness_title: `光刻胶厚度分布 (2D) - t=${exposureTime}`
+    };
+}
+
+/**
  * 显示交互式计算结果
  * 
  * @param {Object} data 结果数据
@@ -2152,12 +2277,19 @@ function displayInteractiveResults(data) {
 
     // 检查是否有二维数据
     const has2DData = data.is_2d || (data.z_exposure_dose && data.z_thickness) || 
-                     (data.x_coords && data.y_coords && (data.z_exposure_dose || data.z_thickness));
+                     (data.x_coords && data.y_coords && (data.z_exposure_dose || data.z_thickness)) ||
+                     // 2D曝光图案数据检测
+                     (data.sine_type === '2d_exposure_pattern' && data.dose_distribution && data.X_grid && data.Y_grid);
     
     console.log('数据维度判断结果:', {
         has3DData: has3DData,
         has2DData: has2DData,
-        currentModelType: currentModelType
+        currentModelType: currentModelType,
+        sine_type: data.sine_type,
+        has_dose_distribution: !!data.dose_distribution,
+        has_X_grid: !!data.X_grid,
+        has_Y_grid: !!data.Y_grid,
+        data_keys: Object.keys(data)
     });
 
     // Dynamically set titles based on data dimensions
@@ -2413,8 +2545,25 @@ function displayInteractiveResults(data) {
             } else {
                 // 统一处理所有模型的二维数据 - 使用热图
                 console.log('Displaying 2D Heatmap for model:', currentModelType);
-                createExposureHeatmap(exposurePlotContainer, data);
-                createThicknessHeatmap(thicknessPlotContainer, data);
+                
+                // 特殊处理2D曝光图案数据
+                if (data.sine_type === '2d_exposure_pattern') {
+                    console.log('处理2D曝光图案数据结构:', {
+                        has_dose_distribution: !!data.dose_distribution,
+                        has_thickness_distribution: !!data.thickness_distribution,
+                        dose_distribution_shape: data.dose_distribution ? `${data.dose_distribution.length}x${data.dose_distribution[0]?.length}` : 'undefined',
+                        X_grid_shape: data.X_grid ? `${data.X_grid.length}x${data.X_grid[0]?.length}` : 'undefined',
+                        Y_grid_shape: data.Y_grid ? `${data.Y_grid.length}x${data.Y_grid[0]?.length}` : 'undefined'
+                    });
+                    
+                    // 转换2D曝光图案数据为标准2D热图格式
+                    const converted2DData = convert2DExposurePatternToHeatmapData(data);
+                    createExposureHeatmap(exposurePlotContainer, converted2DData);
+                    createThicknessHeatmap(thicknessPlotContainer, converted2DData);
+                } else {
+                    createExposureHeatmap(exposurePlotContainer, data);
+                    createThicknessHeatmap(thicknessPlotContainer, data);
+                }
             }
         } else {
             // 默认1D线图，适用于Dill的1D情况
@@ -2460,8 +2609,17 @@ function displayInteractiveResults(data) {
     } else if (has2DData) {
         // 统一处理所有模型的二维数据 - 使用热图
         console.log('Displaying 2D Heatmap for model:', currentModelType);
-        createExposureHeatmap(exposurePlotContainer, data);
-        createThicknessHeatmap(thicknessPlotContainer, data);
+        
+        // 特殊处理2D曝光图案数据
+        if (data.sine_type === '2d_exposure_pattern') {
+            console.log('处理2D曝光图案数据结构（第二分支）');
+            const converted2DData = convert2DExposurePatternToHeatmapData(data);
+            createExposureHeatmap(exposurePlotContainer, converted2DData);
+            createThicknessHeatmap(thicknessPlotContainer, converted2DData);
+        } else {
+            createExposureHeatmap(exposurePlotContainer, data);
+            createThicknessHeatmap(thicknessPlotContainer, data);
+        }
     } else {
         // 默认1D线图，适用于Dill的1D情况
         createExposurePlot(exposurePlotContainer, data);
@@ -3928,23 +4086,36 @@ function createExposureHeatmap(container, data) {
     try {
         let heatmapZ = standardizeHeatmapData(zData, xCoords, yCoords);
 
+        // 根据数据类型设置色彩条标题
+        let colorbarTitle = '曝光剂量';
+        if (data.sine_type === '2d_exposure_pattern') {
+            colorbarTitle = '曝光计量';
+        } else if (LANGS[currentLang].exposure_dose_trace_name) {
+            colorbarTitle = LANGS[currentLang].exposure_dose_trace_name;
+        }
+
         const trace = {
             x: xCoords,
             y: yCoords,
             z: heatmapZ,
             type: 'heatmap',
             colorscale: 'Viridis',
-            colorbar: { title: LANGS[currentLang].exposure_dose_trace_name || '曝光剂量' },
+            colorbar: { title: colorbarTitle },
             hovertemplate: `X: %{x}<br>Y: %{y}<br>${LANGS[currentLang].hover_exposure_value || '曝光剂量值'}: %{z}<extra></extra>`
         };
 
-        // 根据模型类型设置不同的标题和轴标签
+        // 根据模型类型和数据类型设置不同的标题和轴标签
         const modelSelect = document.getElementById('model-select');
         const currentModelType = modelSelect ? modelSelect.value : 'dill';
         
         let title, xAxisTitle, yAxisTitle;
         
-        if (currentModelType === 'enhanced_dill') {
+        // 优先使用数据中的自定义标题（2D曝光图案）
+        if (data.exposure_title) {
+            title = data.exposure_title;
+            xAxisTitle = 'X 位置 (μm)';
+            yAxisTitle = 'Y 位置 (μm)';
+        } else if (currentModelType === 'enhanced_dill') {
             title = '曝光计量分布 (2D) (Y, Z平面)';
             xAxisTitle = 'Z 位置 (μm)';  // 对于增强DILL模型，横轴是深度方向
             yAxisTitle = 'Y 位置 (μm)';
@@ -3968,11 +4139,17 @@ function createExposureHeatmap(container, data) {
             if(eventData.points.length > 0) {
                 const point = eventData.points[0];
                 // 对于热力图，point.x和point.y是坐标值，point.z是强度值
-                showSinglePointDetailsPopup({ 
-                    x: point.x, 
-                    y: point.y, 
-                    z: point.z 
-                }, 'exposure', container, eventData);
+                // 为2D曝光图案创建特殊的点数据结构
+                const pointData = { 
+                    x: point.x,
+                    y: point.z, // 显示值 
+                    z: point.z,
+                    // 保存实际的2D坐标用于计算
+                    actual_x: point.x,
+                    actual_y: point.y
+                };
+                
+                showSinglePointDetailsPopup(pointData, 'exposure', container, eventData);
             }
         });
     } catch (error) {
@@ -3999,23 +4176,36 @@ function createThicknessHeatmap(container, data) {
     try {
         let heatmapZ = standardizeHeatmapData(zData, xCoords, yCoords);
 
+        // 根据数据类型设置色彩条标题
+        let colorbarTitle = '相对厚度';
+        if (data.sine_type === '2d_exposure_pattern') {
+            colorbarTitle = '相对厚度';
+        } else if (LANGS[currentLang].thickness_trace_name) {
+            colorbarTitle = LANGS[currentLang].thickness_trace_name;
+        }
+
         const trace = {
             x: xCoords,
             y: yCoords,
             z: heatmapZ,
             type: 'heatmap',
             colorscale: 'Plasma',
-            colorbar: { title: LANGS[currentLang].thickness_trace_name || '相对厚度' },
+            colorbar: { title: colorbarTitle },
             hovertemplate: `X: %{x}<br>Y: %{y}<br>${LANGS[currentLang].hover_thickness_value || '相对厚度值'}: %{z}<extra></extra>`
         };
 
-        // 根据模型类型设置不同的标题和轴标签
+        // 根据模型类型和数据类型设置不同的标题和轴标签
         const modelSelect = document.getElementById('model-select');
         const currentModelType = modelSelect ? modelSelect.value : 'dill';
         
         let title, xAxisTitle, yAxisTitle;
         
-        if (currentModelType === 'enhanced_dill') {
+        // 优先使用数据中的自定义标题（2D曝光图案）
+        if (data.thickness_title) {
+            title = data.thickness_title;
+            xAxisTitle = 'X 位置 (μm)';
+            yAxisTitle = 'Y 位置 (μm)';
+        } else if (currentModelType === 'enhanced_dill') {
             title = '光刻胶厚度分布 (2D) (Y, Z平面)';
             xAxisTitle = 'Z 位置 (μm)';  // 对于增强DILL模型，横轴是深度方向
             yAxisTitle = 'Y 位置 (μm)';
@@ -4039,11 +4229,17 @@ function createThicknessHeatmap(container, data) {
             if(eventData.points.length > 0) {
                 const point = eventData.points[0];
                 // 对于热力图，point.x和point.y是坐标值，point.z是强度值
-                showSinglePointDetailsPopup({ 
-                    x: point.x, 
-                    y: point.y, 
-                    z: point.z 
-                }, 'thickness', container, eventData);
+                // 为2D曝光图案创建特殊的点数据结构
+                const pointData = { 
+                    x: point.x,
+                    y: point.z, // 显示值 
+                    z: point.z,
+                    // 保存实际的2D坐标用于计算
+                    actual_x: point.x,
+                    actual_y: point.y
+                };
+                
+                showSinglePointDetailsPopup(pointData, 'thickness', container, eventData);
             }
         });
     } catch (error) {
@@ -4237,7 +4433,16 @@ function createEnhancedDillXYExposureHeatmap(container, data) {
         console.log('Enhanced Dill XY平面曝光剂量热图数据处理完成:', {
             x_range: [Math.min(...xCoords), Math.max(...xCoords)],
             y_range: [Math.min(...yCoords), Math.max(...yCoords)],
-            z_range: [Math.min(...heatmapZ.flat()), Math.max(...heatmapZ.flat())]
+            z_range: (() => {
+                let min = Infinity, max = -Infinity;
+                for (const row of heatmapZ) {
+                    for (const val of row) {
+                        if (val < min) min = val;
+                        if (val > max) max = val;
+                    }
+                }
+                return [min, max];
+            })()
         });
         
         const trace = {
@@ -4311,7 +4516,16 @@ function createEnhancedDillXYThicknessHeatmap(container, data) {
         console.log('Enhanced Dill XY平面厚度热图数据处理完成:', {
             x_range: [Math.min(...xCoords), Math.max(...xCoords)],
             y_range: [Math.min(...yCoords), Math.max(...yCoords)],
-            z_range: [Math.min(...heatmapZ.flat()), Math.max(...heatmapZ.flat())]
+            z_range: (() => {
+                let min = Infinity, max = -Infinity;
+                for (const row of heatmapZ) {
+                    for (const val of row) {
+                        if (val < min) min = val;
+                        if (val > max) max = val;
+                    }
+                }
+                return [min, max];
+            })()
         });
         
         const trace = {
@@ -4385,7 +4599,16 @@ function createEnhancedDillXPlaneExposureHeatmap(container, data) {
         console.log('Enhanced Dill X平面曝光剂量热图数据处理完成:', {
             y_range: [Math.min(...yCoords), Math.max(...yCoords)],
             z_range: [Math.min(...zCoords), Math.max(...zCoords)],
-            value_range: [Math.min(...heatmapZ.flat()), Math.max(...heatmapZ.flat())]
+            value_range: (() => {
+                let min = Infinity, max = -Infinity;
+                for (const row of heatmapZ) {
+                    for (const val of row) {
+                        if (val < min) min = val;
+                        if (val > max) max = val;
+                    }
+                }
+                return [min, max];
+            })()
         });
         
         const trace = {
@@ -4459,7 +4682,16 @@ function createEnhancedDillXPlaneThicknessHeatmap(container, data) {
         console.log('Enhanced Dill X平面厚度热图数据处理完成:', {
             y_range: [Math.min(...yCoords), Math.max(...yCoords)],
             z_range: [Math.min(...zCoords), Math.max(...zCoords)],
-            value_range: [Math.min(...heatmapZ.flat()), Math.max(...heatmapZ.flat())]
+            value_range: (() => {
+                let min = Infinity, max = -Infinity;
+                for (const row of heatmapZ) {
+                    for (const val of row) {
+                        if (val < min) min = val;
+                        if (val > max) max = val;
+                    }
+                }
+                return [min, max];
+            })()
         });
         
         const trace = {
@@ -4533,7 +4765,16 @@ function createEnhancedDillYPlaneExposureHeatmap(container, data) {
         console.log('Enhanced Dill Y平面曝光剂量热图数据处理完成:', {
             x_range: [Math.min(...xCoords), Math.max(...xCoords)],
             z_range: [Math.min(...zCoords), Math.max(...zCoords)],
-            value_range: [Math.min(...heatmapZ.flat()), Math.max(...heatmapZ.flat())]
+            value_range: (() => {
+                let min = Infinity, max = -Infinity;
+                for (const row of heatmapZ) {
+                    for (const val of row) {
+                        if (val < min) min = val;
+                        if (val > max) max = val;
+                    }
+                }
+                return [min, max];
+            })()
         });
         
         const trace = {
@@ -4607,7 +4848,16 @@ function createEnhancedDillYPlaneThicknessHeatmap(container, data) {
         console.log('Enhanced Dill Y平面厚度热图数据处理完成:', {
             x_range: [Math.min(...xCoords), Math.max(...xCoords)],
             z_range: [Math.min(...zCoords), Math.max(...zCoords)],
-            value_range: [Math.min(...heatmapZ.flat()), Math.max(...heatmapZ.flat())]
+            value_range: (() => {
+                let min = Infinity, max = -Infinity;
+                for (const row of heatmapZ) {
+                    for (const val of row) {
+                        if (val < min) min = val;
+                        if (val > max) max = val;
+                    }
+                }
+                return [min, max];
+            })()
         });
         
         const trace = {
@@ -5311,6 +5561,231 @@ function highlightErrorCard(msg) {
     }, 3000);
 }
 
+// 为2D曝光图案生成弹窗HTML的辅助函数
+function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
+    let valueLabel = '';
+    let valueUnit = '';
+    let formulaTitle = '';
+    let formulaMath = '';
+    let formulaExplanation = '';
+    let additionalInfo = '';
+
+    // 对于2D热力图，处理坐标和数据值
+    let actualX = x;
+    let actualY = 0; // 默认值
+    let zValue = y; // 实际的数据值
+    
+    // 从点击数据中提取实际的2D坐标
+    if (params && params.actual_x !== undefined) {
+        actualX = params.actual_x;
+        actualY = params.actual_y || 0;
+        zValue = params.z || y;
+    } else if (params && params.y !== undefined) {
+        actualY = params.y;
+        zValue = params.z || y;
+    }
+
+    // 获取2D曝光图案的参数
+    const lastData = window.lastPlotData || {};
+    const exposureTime = lastData.exposure_time || params.t_exp || 100;
+    const C = lastData.parameters?.C || params.C || 0.022;
+    const angle_a_deg = lastData.parameters?.angle_a_deg || params.angle_a || 11.7;
+    const contrast_ctr = lastData.parameters?.contrast_ctr || params.contrast_ctr || 0.9;
+    const wavelength_nm = lastData.parameters?.wavelength_nm || params.wavelength || 405;
+    const threshold_cd = lastData.parameters?.threshold_cd || params.exposure_threshold || 25;
+
+    // 计算空间频率
+    const angle_a_rad = angle_a_deg * Math.PI / 180;
+    const spatial_freq = 4 * Math.PI * Math.sin(angle_a_rad) / wavelength_nm; // rad/nm
+
+    if (plotType === 'exposure') {
+        valueLabel = '曝光计量分布:';
+        valueUnit = '(归一化单位)';
+        formulaTitle = '2D DILL模型 - 曝光计量分布计算：';
+        formulaMath = 'D<sub>0</sub>(x,y) = 0.5 × [1 + ctr × cos((4π × sin(a) / λ) × x)] × t<sub>exp</sub><br>' +
+                     'D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)';
+
+        // 计算当前点的理论值
+        const D0_x = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualX * 1000)) * exposureTime; // x转换为nm
+        const D0_y = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualY * 1000)) * exposureTime; // y转换为nm  
+        const D_total = D0_x + D0_y;
+
+        formulaExplanation = `
+            <div>🔬 <strong>2D曝光图案参数：</strong></div>
+            <div>• 曝光时间 t<sub>exp</sub>: ${exposureTime}s</div>
+            <div>• 角度参数 a: ${angle_a_deg}°</div>
+            <div>• 对比度 ctr: ${contrast_ctr}</div>
+            <div>• 光波长 λ: ${wavelength_nm} nm</div>
+            <div>• 空间频率: 4π×sin(a)/λ = ${spatial_freq.toFixed(6)} rad/nm</div>
+            <div class="formula-separator"></div>
+            <div>📍 <strong>当前位置计算：</strong></div>
+            <div>• 点击位置: (${actualX.toFixed(3)}, ${actualY.toFixed(3)}) mm</div>
+            <div>• D<sub>0</sub>(x方向): ${D0_x.toFixed(6)}</div>
+            <div>• D<sub>0</sub>(y方向): ${D0_y.toFixed(6)}</div>
+            <div>• 总计量 D(x,y): ${D_total.toFixed(6)}</div>
+            <div>• 显示值: ${zValue.toFixed(6)}</div>
+            <div class="formula-separator"></div>
+            <div>💡 <strong>计算说明：</strong></div>
+            <div>• x和y方向分别计算曝光计量后相加</div>
+            <div>• 产生复杂的2D干涉图案</div>
+            <div>• 基于理想光刻胶曝光模型</div>
+        `;
+    } else if (plotType === 'thickness') {
+        valueLabel = '光刻胶厚度分布:';
+        valueUnit = '(归一化)';
+        formulaTitle = '2D DILL模型 - 光刻胶厚度分布计算：';
+        formulaMath = 'M(x,y) = e<sup>-C × D(x,y)</sup> (当 D(x,y) ≥ c<sub>d</sub>)<br>' +
+                     'H(x,y) = 1 - M(x,y)<br>' +
+                     '其中 D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)';
+
+        // 计算当前点的理论厚度
+        const D0_x = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualX * 1000)) * exposureTime;
+        const D0_y = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualY * 1000)) * exposureTime;
+        const D_total = D0_x + D0_y;
+        
+        let M_value, H_value;
+        let exposureStatus = '';
+        
+        if (D_total < threshold_cd) {
+            M_value = 1.0;
+            H_value = 0.0;
+            exposureStatus = '曝光不足，抗蚀剂未反应';
+        } else {
+            M_value = Math.exp(-C * D_total);
+            H_value = 1 - M_value;
+            exposureStatus = '曝光充分，抗蚀剂发生反应';
+        }
+
+        formulaExplanation = `
+            <div>🔬 <strong>2D光刻胶厚度参数：</strong></div>
+            <div>• DILL常数 C: ${C}</div>
+            <div>• 阈值 c<sub>d</sub>: ${threshold_cd}</div>
+            <div>• 曝光时间: ${exposureTime}s</div>
+            <div>• 对比度: ${contrast_ctr}</div>
+            <div class="formula-separator"></div>
+            <div>📍 <strong>当前位置计算：</strong></div>
+            <div>• 点击位置: (${actualX.toFixed(3)}, ${actualY.toFixed(3)}) mm</div>
+            <div>• 总曝光计量 D(x,y): ${D_total.toFixed(6)}</div>
+            <div>• 阈值比较: D(x,y) ${D_total >= threshold_cd ? '≥' : '<'} c<sub>d</sub></div>
+            <div>• M值: ${M_value.toFixed(6)}</div>
+            <div>• H值（厚度）: ${H_value.toFixed(6)}</div>
+            <div>• 显示值: ${zValue.toFixed(6)}</div>
+            <div>• 曝光状态: ${exposureStatus}</div>
+            <div class="formula-separator"></div>
+            <div>💡 <strong>物理意义：</strong></div>
+            <div>• M值：剩余抗蚀剂浓度</div>
+            <div>• H值：相对蚀刻深度</div>
+            <div>• 阈值以下：抗蚀剂完整保留</div>
+            <div>• 阈值以上：抗蚀剂指数衰减</div>
+        `;
+    }
+
+    // 添加通用的2D数据样式
+    additionalInfo = `
+        <style>
+            .formula-separator {
+                height: 1px;
+                background-color: #dee2e6;
+                margin: 8px 0;
+            }
+            .point-info-section {
+                margin: 12px 0;
+                padding: 10px;
+                border: 1px solid #e9ecef;
+                border-radius: 6px;
+                background-color: #f8f9fa;
+            }
+            .point-info-section h4 {
+                margin: 0 0 8px 0;
+                color: #495057;
+                font-size: 14px;
+            }
+            .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .info-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 4px 0;
+            }
+            .info-label {
+                font-weight: bold;
+                color: #495057;
+                font-size: 12px;
+            }
+            .info-value {
+                color: #007bff;
+                font-family: monospace;
+                font-size: 12px;
+            }
+            .formula-container {
+                background-color: #fff;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 12px;
+            }
+            .formula-title {
+                font-weight: bold;
+                margin-bottom: 8px;
+                color: #495057;
+                font-size: 13px;
+            }
+            .formula-math {
+                font-family: 'Times New Roman', serif;
+                font-size: 14px;
+                margin: 8px 0;
+                background-color: #f8f9fa;
+                padding: 8px;
+                border-radius: 3px;
+                border-left: 3px solid #007bff;
+            }
+            .formula-explanation {
+                font-size: 12px;
+                color: #666;
+                line-height: 1.4;
+            }
+            .formula-explanation > div {
+                margin: 2px 0;
+            }
+        </style>
+    `;
+
+    return `
+        <div class="point-info-section">
+            <h4>🎯 位置信息 (2D曝光图案)</h4>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">X坐标:</span><span class="info-value">${actualX.toFixed(3)} mm</span></div>
+                <div class="info-item"><span class="info-label">Y坐标:</span><span class="info-value">${actualY.toFixed(3)} mm</span></div>
+                <div class="info-item"><span class="info-label">${valueLabel}</span><span class="info-value">${zValue.toFixed(6)} ${valueUnit}</span></div>
+                <div class="info-item"><span class="info-label">数据类型:</span><span class="info-value">2D热力图</span></div>
+            </div>
+        </div>
+        <div class="point-info-section">
+            <h4>📋 参数组: 2D曝光图案</h4>
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">曝光时间:</span><span class="info-value">${exposureTime}s</span></div>
+                <div class="info-item"><span class="info-label">DILL常数:</span><span class="info-value">${C}</span></div>
+                <div class="info-item"><span class="info-label">角度:</span><span class="info-value">${angle_a_deg}°</span></div>
+                <div class="info-item"><span class="info-label">对比度:</span><span class="info-value">${contrast_ctr}</span></div>
+                <div class="info-item"><span class="info-label">波长:</span><span class="info-value">${wavelength_nm} nm</span></div>
+                <div class="info-item"><span class="info-label">阈值:</span><span class="info-value">${threshold_cd}</span></div>
+            </div>
+        </div>
+        <div class="point-info-section">
+            <h4>🧮 计算公式 (2D曝光图案)</h4>
+            <div class="formula-container">
+                <div class="formula-title">${formulaTitle}</div>
+                <div class="formula-math">${formulaMath}</div>
+                <div class="formula-explanation">${formulaExplanation}</div>
+            </div>
+        </div>
+        ${additionalInfo}
+    `;
+}
+
 // 为Dill模型生成弹窗HTML的辅助函数
 function getDillPopupHtmlContent(x, y, setName, params, plotType) {
     let valueLabel = '';
@@ -5319,6 +5794,15 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
     let formulaMath = '';
     let formulaExplanation = '';
     let additionalInfo = '';
+    
+    // 检查是否为2D曝光图案
+    const is2DExposurePattern = params.sine_type === '2d_exposure_pattern' || 
+                               (window.lastPlotData && window.lastPlotData.sine_type === '2d_exposure_pattern');
+    
+    // 如果是2D曝光图案，使用专门的处理逻辑
+    if (is2DExposurePattern) {
+        return get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType);
+    }
     
     // 检查是否为理想曝光模型（1D DILL模型使用理想曝光模型）
     const isIdealExposureModel = params.is_ideal_exposure_model || params.sine_type === 'single';
@@ -6609,30 +7093,27 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             const currentPhase = spatialFreq * currentX_um;
             const I0_at_x = iAvg * (1 + visibilityParam * Math.cos(currentPhase));  // 🔧 修复：使用I_avg而不是0.5
             
-            // 根据不同曝光时间计算剂量和效果
-            const exposureTimes = params.exposure_times || [30, 60, 250, 1000, 2000];
+            // 使用当前单个曝光时间计算剂量和效果
+            const t_exp = params.t_exp || 100;
+            const D0_at_x = I0_at_x * t_exp;
             let calculationDetails = '';
             
-            for (let i = 0; i < Math.min(3, exposureTimes.length); i++) {
-                const t_exp = exposureTimes[i];
-                const D0_at_x = I0_at_x * t_exp;
-                let M_at_x, H_at_x;
-                
-                if (D0_at_x < thresholdCd) {
-                    M_at_x = 1;
-                    H_at_x = 0;
-                } else {
-                    M_at_x = Math.exp(-exposureConstant * (D0_at_x - thresholdCd));
-                    H_at_x = 1 - M_at_x;
-                }
-                
-                calculationDetails += `<div style="margin: 5px 0; padding: 5px; background: rgba(0,0,0,0.05); border-radius: 3px;">`;
-                calculationDetails += `<strong>t=${t_exp}s:</strong> `;
-                calculationDetails += `D₀=${D0_at_x.toFixed(2)}, `;
-                calculationDetails += `${D0_at_x < thresholdCd ? '未达阈值' : '超过阈值'}, `;
-                calculationDetails += `M=${M_at_x.toFixed(4)}, H=${H_at_x.toFixed(4)}`;
-                calculationDetails += `</div>`;
+            let M_at_x, H_at_x;
+            
+            if (D0_at_x < thresholdCd) {
+                M_at_x = 1;
+                H_at_x = 0;
+            } else {
+                M_at_x = Math.exp(-exposureConstant * (D0_at_x - thresholdCd));
+                H_at_x = 1 - M_at_x;
             }
+            
+            calculationDetails += `<div style="margin: 5px 0; padding: 5px; background: rgba(0,0,0,0.05); border-radius: 3px;">`;
+            calculationDetails += `<strong>t=${t_exp}s:</strong> `;
+            calculationDetails += `D₀=${D0_at_x.toFixed(2)}, `;
+            calculationDetails += `${D0_at_x < thresholdCd ? '未达阈值' : '超过阈值'}, `;
+            calculationDetails += `M=${M_at_x.toFixed(4)}, H=${H_at_x.toFixed(4)}`;
+            calculationDetails += `</div>`;
             
             formulaExplanation = `
                 <div>🔬 <strong>DILL模型阈值机制参数：</strong></div>

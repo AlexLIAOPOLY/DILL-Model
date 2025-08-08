@@ -2067,6 +2067,7 @@ intensity3
                             <option value="single" selected data-i18n="sine_wave_type_single">一维正弦波</option>
                             <option value="multi" data-i18n="sine_wave_type_multi">二维正弦波</option>
                             <option value="3d" data-i18n="sine_wave_type_3d">三维正弦波</option>
+                            <option value="2d_exposure_pattern" data-i18n="sine_wave_type_2d_exposure">2D曝光图案</option>
                         </select>
                     </div>
                     
@@ -2373,6 +2374,49 @@ intensity3
                                 </div>
                                 <div class="parameter-description">每帧播放间隔，越小播放越快</div>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 2D曝光图案参数容器 -->
+                    <div class="parameter-group-container" id="dill-2d-exposure-params-container" data-title="2D曝光图案参数" style="display: none;">
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">X范围 (μm)</span>
+                                <span class="parameter-value">-1000 到 1000</span>
+                            </div>
+                            <div class="parameter-input">
+                                <label>X最小值: </label>
+                                <input type="number" id="x_min_2d" value="-1000" step="10" style="width: 80px;">
+                                <label style="margin-left: 10px;">X最大值: </label>
+                                <input type="number" id="x_max_2d" value="1000" step="10" style="width: 80px;">
+                            </div>
+                            <div class="parameter-description">X方向的计算范围，单位：微米</div>
+                        </div>
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">Y范围 (μm)</span>
+                                <span class="parameter-value">-1000 到 1000</span>
+                            </div>
+                            <div class="parameter-input">
+                                <label>Y最小值: </label>
+                                <input type="number" id="y_min_2d" value="-1000" step="10" style="width: 80px;">
+                                <label style="margin-left: 10px;">Y最大值: </label>
+                                <input type="number" id="y_max_2d" value="1000" step="10" style="width: 80px;">
+                            </div>
+                            <div class="parameter-description">Y方向的计算范围，单位：微米</div>
+                        </div>
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">网格步长 (μm)</span>
+                                <span class="parameter-value">5</span>
+                            </div>
+                            <div class="parameter-input">
+                                <input type="number" id="step_size_2d" value="5" min="1" max="50" step="1" style="width: 80px;">
+                            </div>
+                            <div class="parameter-description">空间网格步长，影响计算精度和计算量，步长越小精度越高但计算越慢</div>
                         </div>
                     </div>
                 </div>

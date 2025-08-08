@@ -176,6 +176,11 @@ function initExposureCalculationMethodSelector() {
                 showNotification('已切换到标准模式，所有控制框已恢复显示', 'info');
             }
             
+            // 显示正弦波类型选择器
+            if (typeof window.updateSineTypeVisibility === 'function') {
+                window.updateSineTypeVisibility();
+            }
+            
         } else if (method === 'cumulative') {
             // 多段曝光时间累积模式
             standardContainer.style.display = 'none';
@@ -247,6 +252,11 @@ function initExposureCalculationMethodSelector() {
                 
                 if (typeof showNotification === 'function') {
                     showNotification('已切换到多段曝光时间累计模式，请设置段落参数', 'info');
+                }
+                
+                // 隐藏正弦波类型选择器
+                if (typeof window.updateSineTypeVisibility === 'function') {
+                    window.updateSineTypeVisibility();
                 }
             }
             

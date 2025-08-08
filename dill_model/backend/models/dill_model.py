@@ -1812,6 +1812,123 @@ class DillModel:
         
         return result
 
+    def calculate_2d_exposure_pattern(self, C=0.022, angle_a_deg=11.7, 
+                                     exposure_time=100, 
+                                     contrast_ctr=0.9, threshold_cd=25, wavelength_nm=405,
+                                     x_min=-1000, x_max=1000, y_min=-1000, y_max=1000, 
+                                     step_size=5):
+        """
+        2D曝光图案计算 - 基于MATLAB latent_image2d.m文件逻辑
+        
+        参数:
+            C: 光敏速率常数，默认 0.022
+            angle_a_deg: 入射角度（度），默认 11.7
+            exposure_time: 单个曝光时间，默认 100
+            contrast_ctr: 对比度参数，默认 0.9
+            threshold_cd: 阈值剂量，默认 25
+            wavelength_nm: 光波长（纳米），默认 405
+            x_min, x_max: X方向范围（微米），默认 [-1000, 1000]
+            y_min, y_max: Y方向范围（微米），默认 [-1000, 1000]
+            step_size: 网格步长（微米），默认 5
+            
+        返回:
+            包含2D曝光图案计算结果的字典
+        """
+        logger.info("=" * 60)
+        logger.info("【Dill模型 - 2D曝光图案计算】")
+        logger.info("=" * 60)
+        logger.info("🔸 使用MATLAB latent_image2d.m文件逻辑")
+        
+        # 角度转弧度
+        angle_a_rad = angle_a_deg * np.pi / 180
+        
+        logger.info(f"🔸 输入参数:")
+        logger.info(f"   - C (光敏速率常数) = {C}")
+        logger.info(f"   - a (入射角度) = {angle_a_deg}°")
+        logger.info(f"   - ctr (对比度) = {contrast_ctr}")
+        logger.info(f"   - cd (阈值剂量) = {threshold_cd}")
+        logger.info(f"   - λ (光波长) = {wavelength_nm} nm")
+        logger.info(f"   - 曝光时间 = {exposure_time}")
+        logger.info(f"   - X范围 = [{x_min}, {x_max}] 微米，步长 = {step_size}")
+        logger.info(f"   - Y范围 = [{y_min}, {y_max}] 微米，步长 = {step_size}")
+        
+        # 创建空间网格坐标 (对应MATLAB: X=-1000:5:1000; Y=-1000:5:1000)
+        x_range = np.arange(x_min, x_max + step_size, step_size)
+        y_range = np.arange(y_min, y_max + step_size, step_size)
+        X, Y = np.meshgrid(x_range, y_range)
+        
+        grid_shape = X.shape
+        logger.info(f"🔸 网格信息:")
+        logger.info(f"   - 网格大小: {grid_shape[0]} × {grid_shape[1]} = {grid_shape[0] * grid_shape[1]} 点")
+        logger.info(f"   - X坐标点数: {len(x_range)}")
+        logger.info(f"   - Y坐标点数: {len(y_range)}")
+        
+        # 角度转弧度
+        angle_a_rad = angle_a_deg * np.pi / 180
+        
+        # 存储单个时间点的计算结果
+        results_data = {
+            'x_coords': x_range,
+            'y_coords': y_range,
+            'X_grid': X,
+            'Y_grid': Y,
+            'exposure_time': exposure_time,  # 单个曝光时间
+            'parameters': {
+                'C': C,
+                'angle_a_deg': angle_a_deg,
+                'angle_a_rad': angle_a_rad,
+                'contrast_ctr': contrast_ctr,
+                'threshold_cd': threshold_cd,
+                'wavelength_nm': wavelength_nm
+            },
+            'sine_type': '2d_exposure_pattern'
+        }
+        
+        logger.info(f"🔄 开始计算曝光时间 t={exposure_time} 的2D分布...")
+        
+        # 计算单个曝光时间的分布
+        t = exposure_time
+        logger.info(f"📊 计算曝光时间: t = {t}")
+        
+        # === 步骤1: 计算剂量分布 D0 ===
+        # 根据MATLAB公式: D0(i,j) = 0.5*(1+ctr*cos((4*pi*sin(a)/405)*X(i)))*t(m)
+        # 注意：wavelength_nm用于替换MATLAB中的固定值405
+        D0 = 0.5 * (1 + contrast_ctr * np.cos((4 * np.pi * np.sin(angle_a_rad) / wavelength_nm) * X)) * t
+        
+        # === 步骤2: 计算总剂量 D ===
+        # 根据MATLAB: D = D0 + D0'
+        D = D0 + D0.T
+        
+        # === 步骤3: 计算抗蚀效果 M 和厚度分布 H ===
+        M = np.zeros_like(D)
+        H = np.zeros_like(D)
+        
+        # 按照MATLAB的逐点计算逻辑
+        for j in range(D.shape[0]):
+            for i in range(D.shape[1]):
+                if D[j, i] < threshold_cd:
+                    M[j, i] = 1.0  # 未达阈值，完全抗蚀
+                else:
+                    M[j, i] = np.exp(-C * (D[j, i] - threshold_cd))  # 指数衰减
+                H[j, i] = 1 - M[j, i]  # 厚度分布
+        
+        # 存储计算结果
+        results_data['dose_distribution'] = D.copy()
+        results_data['M_values'] = M.copy()
+        results_data['H_values'] = H.copy()
+        results_data['thickness_distribution'] = -H.copy()  # 负值用于与MATLAB显示一致
+        
+        # 统计信息
+        logger.info(f"   ✓ 剂量范围: [{D.min():.2f}, {D.max():.2f}]")
+        logger.info(f"   ✓ M值范围: [{M.min():.4f}, {M.max():.4f}]")
+        logger.info(f"   ✓ 厚度范围: [{(-H).min():.4f}, {(-H).max():.4f}]")
+        
+        logger.info(f"✅ 2D曝光图案计算完成!")
+        logger.info(f"   - 曝光时间: {exposure_time}")
+        logger.info(f"   - 网格大小: {grid_shape[0]} × {grid_shape[1]}")
+        
+        return results_data
+
 def get_model_by_name(model_name):
     """
     根据模型名称返回对应模型实例
