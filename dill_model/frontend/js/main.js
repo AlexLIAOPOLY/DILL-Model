@@ -918,17 +918,8 @@ function initApp() {
         
         if (!exposureMethodSelect || !sineTypeContainer) return;
         
-        // 只有在标准模式下才显示正弦波类型选择器
-        if (exposureMethodSelect.value === 'standard') {
-            sineTypeContainer.style.display = 'block';
-        } else {
-            sineTypeContainer.style.display = 'none';
-            // 自动重置为一维正弦波
-            if (dillSineType) {
-                dillSineType.value = 'single';
-                dillSineType.dispatchEvent(new Event('change'));
-            }
-        }
+        // 修改：始终显示正弦波类型选择器，支持所有模式下的2D曝光图案
+        sineTypeContainer.style.display = 'block';
     }
     
     if (dillSineType) {
@@ -3205,6 +3196,11 @@ function displayInteractiveResults(data) {
             if (thicknessThresholds) thicknessThresholds.style.display = 'none';
         }
     }, 100);
+    
+    // 🎯 初始化图表容器的可拖拽缩放功能
+    setTimeout(() => {
+        initPlotlyResizableFeature(exposurePlotContainer, thicknessPlotContainer);
+    }, 200);
 }
 
 // 修改createExposure3DPlot函数，添加更多调试信息
@@ -5671,6 +5667,16 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
     const contrast_ctr = lastData.parameters?.contrast_ctr || params.contrast_ctr || 0.9;
     const wavelength_nm = lastData.parameters?.wavelength_nm || params.wavelength || 405;
     const threshold_cd = lastData.parameters?.threshold_cd || params.exposure_threshold || 25;
+    
+    // 检查曝光计算模式
+    const exposureCalculationMethod = lastData.exposure_calculation_method || params.exposure_calculation_method || 'standard';
+    const segmentCount = lastData.segment_count || params.segment_count || 5;
+    const segmentDuration = lastData.segment_duration || params.segment_duration || 1;
+    const segmentIntensities = lastData.segment_intensities || params.segment_intensities || [];
+    
+    // 检查是否使用自定义向量
+    const intensityMethodSelect = document.getElementById('intensity_input_method');
+    const isUsingCustomData = intensityMethodSelect && intensityMethodSelect.value === 'custom' && customIntensityData.loaded;
 
     // 计算空间频率
     const angle_a_rad = angle_a_deg * Math.PI / 180;
@@ -5688,9 +5694,29 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
         const D0_y = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualY * 1000)) * exposureTime; // y转换为nm  
         const D_total = D0_x + D0_y;
 
+        // 确定具体的模式组合描述
+        const modeDescription = (() => {
+            const intensityMode = isUsingCustomData ? '自定义向量' : '公式计算';
+            const exposureMode = exposureCalculationMethod === 'cumulative' ? '累积模式' : '标准模式';
+            return `${intensityMode} + ${exposureMode}`;
+        })();
+        
         formulaExplanation = `
             <div>🔬 <strong>2D曝光图案参数：</strong></div>
+            <div>• <strong>模式组合: ${modeDescription}</strong></div>
+            ${exposureCalculationMethod === 'cumulative' ? `
+            <div>• 曝光计算: 多段累积 (${segmentCount}段)</div>
+            <div>• 单段时间: ${segmentDuration}s，总时间: ${exposureTime}s</div>
+            <div>• 强度序列: [${segmentIntensities.slice(0,5).map(v => v.toFixed(1)).join(', ')}${segmentIntensities.length > 5 ? '...' : ''}]%</div>
+            ` : `
+            <div>• 曝光计算: 标准模式</div>
             <div>• 曝光时间 t<sub>exp</sub>: ${exposureTime}s</div>
+            `}
+            ${isUsingCustomData ? `
+            <div>• 光强输入: 自定义向量数据 (${customIntensityData.x ? customIntensityData.x.length : 0}点)</div>
+            ` : `
+            <div>• 光强输入: 公式计算模式</div>
+            `}
             <div>• 角度参数 a: ${angle_a_deg}°</div>
             <div>• 对比度 ctr: ${contrast_ctr}</div>
             <div>• 光波长 λ: ${wavelength_nm} nm</div>
@@ -5706,7 +5732,24 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
             <div>💡 <strong>计算说明：</strong></div>
             <div>• x和y方向分别计算曝光计量后相加</div>
             <div>• 产生复杂的2D干涉图案</div>
+            ${exposureCalculationMethod === 'cumulative' ? `
+            <div>• 累积模式：D(x,y) = Σ[D<sub>0,i</sub>(x,y) × intensity<sub>i</sub>% × t<sub>segment</sub>]</div>
+            <div>• 多段累积效应：不同强度段依次叠加</div>
+            <div>• 模拟真实曝光过程的时变特性</div>
+            ` : `
             <div>• 基于理想光刻胶曝光模型</div>
+            <div>• 单一曝光时间的标准计算</div>
+            `}
+            ${isUsingCustomData ? `
+            <div>• 自定义向量：基于用户上传的光强分布数据</div>
+            <div>• 数据范围: X ∈ [${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 'N/A'}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 'N/A'}] mm</div>
+            <div>• 插值计算: 线性插值到计算网格 [-1, 1] mm</div>
+            <div>• ⚠️ 十字架效应: 当自定义范围 < 计算范围时出现</div>
+            <div>• 边界处理: 范围外区域补零，产生十字架图案</div>
+            ` : `
+            <div>• 公式计算: 基于余弦空间调制函数</div>
+            <div>• 空间分布: 1 + ctr×cos(4π×sin(a)/λ×x)</div>
+            `}
         `;
     } else if (plotType === 'thickness') {
         valueLabel = '光刻胶厚度分布:';
@@ -5734,11 +5777,35 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
             exposureStatus = '曝光充分，抗蚀剂发生反应';
         }
 
+        // 确定具体的模式组合描述
+        const modeDescription = (() => {
+            const intensityMode = isUsingCustomData ? '自定义向量' : '公式计算';
+            const exposureMode = exposureCalculationMethod === 'cumulative' ? '累积模式' : '标准模式';
+            return `${intensityMode} + ${exposureMode}`;
+        })();
+        
         formulaExplanation = `
             <div>🔬 <strong>2D光刻胶厚度参数：</strong></div>
+            <div>• <strong>模式组合: ${modeDescription}</strong></div>
             <div>• DILL常数 C: ${C}</div>
             <div>• 阈值 c<sub>d</sub>: ${threshold_cd}</div>
+            ${exposureCalculationMethod === 'cumulative' ? `
+            <div>• 曝光计算: 多段累积 (${segmentCount}段)</div>
+            <div>• 单段时间: ${segmentDuration}s，总时间: ${exposureTime}s</div>
+            <div>• 强度序列: [${segmentIntensities.slice(0,5).map(v => v.toFixed(1)).join(', ')}${segmentIntensities.length > 5 ? '...' : ''}]%</div>
+            ` : `
+            <div>• 曝光计算: 标准模式</div>
             <div>• 曝光时间: ${exposureTime}s</div>
+            `}
+            ${isUsingCustomData ? `
+            <div>• 光强输入: 自定义向量数据 (${customIntensityData.x ? customIntensityData.x.length : 0}点)</div>
+            <div>• 数据范围: X ∈ [${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 'N/A'}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 'N/A'}] mm</div>
+            <div>• 插值计算: 线性插值到计算网格 [-1, 1] mm</div>
+            <div>• ⚠️ 十字架效应: 当自定义范围 < 计算范围时出现</div>
+            ` : `
+            <div>• 光强输入: 公式计算模式</div>
+            <div>• 余弦调制: 1 + ctr×cos(4π×sin(a)/λ×x)</div>
+            `}
             <div>• 对比度: ${contrast_ctr}</div>
             <div class="formula-separator"></div>
             <div>📍 <strong>当前位置计算：</strong></div>
@@ -5755,6 +5822,20 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
             <div>• H值：相对蚀刻深度</div>
             <div>• 阈值以下：抗蚀剂完整保留</div>
             <div>• 阈值以上：抗蚀剂指数衰减</div>
+            ${exposureCalculationMethod === 'cumulative' ? `
+            <div>• 累积模式：M(x,y) = exp(-C × D<sub>累积</sub>(x,y))</div>
+            <div>• 多段叠加：D<sub>累积</sub> = Σ[D<sub>i</sub>(x,y) × intensity<sub>i</sub>% × t<sub>segment</sub>]</div>
+            <div>• 厚度变化：H(x,y) = 1 - M(x,y)</div>
+            ` : `
+            <div>• 标准模式：基于单一曝光时间计算</div>
+            `}
+            ${isUsingCustomData ? `
+            <div>• 自定义向量：基于用户光强分布的厚度计算</div>
+            <div>• 十字架图案：自定义数据范围外补零产生</div>
+            <div>• 物理含义：局部光强分布引起的差异化蚀刻</div>
+            ` : `
+            <div>• 公式计算：基于理想干涉条纹分布</div>
+            `}
         `;
     }
 
@@ -5831,6 +5912,13 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
         </style>
     `;
 
+    // 确定具体的模式组合描述（用于弹窗标题）
+    const modeDescription = (() => {
+        const intensityMode = isUsingCustomData ? '自定义向量' : '公式计算';
+        const exposureMode = exposureCalculationMethod === 'cumulative' ? '累积模式' : '标准模式';
+        return `${intensityMode} + ${exposureMode}`;
+    })();
+
     return `
         <div class="point-info-section">
             <h4>🎯 位置信息 (2D曝光图案)</h4>
@@ -5842,9 +5930,22 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
             </div>
         </div>
         <div class="point-info-section">
-            <h4>📋 参数组: 2D曝光图案</h4>
+            <h4>📋 参数组: 2D曝光图案 (${modeDescription})</h4>
             <div class="info-grid">
+                ${exposureCalculationMethod === 'cumulative' ? `
+                <div class="info-item"><span class="info-label">计算模式:</span><span class="info-value">多段累积</span></div>
+                <div class="info-item"><span class="info-label">段数:</span><span class="info-value">${segmentCount}</span></div>
+                <div class="info-item"><span class="info-label">单段时间:</span><span class="info-value">${segmentDuration}s</span></div>
+                <div class="info-item"><span class="info-label">总时间:</span><span class="info-value">${exposureTime}s</span></div>
+                ` : `
                 <div class="info-item"><span class="info-label">曝光时间:</span><span class="info-value">${exposureTime}s</span></div>
+                `}
+                ${isUsingCustomData ? `
+                <div class="info-item"><span class="info-label">光强模式:</span><span class="info-value">自定义向量</span></div>
+                <div class="info-item"><span class="info-label">数据点数:</span><span class="info-value">${customIntensityData.x ? customIntensityData.x.length : 0}</span></div>
+                ` : `
+                <div class="info-item"><span class="info-label">光强模式:</span><span class="info-value">公式计算</span></div>
+                `}
                 <div class="info-item"><span class="info-label">DILL常数:</span><span class="info-value">${C}</span></div>
                 <div class="info-item"><span class="info-label">角度:</span><span class="info-value">${angle_a_deg}°</span></div>
                 <div class="info-item"><span class="info-label">对比度:</span><span class="info-value">${contrast_ctr}</span></div>
@@ -19400,4 +19501,69 @@ async function handleExampleFileUpload(event) {
         // 清空文件输入框，允许重复选择相同文件
         event.target.value = '';
     }
+}
+
+/**
+ * 初始化Plotly图表的可拖拽缩放功能
+ * @param {HTMLElement} exposureContainer - 曝光图表容器
+ * @param {HTMLElement} thicknessContainer - 厚度图表容器
+ */
+function initPlotlyResizableFeature(exposureContainer, thicknessContainer) {
+    // 检查ResizablePlotlyManager是否可用
+    if (!window.ResizablePlotlyManager) {
+        console.warn('⚠️ ResizablePlotlyManager 未找到，跳过拖拽缩放功能初始化');
+        return;
+    }
+    
+    console.log('🎯 开始初始化Plotly图表拖拽缩放功能...');
+    
+    // 设置曝光图表为可拖拽缩放
+    if (exposureContainer && exposureContainer.id) {
+        try {
+            window.ResizablePlotlyManager.makeResizable(exposureContainer.id);
+            console.log(`✅ 曝光图表容器 ${exposureContainer.id} 已设置为可拖拽缩放`);
+        } catch (error) {
+            console.error(`❌ 设置曝光图表拖拽功能失败:`, error);
+        }
+    }
+    
+    // 设置厚度图表为可拖拽缩放
+    if (thicknessContainer && thicknessContainer.id) {
+        try {
+            window.ResizablePlotlyManager.makeResizable(thicknessContainer.id);
+            console.log(`✅ 厚度图表容器 ${thicknessContainer.id} 已设置为可拖拽缩放`);
+        } catch (error) {
+            console.error(`❌ 设置厚度图表拖拽功能失败:`, error);
+        }
+    }
+    
+    // 检查是否还有其他图表容器需要设置
+    const additionalContainers = [
+        'car-interactive-plots',
+        'enhanced-dill-x-plane-exposure-container',
+        'enhanced-dill-x-plane-thickness-container',
+        'enhanced-dill-y-plane-exposure-container',
+        'enhanced-dill-y-plane-thickness-container',
+        'dill-4d-exposure',
+        'dill-4d-thickness',
+        'enhanced-dill-4d-exposure',
+        'car-4d-initial-acid',
+        'car-4d-diffused-acid',
+        'car-4d-deprotection',
+        'car-4d-thickness'
+    ];
+    
+    additionalContainers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container && container.style.display !== 'none') {
+            try {
+                window.ResizablePlotlyManager.makeResizable(containerId);
+                console.log(`✅ 额外图表容器 ${containerId} 已设置为可拖拽缩放`);
+            } catch (error) {
+                console.warn(`⚠️ 设置额外图表容器 ${containerId} 拖拽功能失败:`, error);
+            }
+        }
+    });
+    
+    console.log('🎯 Plotly图表拖拽缩放功能初始化完成');
 }

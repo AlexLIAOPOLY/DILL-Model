@@ -153,20 +153,50 @@ def calculate():
                 y_max_2d = float(data.get('y_max_2d', 1000))
                 step_size_2d = float(data.get('step_size_2d', 5))
                 
-                # 计算2D曝光图案 - 使用单个曝光时间
-                plots = model.calculate_2d_exposure_pattern(
-                    C=C, 
-                    angle_a_deg=angle_a,
-                    exposure_time=t_exp,  # 使用单个曝光时间而非数组
-                    contrast_ctr=contrast_ctr,
-                    threshold_cd=exposure_threshold,
-                    wavelength_nm=wavelength,
-                    x_min=x_min_2d, x_max=x_max_2d,
-                    y_min=y_min_2d, y_max=y_max_2d,
-                    step_size=step_size_2d
-                )
+                # 检查曝光计量计算方式
+                exposure_calculation_method = data.get('exposure_calculation_method', 'standard')
                 
-                add_success_log('dill', f"2D曝光图案计算完成 (曝光时间: {t_exp}s)", dimension='2d')
+                if exposure_calculation_method == 'cumulative':
+                    # 累积模式下的2D曝光图案
+                    segment_duration = float(data.get('segment_duration', 1))
+                    segment_count = int(data.get('segment_count', 5))
+                    segment_intensities = data.get('segment_intensities', [])
+                    
+                    # 计算总曝光时间
+                    total_exposure_time = segment_duration * segment_count
+                    
+                    plots = model.calculate_2d_exposure_pattern(
+                        C=C, 
+                        angle_a_deg=angle_a,
+                        exposure_time=total_exposure_time,  # 使用总曝光时间
+                        contrast_ctr=contrast_ctr,
+                        threshold_cd=exposure_threshold,
+                        wavelength_nm=wavelength,
+                        x_min=x_min_2d, x_max=x_max_2d,
+                        y_min=y_min_2d, y_max=y_max_2d,
+                        step_size=step_size_2d,
+                        exposure_calculation_method='cumulative',
+                        segment_intensities=segment_intensities,
+                        custom_intensity_data=custom_intensity_data
+                    )
+                    
+                    add_success_log('dill', f"2D曝光图案计算完成 (累积模式, 总时间: {total_exposure_time}s)", dimension='2d')
+                else:
+                    # 标准模式下的2D曝光图案
+                    plots = model.calculate_2d_exposure_pattern(
+                        C=C, 
+                        angle_a_deg=angle_a,
+                        exposure_time=t_exp,  # 使用单个曝光时间
+                        contrast_ctr=contrast_ctr,
+                        threshold_cd=exposure_threshold,
+                        wavelength_nm=wavelength,
+                        x_min=x_min_2d, x_max=x_max_2d,
+                        y_min=y_min_2d, y_max=y_max_2d,
+                        step_size=step_size_2d,
+                        custom_intensity_data=custom_intensity_data
+                    )
+                    
+                    add_success_log('dill', f"2D曝光图案计算完成 (曝光时间: {t_exp}s)", dimension='2d')
                 
             elif sine_type == '3d':
                 # 处理三维正弦波参数
@@ -539,34 +569,79 @@ def calculate_data():
                 y_max_2d = float(data.get('y_max_2d', 1000))
                 step_size_2d = float(data.get('step_size_2d', 5))
                 
-                print(f"Dill模型参数 (2D曝光图案): I_avg={I_avg}, V={V}, t_exp={t_exp}, C={C}")
-                print(f"  2D曝光参数: angle_a={angle_a}, threshold={exposure_threshold}, contrast={contrast_ctr}")
-                print(f"  曝光时间: {t_exp}s")
-                print(f"  X范围: [{x_min_2d}, {x_max_2d}], Y范围: [{y_min_2d}, {y_max_2d}], 步长: {step_size_2d}")
+                # 检查曝光计量计算方式
+                exposure_calculation_method = data.get('exposure_calculation_method', 'standard')
+                print(f"🔍 2D曝光图案曝光计算方式: {exposure_calculation_method}")
                 
                 calc_start = time.time()
                 try:
-                    # 计算2D曝光图案 - 使用单个曝光时间
-                    plot_data = model.calculate_2d_exposure_pattern(
-                        C=C, 
-                        angle_a_deg=angle_a,
-                        exposure_time=t_exp,  # 使用单个曝光时间而非数组
-                        contrast_ctr=contrast_ctr,
-                        threshold_cd=exposure_threshold,
-                        wavelength_nm=wavelength,
-                        x_min=x_min_2d, x_max=x_max_2d,
-                        y_min=y_min_2d, y_max=y_max_2d,
-                        step_size=step_size_2d
-                    )
-                    calc_time = time.time() - calc_start
-                    
-                    print(f"[Dill-2D曝光] 🎯 2D曝光图案计算完成统计:")
-                    print(f"  ✅ 计算成功")
-                    print(f"  ⏱️  计算时间: {calc_time:.3f}s")
-                    print(f"  💾 数据字段: {list(plot_data.keys())}")
-                    print(f"  📊 曝光时间: {t_exp}")
-                    
-                    add_success_log('dill', f"2D曝光图案计算完成 (t={t_exp}), 用时{calc_time:.3f}s", dimension='2d')
+                    if exposure_calculation_method == 'cumulative':
+                        # 累积模式下的2D曝光图案
+                        segment_duration = float(data.get('segment_duration', 1))
+                        segment_count = int(data.get('segment_count', 5))
+                        segment_intensities = data.get('segment_intensities', [])
+                        total_exposure_time = segment_duration * segment_count
+                        
+                        print(f"Dill模型参数 (2D曝光图案-累积): I_avg={I_avg}, V={V}, 总时间={total_exposure_time}, C={C}")
+                        print(f"  2D曝光参数: angle_a={angle_a}, threshold={exposure_threshold}, contrast={contrast_ctr}")
+                        print(f"  累积参数: 段数={segment_count}, 单段时间={segment_duration}s, 总时间={total_exposure_time}s")
+                        print(f"  X范围: [{x_min_2d}, {x_max_2d}], Y范围: [{y_min_2d}, {y_max_2d}], 步长: {step_size_2d}")
+                        
+                        # 计算2D曝光图案 - 使用总曝光时间
+                        plot_data = model.calculate_2d_exposure_pattern(
+                            C=C, 
+                            angle_a_deg=angle_a,
+                            exposure_time=total_exposure_time,  # 使用总曝光时间
+                            contrast_ctr=contrast_ctr,
+                            threshold_cd=exposure_threshold,
+                            wavelength_nm=wavelength,
+                            x_min=x_min_2d, x_max=x_max_2d,
+                            y_min=y_min_2d, y_max=y_max_2d,
+                            step_size=step_size_2d,
+                            exposure_calculation_method='cumulative',
+                            segment_intensities=segment_intensities,
+                            custom_intensity_data=custom_intensity_data
+                        )
+                        
+                        calc_time = time.time() - calc_start
+                        print(f"[Dill-2D曝光] 🎯 2D曝光图案计算完成统计 (累积模式):")
+                        print(f"  ✅ 计算成功")
+                        print(f"  ⏱️  计算时间: {calc_time:.3f}s")
+                        print(f"  💾 数据字段: {list(plot_data.keys())}")
+                        print(f"  📊 总曝光时间: {total_exposure_time}s")
+                        
+                        add_success_log('dill', f"2D曝光图案计算完成 (累积模式, 总时间={total_exposure_time}s), 用时{calc_time:.3f}s", dimension='2d')
+                        
+                    else:
+                        # 标准模式下的2D曝光图案
+                        print(f"Dill模型参数 (2D曝光图案-标准): I_avg={I_avg}, V={V}, t_exp={t_exp}, C={C}")
+                        print(f"  2D曝光参数: angle_a={angle_a}, threshold={exposure_threshold}, contrast={contrast_ctr}")
+                        print(f"  自定义向量: {custom_intensity_data is not None}")
+                        print(f"  曝光时间: {t_exp}s")
+                        print(f"  X范围: [{x_min_2d}, {x_max_2d}], Y范围: [{y_min_2d}, {y_max_2d}], 步长: {step_size_2d}")
+                        
+                        # 计算2D曝光图案 - 使用单个曝光时间
+                        plot_data = model.calculate_2d_exposure_pattern(
+                            C=C, 
+                            angle_a_deg=angle_a,
+                            exposure_time=t_exp,  # 使用单个曝光时间
+                            contrast_ctr=contrast_ctr,
+                            threshold_cd=exposure_threshold,
+                            wavelength_nm=wavelength,
+                            x_min=x_min_2d, x_max=x_max_2d,
+                            y_min=y_min_2d, y_max=y_max_2d,
+                            step_size=step_size_2d,
+                            custom_intensity_data=custom_intensity_data
+                        )
+                        
+                        calc_time = time.time() - calc_start
+                        print(f"[Dill-2D曝光] 🎯 2D曝光图案计算完成统计:")
+                        print(f"  ✅ 计算成功")
+                        print(f"  ⏱️  计算时间: {calc_time:.3f}s")
+                        print(f"  💾 数据字段: {list(plot_data.keys())}")
+                        print(f"  📊 曝光时间: {t_exp}")
+                        
+                        add_success_log('dill', f"2D曝光图案计算完成 (t={t_exp}), 用时{calc_time:.3f}s", dimension='2d')
                     
                 except Exception as e:
                     calc_time = time.time() - calc_start

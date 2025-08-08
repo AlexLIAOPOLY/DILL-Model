@@ -900,7 +900,8 @@ window.extendParametersWithCumulative = function(params) {
             console.log('   - 🔥 强制设置 is_ideal_exposure_model = true');
         }
         
-        if (params.sine_type !== 'single') {
+        // 只有在不是2D曝光图案的情况下才强制设置为single
+        if (params.sine_type !== 'single' && params.sine_type !== '2d_exposure_pattern') {
             params.sine_type = 'single';
             console.log('   - 🔥 强制设置 sine_type = single');
         }

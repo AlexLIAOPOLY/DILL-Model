@@ -1816,20 +1816,24 @@ class DillModel:
                                      exposure_time=100, 
                                      contrast_ctr=0.9, threshold_cd=25, wavelength_nm=405,
                                      x_min=-1000, x_max=1000, y_min=-1000, y_max=1000, 
-                                     step_size=5):
+                                     step_size=5, exposure_calculation_method='standard',
+                                     segment_intensities=None, custom_intensity_data=None):
         """
         2D曝光图案计算 - 基于MATLAB latent_image2d.m文件逻辑
         
         参数:
             C: 光敏速率常数，默认 0.022
             angle_a_deg: 入射角度（度），默认 11.7
-            exposure_time: 单个曝光时间，默认 100
+            exposure_time: 曝光时间（标准模式为单个时间，累积模式为总时间），默认 100
             contrast_ctr: 对比度参数，默认 0.9
             threshold_cd: 阈值剂量，默认 25
             wavelength_nm: 光波长（纳米），默认 405
             x_min, x_max: X方向范围（微米），默认 [-1000, 1000]
             y_min, y_max: Y方向范围（微米），默认 [-1000, 1000]
             step_size: 网格步长（微米），默认 5
+            exposure_calculation_method: 曝光计算方式，'standard' 或 'cumulative'
+            segment_intensities: 累积模式下的段强度列表
+            custom_intensity_data: 自定义光强分布数据
             
         返回:
             包含2D曝光图案计算结果的字典
@@ -1849,6 +1853,11 @@ class DillModel:
         logger.info(f"   - cd (阈值剂量) = {threshold_cd}")
         logger.info(f"   - λ (光波长) = {wavelength_nm} nm")
         logger.info(f"   - 曝光时间 = {exposure_time}")
+        logger.info(f"   - 曝光计算方式 = {exposure_calculation_method}")
+        if exposure_calculation_method == 'cumulative' and segment_intensities:
+            logger.info(f"   - 累积模式段强度 = {segment_intensities}")
+        if custom_intensity_data:
+            logger.info(f"   - 使用自定义光强分布，点数: {len(custom_intensity_data.get('x', []))}")
         logger.info(f"   - X范围 = [{x_min}, {x_max}] 微米，步长 = {step_size}")
         logger.info(f"   - Y范围 = [{y_min}, {y_max}] 微米，步长 = {step_size}")
         
@@ -1863,16 +1872,13 @@ class DillModel:
         logger.info(f"   - X坐标点数: {len(x_range)}")
         logger.info(f"   - Y坐标点数: {len(y_range)}")
         
-        # 角度转弧度
-        angle_a_rad = angle_a_deg * np.pi / 180
-        
-        # 存储单个时间点的计算结果
+        # 存储计算结果
         results_data = {
             'x_coords': x_range,
             'y_coords': y_range,
             'X_grid': X,
             'Y_grid': Y,
-            'exposure_time': exposure_time,  # 单个曝光时间
+            'exposure_time': exposure_time,
             'parameters': {
                 'C': C,
                 'angle_a_deg': angle_a_deg,
@@ -1884,22 +1890,72 @@ class DillModel:
             'sine_type': '2d_exposure_pattern'
         }
         
-        logger.info(f"🔄 开始计算曝光时间 t={exposure_time} 的2D分布...")
+        logger.info(f"🔄 开始计算2D曝光分布...")
         
-        # 计算单个曝光时间的分布
-        t = exposure_time
-        logger.info(f"📊 计算曝光时间: t = {t}")
+        # === 步骤1: 计算基础剂量分布 D0 (严格按照MATLAB逻辑) ===
+        logger.info(f"🔍 计算基础剂量分布 D0...")
         
-        # === 步骤1: 计算剂量分布 D0 ===
-        # 根据MATLAB公式: D0(i,j) = 0.5*(1+ctr*cos((4*pi*sin(a)/405)*X(i)))*t(m)
-        # 注意：wavelength_nm用于替换MATLAB中的固定值405
-        D0 = 0.5 * (1 + contrast_ctr * np.cos((4 * np.pi * np.sin(angle_a_rad) / wavelength_nm) * X)) * t
+        # 判断使用哪种光强分布计算方式
+        if custom_intensity_data and 'x' in custom_intensity_data and 'intensity' in custom_intensity_data:
+            logger.info(f"📊 使用自定义光强分布数据")
+            # 使用自定义光强分布数据替换MATLAB中的余弦公式
+            custom_x = np.array(custom_intensity_data['x'])
+            custom_intensity = np.array(custom_intensity_data['intensity'])
+            
+            # 关键修复：只对X的1D坐标插值，然后广播到2D网格
+            # 严格按照MATLAB逻辑：D0(i,j) 只依赖于X(i)，对所有j都相同
+            intensity_1d = np.interp(x_range, custom_x, custom_intensity)
+            # 广播到2D网格：每一行都相同（只依赖X坐标）
+            intensity_factor = np.broadcast_to(intensity_1d, (len(y_range), len(x_range)))
+            
+            logger.info(f"   - 自定义光强范围: [{custom_intensity.min():.6f}, {custom_intensity.max():.6f}]")
+            logger.info(f"   - 插值后1D光强范围: [{intensity_1d.min():.6f}, {intensity_1d.max():.6f}]")
+            logger.info(f"   - 广播后2D光强范围: [{intensity_factor.min():.6f}, {intensity_factor.max():.6f}]")
+            
+        else:
+            logger.info(f"📊 使用MATLAB标准余弦光强分布")
+            # 严格按照MATLAB公式: 0.5*(1+ctr*cos((4*pi*sin(a)/405)*X(i)))
+            spatial_frequency = 4 * np.pi * np.sin(angle_a_rad) / wavelength_nm
+            # 同样，只依赖于X坐标
+            intensity_1d = 1 + contrast_ctr * np.cos(spatial_frequency * x_range)
+            # 广播到2D网格
+            intensity_factor = np.broadcast_to(intensity_1d, (len(y_range), len(x_range)))
+            logger.info(f"   - 空间频率: {spatial_frequency:.6f}")
+            logger.info(f"   - 光强因子范围: [{intensity_factor.min():.6f}, {intensity_factor.max():.6f}]")
         
-        # === 步骤2: 计算总剂量 D ===
-        # 根据MATLAB: D = D0 + D0'
-        D = D0 + D0.T
+        # === 步骤2: 计算时间相关的D0和最终剂量分布D ===
+        logger.info(f"🔍 计算剂量分布...")
+        
+        if exposure_calculation_method == 'cumulative' and segment_intensities:
+            logger.info(f"📊 使用累积曝光模式，段数: {len(segment_intensities)}")
+            # 累积模式：多个时间段的累积
+            D0_cumulative = np.zeros_like(X)
+            total_segments = len(segment_intensities)
+            segment_duration = exposure_time / total_segments  # 每段时间
+            
+            for i, intensity_scale in enumerate(segment_intensities):
+                logger.info(f"   - 段 {i+1}/{total_segments}: 强度倍数 = {intensity_scale:.3f}, 时间 = {segment_duration:.1f}s")
+                # 按照MATLAB逻辑: D0 = 0.5 * intensity_factor * t
+                segment_D0 = 0.5 * intensity_factor * (intensity_scale / 100.0) * segment_duration
+                D0_cumulative += segment_D0
+            
+            # 按照MATLAB: D = D0 + D0' (转置相加)
+            D = D0_cumulative + D0_cumulative.T
+            logger.info(f"   - 累积D0范围: [{D0_cumulative.min():.2f}, {D0_cumulative.max():.2f}]")
+            logger.info(f"   - 最终D范围(含转置): [{D.min():.2f}, {D.max():.2f}]")
+            
+        else:
+            logger.info(f"📊 使用标准曝光模式")
+            # 标准模式：严格按照MATLAB逻辑
+            # D0 = 0.5 * (1+ctr*cos(...)) * t 或 0.5 * custom_intensity * t
+            D0 = 0.5 * intensity_factor * exposure_time
+            # D = D0 + D0' (这是MATLAB中关键的转置相加操作！)
+            D = D0 + D0.T
+            logger.info(f"   - D0范围: [{D0.min():.2f}, {D0.max():.2f}]")
+            logger.info(f"   - 最终D范围(含转置): [{D.min():.2f}, {D.max():.2f}]")
         
         # === 步骤3: 计算抗蚀效果 M 和厚度分布 H ===
+        logger.info(f"🔍 计算抗蚀效果和厚度分布...")
         M = np.zeros_like(D)
         H = np.zeros_like(D)
         
@@ -1919,6 +1975,7 @@ class DillModel:
         results_data['thickness_distribution'] = -H.copy()  # 负值用于与MATLAB显示一致
         
         # 统计信息
+        logger.info(f"✅ 计算完成!")
         logger.info(f"   ✓ 剂量范围: [{D.min():.2f}, {D.max():.2f}]")
         logger.info(f"   ✓ M值范围: [{M.min():.4f}, {M.max():.4f}]")
         logger.info(f"   ✓ 厚度范围: [{(-H).min():.4f}, {(-H).max():.4f}]")
