@@ -4097,6 +4097,7 @@ function createExposureHeatmap(container, data) {
             type: 'heatmap',
             colorscale: 'Viridis',
             colorbar: { title: colorbarTitle },
+            showlegend: false,  // 不显示图例，避免"TRACE 1"字样
             hovertemplate: `X: %{x}<br>Y: %{y}<br>${LANGS[currentLang].hover_exposure_value || '曝光剂量值'}: %{z}<extra></extra>`
         };
 
@@ -4142,7 +4143,11 @@ function createExposureHeatmap(container, data) {
             colorscale: [[0, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']],  // 透明填充
             contours: {
                 coloring: 'none',  // 不填充颜色，只显示线条
-                showlabels: false, // 不显示数值标签
+                showlabels: true,  // 显示数值标签
+                labelfont: {
+                    size: 10,
+                    color: 'white'
+                },
                 start: zMin,
                 end: zMax,
                 size: (zMax - zMin) / 10  // 10条等高线，减少复杂度
@@ -4151,6 +4156,7 @@ function createExposureHeatmap(container, data) {
                 color: 'rgba(255,255,255,0.7)',  // 半透明白色线条
                 width: 1
             },
+            showlegend: false,  // 不显示图例，避免"TRACE 1"字样
             hoverinfo: 'skip'  // 不显示悬停信息
         };
 
@@ -4168,6 +4174,11 @@ function createExposureHeatmap(container, data) {
         };
         
         Plotly.newPlot(container, [trace, contourTrace], layout, {responsive: true});
+        
+        // 添加等高线控制按钮
+        if (window.contourControls) {
+            window.contourControls.addContourControl(container, data, 'exposure');
+        }
         
         // 添加点击事件处理
         container.on('plotly_click', function(eventData) {
@@ -4226,6 +4237,7 @@ function createThicknessHeatmap(container, data) {
             type: 'heatmap',
             colorscale: 'Plasma',
             colorbar: { title: colorbarTitle },
+            showlegend: false,  // 不显示图例，避免"TRACE 1"字样
             hovertemplate: `X: %{x}<br>Y: %{y}<br>${LANGS[currentLang].hover_thickness_value || '相对厚度值'}: %{z}<extra></extra>`
         };
 
@@ -4271,7 +4283,11 @@ function createThicknessHeatmap(container, data) {
             colorscale: [[0, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']],  // 透明填充
             contours: {
                 coloring: 'none',  // 不填充颜色，只显示线条
-                showlabels: false, // 不显示数值标签
+                showlabels: true,  // 显示数值标签
+                labelfont: {
+                    size: 10,
+                    color: 'white'
+                },
                 start: zMin,
                 end: zMax,
                 size: (zMax - zMin) / 10  // 10条等高线，减少复杂度
@@ -4280,6 +4296,7 @@ function createThicknessHeatmap(container, data) {
                 color: 'rgba(255,255,255,0.7)',  // 半透明白色线条
                 width: 1
             },
+            showlegend: false,  // 不显示图例，避免"TRACE 1"字样
             hoverinfo: 'skip'  // 不显示悬停信息
         };
 
@@ -4297,6 +4314,11 @@ function createThicknessHeatmap(container, data) {
         };
         
         Plotly.newPlot(container, [trace, contourTrace], layout, {responsive: true});
+        
+        // 添加等高线控制按钮
+        if (window.contourControls) {
+            window.contourControls.addContourControl(container, data, 'thickness');
+        }
         
         // 添加点击事件处理
         container.on('plotly_click', function(eventData) {
@@ -5636,7 +5658,7 @@ function highlightErrorCard(msg) {
 }
 
 // 为2D曝光图案生成弹窗HTML的辅助函数
-function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
+function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) {
     let valueLabel = '';
     let valueUnit = '';
     let formulaTitle = '';
@@ -5644,20 +5666,14 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
     let formulaExplanation = '';
     let additionalInfo = '';
 
-    // 对于2D热力图，处理坐标和数据值
-    let actualX = x;
-    let actualY = 0; // 默认值
-    let zValue = y; // 实际的数据值
+    // 🔧 修复Y坐标为0的bug：从point对象中提取坐标和数据值
+    const x = point.x;
+    const y = point.y;
     
-    // 从点击数据中提取实际的2D坐标
-    if (params && params.actual_x !== undefined) {
-        actualX = params.actual_x;
-        actualY = params.actual_y || 0;
-        zValue = params.z || y;
-    } else if (params && params.y !== undefined) {
-        actualY = params.y;
-        zValue = params.z || y;
-    }
+    // 直接从point对象中获取实际的2D坐标信息
+    let actualX = point.actual_x || point.x || 0;
+    let actualY = point.actual_y || point.y || 0;
+    let zValue = point.z || point.y || y;
 
     // 获取2D曝光图案的参数
     const lastData = window.lastPlotData || {};
@@ -5668,15 +5684,64 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
     const wavelength_nm = lastData.parameters?.wavelength_nm || params.wavelength || 405;
     const threshold_cd = lastData.parameters?.threshold_cd || params.exposure_threshold || 25;
     
+    // 🔧 检查当前的四种情况状态（需要提前声明以供后续使用）
+    const intensityMethodSelect = document.getElementById('intensity_input_method');
+    const exposureMethodSelect = document.getElementById('exposure_calculation_method');
+    const isUsingCustomVector = intensityMethodSelect && intensityMethodSelect.value === 'custom';
+    const isUsingMultiSegment = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
+    const isUsingCustomData = isUsingCustomVector && customIntensityData.loaded;
+    
+    // 🔧 获取I_avg参数：优先使用自动计算值，否则使用用户输入值
+    let I_avg = params.I_avg || 0.5;
+    let I_avg_display = I_avg;
+    
+    // 如果是自定义向量模式且有自动计算的I_avg，使用自动计算值
+    if (isUsingCustomData && customIntensityData.auto_calculated_I_avg !== null) {
+        I_avg_display = customIntensityData.auto_calculated_I_avg;
+        console.log(`🔢 使用自动计算的 I_avg: ${I_avg_display} (原始输入值: ${I_avg})`);
+    }
+    
     // 检查曝光计算模式
     const exposureCalculationMethod = lastData.exposure_calculation_method || params.exposure_calculation_method || 'standard';
     const segmentCount = lastData.segment_count || params.segment_count || 5;
     const segmentDuration = lastData.segment_duration || params.segment_duration || 1;
     const segmentIntensities = lastData.segment_intensities || params.segment_intensities || [];
     
-    // 检查是否使用自定义向量
-    const intensityMethodSelect = document.getElementById('intensity_input_method');
-    const isUsingCustomData = intensityMethodSelect && intensityMethodSelect.value === 'custom' && customIntensityData.loaded;
+    // 🔧 确定当前是4种情况中的哪一种
+    const currentScenario = (() => {
+        if (!isUsingCustomVector && !isUsingMultiSegment) return 1; // 基础情况：都不开启
+        if (isUsingCustomVector && !isUsingMultiSegment) return 2;  // 开启自定义向量，不开启多段曝光
+        if (!isUsingCustomVector && isUsingMultiSegment) return 3;  // 不开启自定义向量，开启多段曝光
+        if (isUsingCustomVector && isUsingMultiSegment) return 4;   // 都开启
+        return 1; // 默认
+    })();
+    
+    // 🔧 根据情况确定哪些参数是默认值或自动计算的
+    // 四种情况说明：
+    // 1. 基础情况：公式计算 + 标准模式 - 所有参数都正常使用
+    // 2. 自定义向量：自定义向量 + 标准模式 - 波长、角度、对比度变成默认值，I_avg自动计算
+    // 3. 多段曝光：公式计算 + 多段累积模式 - 曝光时间t_exp由多段累积计算
+    // 4. 混合模式：自定义向量 + 多段累积模式 - 物理参数默认值 + I_avg自动计算 + 时间累积计算
+    const defaultCalculatedParams = [];
+    const autoCalculatedParams = [];
+    
+    switch (currentScenario) {
+        case 1: // 基础情况：所有参数都正常计算，无默认计算
+            break;
+        case 2: // 开启自定义向量
+            // 物理参数变成默认值，I_avg自动从数据计算
+            defaultCalculatedParams.push('wavelength', 'angle_a', 'contrast_ctr');
+            autoCalculatedParams.push('I_avg');
+            break;
+        case 3: // 开启多段曝光
+            autoCalculatedParams.push('t_exp'); // 曝光时间由多段累积计算
+            break;
+        case 4: // 都开启
+            // 混合模式：物理参数默认值 + I_avg自动计算 + 时间累积计算
+            defaultCalculatedParams.push('wavelength', 'angle_a', 'contrast_ctr');
+            autoCalculatedParams.push('I_avg', 't_exp');
+            break;
+    }
 
     // 计算空间频率
     const angle_a_rad = angle_a_deg * Math.PI / 180;
@@ -5686,12 +5751,11 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
         valueLabel = '曝光计量分布:';
         valueUnit = '(归一化单位)';
         formulaTitle = '2D DILL模型 - 曝光计量分布计算：';
-        formulaMath = 'D<sub>0</sub>(x,y) = 0.5 × [1 + ctr × cos((4π × sin(a) / λ) × x)] × t<sub>exp</sub><br>' +
-                     'D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)';
+        formulaMath = `D<sub>0</sub>(x,y) = I_avg × [1 + ctr × cos((4π × sin(a) / λ) × x)] × t<sub>exp</sub><br>D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)<br>其中 I_avg = ${I_avg_display}`;
 
         // 计算当前点的理论值
-        const D0_x = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualX * 1000)) * exposureTime; // x转换为nm
-        const D0_y = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualY * 1000)) * exposureTime; // y转换为nm  
+        const D0_x = I_avg_display * (1 + contrast_ctr * Math.cos(spatial_freq * actualX * 1000)) * exposureTime; // x转换为nm  🔧 修复：使用显示值
+        const D0_y = I_avg_display * (1 + contrast_ctr * Math.cos(spatial_freq * actualY * 1000)) * exposureTime; // y转换为nm  🔧 修复：使用显示值  
         const D_total = D0_x + D0_y;
 
         // 确定具体的模式组合描述
@@ -5760,8 +5824,8 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
                      '其中 D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)';
 
         // 计算当前点的理论厚度
-        const D0_x = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualX * 1000)) * exposureTime;
-        const D0_y = 0.5 * (1 + contrast_ctr * Math.cos(spatial_freq * actualY * 1000)) * exposureTime;
+        const D0_x = I_avg_display * (1 + contrast_ctr * Math.cos(spatial_freq * actualX * 1000)) * exposureTime;  // 🔧 修复：使用显示值
+        const D0_y = I_avg_display * (1 + contrast_ctr * Math.cos(spatial_freq * actualY * 1000)) * exposureTime;  // 🔧 修复：使用显示值
         const D_total = D0_x + D0_y;
         
         let M_value, H_value;
@@ -5947,9 +6011,49 @@ function get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType) {
                 <div class="info-item"><span class="info-label">光强模式:</span><span class="info-value">公式计算</span></div>
                 `}
                 <div class="info-item"><span class="info-label">DILL常数:</span><span class="info-value">${C}</span></div>
-                <div class="info-item"><span class="info-label">角度:</span><span class="info-value">${angle_a_deg}°</span></div>
-                <div class="info-item"><span class="info-label">对比度:</span><span class="info-value">${contrast_ctr}</span></div>
-                <div class="info-item"><span class="info-label">波长:</span><span class="info-value">${wavelength_nm} nm</span></div>
+                <div class="info-item">
+                    <span class="info-label">平均光强 I_avg:</span>
+                    <span class="info-value">
+                        ${I_avg_display}
+                        ${autoCalculatedParams.includes('I_avg') ? '<span class="default-calc-tag" title="此参数根据自定义向量数据自动计算得出"> [自动计算]</span>' : ''}
+                        ${defaultCalculatedParams.includes('I_avg') ? '<span class="default-calc-tag" title="此参数在自定义向量模式下不参与计算，为默认显示值"> [默认值]</span>' : ''}
+                    </span>
+                </div>
+                ${exposureCalculationMethod === 'cumulative' ? `
+                <div class="info-item">
+                    <span class="info-label">曝光时间 t_exp:</span>
+                    <span class="info-value">
+                        ${exposureTime}s
+                        ${autoCalculatedParams.includes('t_exp') ? '<span class="default-calc-tag" title="此参数由系统根据多段曝光时间自动累积计算"> [累积计算]</span>' : ''}
+                    </span>
+                </div>
+                ` : `
+                <div class="info-item">
+                    <span class="info-label">曝光时间 t_exp:</span>
+                    <span class="info-value">${exposureTime}s</span>
+                </div>
+                `}
+                <div class="info-item">
+                    <span class="info-label">角度:</span>
+                    <span class="info-value">
+                        ${angle_a_deg}°
+                        ${defaultCalculatedParams.includes('angle_a') ? '<span class="default-calc-tag" title="此参数在自定义向量模式下不参与计算，为默认显示值"> [默认值]</span>' : ''}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">对比度:</span>
+                    <span class="info-value">
+                        ${contrast_ctr}
+                        ${defaultCalculatedParams.includes('contrast_ctr') ? '<span class="default-calc-tag" title="此参数在自定义向量模式下不参与计算，为默认显示值"> [默认值]</span>' : ''}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">波长:</span>
+                    <span class="info-value">
+                        ${wavelength_nm} nm
+                        ${defaultCalculatedParams.includes('wavelength') ? '<span class="default-calc-tag" title="此参数在自定义向量模式下不参与计算，为默认显示值"> [默认值]</span>' : ''}
+                    </span>
+                </div>
                 <div class="info-item"><span class="info-label">阈值:</span><span class="info-value">${threshold_cd}</span></div>
             </div>
         </div>
@@ -5980,7 +6084,17 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
     
     // 如果是2D曝光图案，使用专门的处理逻辑
     if (is2DExposurePattern) {
-        return get2DExposurePatternPopupHtmlContent(x, y, setName, params, plotType);
+        // 🔧 修复Y坐标传递问题：将完整的point对象传递给2D曝光图案弹窗函数
+        // 创建一个包含所有必要信息的point对象
+        const pointObj = {
+            x: x,
+            y: y,
+            // 检查是否有actual坐标信息（来自热力图点击）
+            actual_x: (typeof arguments[0] === 'object' && arguments[0].actual_x !== undefined) ? arguments[0].actual_x : x,
+            actual_y: (typeof arguments[0] === 'object' && arguments[0].actual_y !== undefined) ? arguments[0].actual_y : y,
+            z: (typeof arguments[0] === 'object' && arguments[0].z !== undefined) ? arguments[0].z : y
+        };
+        return get2DExposurePatternPopupHtmlContent(pointObj, setName, params, plotType);
     }
     
     // 检查是否为理想曝光模型（1D DILL模型使用理想曝光模型）
@@ -13564,8 +13678,23 @@ let customIntensityData = {
     x_range: {min: 0, max: 0},
     auto_detected: false, // 是否已自动检测单位
     outside_range_mode: 'zero', // 默认数据范围外光强为0
-    custom_intensity_value: 0 // 自定义光强值
+    custom_intensity_value: 0, // 自定义光强值
+    auto_calculated_I_avg: null // 根据自定义数据自动计算的平均光强
 };
+
+// 自动计算平均光强
+function calculateAutoI_avg(intensityData) {
+    if (!intensityData || !Array.isArray(intensityData) || intensityData.length === 0) {
+        return null;
+    }
+    
+    // 计算平均值
+    const sum = intensityData.reduce((acc, val) => acc + val, 0);
+    const average = sum / intensityData.length;
+    
+    console.log(`🔢 自动计算 I_avg: 数据点${intensityData.length}个, 平均值=${average.toFixed(6)}`);
+    return parseFloat(average.toFixed(6)); // 保留6位小数
+}
 
 // 初始化自定义光强分布功能
 function initCustomIntensityFeature() {
@@ -14273,7 +14402,8 @@ function parseFileContent(content, fileExtension, fileName) {
         loaded: true,
         source: 'file',
         fileName: fileName,
-        outside_range_mode: outsideRangeMode // 保存用户选择的数据范围外光强处理方式
+        outside_range_mode: outsideRangeMode, // 保存用户选择的数据范围外光强处理方式
+        auto_calculated_I_avg: calculateAutoI_avg(intensity) // 自动计算平均光强
     };
     
     // 设置标志表示未点击预览按钮
@@ -14631,7 +14761,8 @@ function parseExcelFile(arrayBuffer, fileName) {
             intensity: intensity,
             loaded: true,
             source: 'excel',
-            fileName: fileName
+            fileName: fileName,
+            auto_calculated_I_avg: calculateAutoI_avg(intensity) // 自动计算平均光强
         };
         
         // 更新状态显示
@@ -14793,7 +14924,8 @@ function parseLithographySimulationFile(content, fileExtension, fileName) {
         loaded: true,
         source: fileExtension.substring(1), // 去掉点号
         fileName: fileName,
-        outside_range_mode: outsideRangeMode // 保存用户选择的数据范围外光强处理方式
+        outside_range_mode: outsideRangeMode, // 保存用户选择的数据范围外光强处理方式
+        auto_calculated_I_avg: calculateAutoI_avg(result.intensity) // 自动计算平均光强
     };
     
     // 更新UI
@@ -15588,7 +15720,8 @@ function previewManualInput() {
             source: 'manual',
             x_unit: data.x_unit || 'mm',
             unit_scale: data.unit_scale || 1.0,
-            outside_range_mode: outsideRangeMode // 保存用户选择的数据范围外光强处理方式
+            outside_range_mode: outsideRangeMode, // 保存用户选择的数据范围外光强处理方式
+            auto_calculated_I_avg: calculateAutoI_avg(data.intensity) // 自动计算平均光强
         };
         
         // 设置标志表示已点击预览按钮
@@ -15888,7 +16021,8 @@ function clearCustomIntensityData() {
         x_range: {min: 0, max: 0},
         auto_detected: false,
         outside_range_mode: 'zero', // 重置为默认数据范围外光强模式
-        custom_intensity_value: 0 // 重置自定义光强值
+        custom_intensity_value: 0, // 重置自定义光强值
+        auto_calculated_I_avg: null // 重置自动计算的平均光强
     };
     
     // 重置下拉框为默认选项（零）

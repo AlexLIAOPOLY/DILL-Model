@@ -166,6 +166,7 @@ def calculate():
                     total_exposure_time = segment_duration * segment_count
                     
                     plots = model.calculate_2d_exposure_pattern(
+                        I_avg=I_avg,  # 添加I_avg参数
                         C=C, 
                         angle_a_deg=angle_a,
                         exposure_time=total_exposure_time,  # 使用总曝光时间
@@ -184,6 +185,7 @@ def calculate():
                 else:
                     # 标准模式下的2D曝光图案
                     plots = model.calculate_2d_exposure_pattern(
+                        I_avg=I_avg,  # 添加I_avg参数
                         C=C, 
                         angle_a_deg=angle_a,
                         exposure_time=t_exp,  # 使用单个曝光时间
@@ -560,7 +562,7 @@ def calculate_data():
                 # 获取2D曝光图案参数
                 angle_a = float(data.get('angle_a', 11.7))
                 exposure_threshold = float(data.get('exposure_threshold', 25))
-                contrast_ctr = float(data.get('contrast_ctr', 0.9))
+                contrast_ctr = float(data.get('V', 0.9))  # V参数就是对比度
                 wavelength = float(data.get('wavelength', 405))
                 
                 x_min_2d = float(data.get('x_min_2d', -1000))
@@ -589,6 +591,7 @@ def calculate_data():
                         
                         # 计算2D曝光图案 - 使用总曝光时间
                         plot_data = model.calculate_2d_exposure_pattern(
+                            I_avg=I_avg,  # 添加I_avg参数
                             C=C, 
                             angle_a_deg=angle_a,
                             exposure_time=total_exposure_time,  # 使用总曝光时间
@@ -622,6 +625,7 @@ def calculate_data():
                         
                         # 计算2D曝光图案 - 使用单个曝光时间
                         plot_data = model.calculate_2d_exposure_pattern(
+                            I_avg=I_avg,  # 添加I_avg参数
                             C=C, 
                             angle_a_deg=angle_a,
                             exposure_time=t_exp,  # 使用单个曝光时间

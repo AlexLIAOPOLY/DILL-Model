@@ -1956,6 +1956,51 @@ footer {
     gap: 8px;
 }
 
+/* 默认计算参数标签样式 */
+.default-calc-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, #ff9800, #ffc107);
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 8px;
+    cursor: help;
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+    animation: pulse-glow 2s infinite;
+    vertical-align: middle;
+}
+
+/* 为不同类型的标签提供不同的颜色 */
+.default-calc-tag[title*="默认显示值"] {
+    background: linear-gradient(135deg, #37474f, #263238);
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(55, 71, 79, 0.4);
+}
+
+.default-calc-tag[title*="默认显示值"]:hover {
+    background: linear-gradient(135deg, #455a64, #37474f);
+    color: #ffffff;
+    transform: scale(1.05);
+    box-shadow: 0 3px 6px rgba(55, 71, 79, 0.5);
+}
+
+.default-calc-tag:hover {
+    background: linear-gradient(135deg, #f57c00, #ff9800);
+    transform: scale(1.05);
+    box-shadow: 0 3px 6px rgba(255, 152, 0, 0.4);
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 2px 8px rgba(255, 152, 0, 0.5), 0 0 12px rgba(255, 152, 0, 0.3);
+    }
+}
+
 .info-item {
     display: flex;
     justify-content: space-between;

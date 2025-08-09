@@ -1812,7 +1812,7 @@ class DillModel:
         
         return result
 
-    def calculate_2d_exposure_pattern(self, C=0.022, angle_a_deg=11.7, 
+    def calculate_2d_exposure_pattern(self, I_avg=0.5, C=0.022, angle_a_deg=11.7, 
                                      exposure_time=100, 
                                      contrast_ctr=0.9, threshold_cd=25, wavelength_nm=405,
                                      x_min=-1000, x_max=1000, y_min=-1000, y_max=1000, 
@@ -1822,6 +1822,7 @@ class DillModel:
         2D曝光图案计算 - 基于MATLAB latent_image2d.m文件逻辑
         
         参数:
+            I_avg: 平均入射光强度，对应MATLAB中的0.5系数，默认 0.5
             C: 光敏速率常数，默认 0.022
             angle_a_deg: 入射角度（度），默认 11.7
             exposure_time: 曝光时间（标准模式为单个时间，累积模式为总时间），默认 100
@@ -1847,6 +1848,7 @@ class DillModel:
         angle_a_rad = angle_a_deg * np.pi / 180
         
         logger.info(f"🔸 输入参数:")
+        logger.info(f"   - I_avg (平均光强) = {I_avg}")
         logger.info(f"   - C (光敏速率常数) = {C}")
         logger.info(f"   - a (入射角度) = {angle_a_deg}°")
         logger.info(f"   - ctr (对比度) = {contrast_ctr}")
@@ -1898,13 +1900,14 @@ class DillModel:
         # 判断使用哪种光强分布计算方式
         if custom_intensity_data and 'x' in custom_intensity_data and 'intensity' in custom_intensity_data:
             logger.info(f"📊 使用自定义光强分布数据")
-            # 使用自定义光强分布数据替换MATLAB中的余弦公式
+            # 使用自定义光强分布数据，需要乘以I_avg系数
             custom_x = np.array(custom_intensity_data['x'])
             custom_intensity = np.array(custom_intensity_data['intensity'])
             
             # 关键修复：只对X的1D坐标插值，然后广播到2D网格
             # 严格按照MATLAB逻辑：D0(i,j) 只依赖于X(i)，对所有j都相同
-            intensity_1d = np.interp(x_range, custom_x, custom_intensity)
+            # 自定义光强需要乘以I_avg系数
+            intensity_1d = I_avg * np.interp(x_range, custom_x, custom_intensity)
             # 广播到2D网格：每一行都相同（只依赖X坐标）
             intensity_factor = np.broadcast_to(intensity_1d, (len(y_range), len(x_range)))
             
@@ -1914,10 +1917,10 @@ class DillModel:
             
         else:
             logger.info(f"📊 使用MATLAB标准余弦光强分布")
-            # 严格按照MATLAB公式: 0.5*(1+ctr*cos((4*pi*sin(a)/405)*X(i)))
+            # 严格按照MATLAB公式: I_avg*(1+ctr*cos((4*pi*sin(a)/405)*X(i)))
             spatial_frequency = 4 * np.pi * np.sin(angle_a_rad) / wavelength_nm
-            # 同样，只依赖于X坐标
-            intensity_1d = 1 + contrast_ctr * np.cos(spatial_frequency * x_range)
+            # 只依赖于X坐标，包含I_avg系数
+            intensity_1d = I_avg * (1 + contrast_ctr * np.cos(spatial_frequency * x_range))
             # 广播到2D网格
             intensity_factor = np.broadcast_to(intensity_1d, (len(y_range), len(x_range)))
             logger.info(f"   - 空间频率: {spatial_frequency:.6f}")
@@ -1929,14 +1932,15 @@ class DillModel:
         if exposure_calculation_method == 'cumulative' and segment_intensities:
             logger.info(f"📊 使用累积曝光模式，段数: {len(segment_intensities)}")
             # 累积模式：多个时间段的累积
-            D0_cumulative = np.zeros_like(X)
+            D0_cumulative = np.zeros_like(X, dtype=float)  # 修复：确保浮点数类型
             total_segments = len(segment_intensities)
             segment_duration = exposure_time / total_segments  # 每段时间
             
             for i, intensity_scale in enumerate(segment_intensities):
                 logger.info(f"   - 段 {i+1}/{total_segments}: 强度倍数 = {intensity_scale:.3f}, 时间 = {segment_duration:.1f}s")
-                # 按照MATLAB逻辑: D0 = 0.5 * intensity_factor * t
-                segment_D0 = 0.5 * intensity_factor * (intensity_scale / 100.0) * segment_duration
+                # 按照MATLAB逻辑: D0 = intensity_factor * (intensity_scale/100.0) * t
+                # intensity_factor 已经包含了I_avg，intensity_scale是相对于基础强度的倍数
+                segment_D0 = intensity_factor * (intensity_scale / 100.0) * segment_duration
                 D0_cumulative += segment_D0
             
             # 按照MATLAB: D = D0 + D0' (转置相加)
@@ -1947,8 +1951,8 @@ class DillModel:
         else:
             logger.info(f"📊 使用标准曝光模式")
             # 标准模式：严格按照MATLAB逻辑
-            # D0 = 0.5 * (1+ctr*cos(...)) * t 或 0.5 * custom_intensity * t
-            D0 = 0.5 * intensity_factor * exposure_time
+            # D0 = intensity_factor * t (intensity_factor已经包含了I_avg)
+            D0 = intensity_factor * exposure_time
             # D = D0 + D0' (这是MATLAB中关键的转置相加操作！)
             D = D0 + D0.T
             logger.info(f"   - D0范围: [{D0.min():.2f}, {D0.max():.2f}]")
