@@ -4184,6 +4184,45 @@ function createExposureHeatmap(container, data) {
         container.on('plotly_click', function(eventData) {
             if(eventData.points.length > 0) {
                 const point = eventData.points[0];
+                
+                // 🔧 修复：Plotly热力图点击事件中point.y是索引，需要转换为实际Y坐标
+                // 更健壮的索引获取逻辑，处理各种边缘情况
+                let yIndex;
+                
+                if (point.pointNumber && Array.isArray(point.pointNumber) && point.pointNumber.length >= 2) {
+                    // 标准情况：使用pointNumber[1]作为Y索引
+                    yIndex = point.pointNumber[1];
+                } else if (point.pointIndex && Array.isArray(point.pointIndex) && point.pointIndex.length >= 2) {
+                    // 备用情况：某些版本可能使用pointIndex
+                    yIndex = point.pointIndex[1];
+                } else if (typeof point.y === 'number' && point.y >= 0) {
+                    // 回退情况：直接使用point.y作为索引
+                    yIndex = Math.round(point.y);
+                } else {
+                    // 最后的默认值
+                    yIndex = 0;
+                }
+                
+                // 从yCoords数组中获取实际的Y坐标值，增加更多的错误检查
+                let actualYCoord;
+                if (yCoords && Array.isArray(yCoords) && yIndex >= 0 && yIndex < yCoords.length) {
+                    actualYCoord = yCoords[yIndex];
+                } else {
+                    // 如果无法从yCoords获取，尝试使用其他方式
+                    actualYCoord = typeof point.y === 'number' ? point.y : 0;
+                }
+                
+                console.log('🔧 热力图Y坐标修复 (曝光) - 增强版:', {
+                    'point.y (索引)': point.y,
+                    'point.z (曝光值)': point.z,
+                    'point.pointNumber': point.pointNumber,
+                    'point.pointIndex': point.pointIndex,
+                    'yIndex计算结果': yIndex,
+                    'yCoords数组长度': yCoords ? yCoords.length : 'undefined',
+                    'actualYCoord最终值': actualYCoord,
+                    'point.x': point.x
+                });
+                
                 // 对于热力图，point.x和point.y是坐标值，point.z是强度值
                 // 为2D曝光图案创建特殊的点数据结构
                 const pointData = { 
@@ -4192,7 +4231,7 @@ function createExposureHeatmap(container, data) {
                     z: point.z,
                     // 保存实际的2D坐标用于计算
                     actual_x: point.x,
-                    actual_y: point.y
+                    actual_y: actualYCoord  // 🔧 修复：使用实际的Y坐标
                 };
                 
                 showSinglePointDetailsPopup(pointData, 'exposure', container, eventData);
@@ -4322,8 +4361,70 @@ function createThicknessHeatmap(container, data) {
         
         // 添加点击事件处理
         container.on('plotly_click', function(eventData) {
+            // 🔧 新增：记录完整的事件数据以便调试
+            console.log('🔧 完整的plotly_click事件数据 (厚度):', eventData);
+            
             if(eventData.points.length > 0) {
                 const point = eventData.points[0];
+                
+                // 🔧 修复：Plotly热力图点击事件中point.y是索引，需要转换为实际Y坐标
+                // 更健壮的索引获取逻辑，处理厚度为0等边缘情况
+                let yIndex;
+                
+                if (point.pointNumber && Array.isArray(point.pointNumber) && point.pointNumber.length >= 2) {
+                    // 标准情况：使用pointNumber[1]作为Y索引
+                    yIndex = point.pointNumber[1];
+                } else if (point.pointIndex && Array.isArray(point.pointIndex) && point.pointIndex.length >= 2) {
+                    // 备用情况：某些版本可能使用pointIndex
+                    yIndex = point.pointIndex[1];
+                } else if (typeof point.y === 'number' && point.y >= 0) {
+                    // 回退情况：直接使用point.y作为索引
+                    yIndex = Math.round(point.y);
+                } else {
+                    // 最后的默认值
+                    yIndex = 0;
+                }
+                
+                // 从yCoords数组中获取实际的Y坐标值，增加更多的错误检查
+                let actualYCoord;
+                if (yCoords && Array.isArray(yCoords) && yIndex >= 0 && yIndex < yCoords.length) {
+                    actualYCoord = yCoords[yIndex];
+                } else {
+                    // 🔧 新增：如果无法从索引获取，尝试直接从事件数据中获取
+                    // 检查eventData中是否有更直接的坐标信息
+                    if (eventData && eventData.points && eventData.points[0]) {
+                        const eventPoint = eventData.points[0];
+                        // 尝试从不同的属性获取Y坐标
+                        actualYCoord = eventPoint.lat || 
+                                     eventPoint.yaxis || 
+                                     (typeof point.y === 'number' ? point.y : 0);
+                    } else {
+                        actualYCoord = typeof point.y === 'number' ? point.y : 0;
+                    }
+                }
+                
+                // 🔧 最后的保险措施：如果得到的actualYCoord看起来像索引而不是坐标，尝试转换
+                if (actualYCoord >= 0 && actualYCoord < 100 && yCoords && yCoords.length > actualYCoord) {
+                    // 如果actualYCoord是一个小的正整数，并且yCoords数组足够大，可能这就是索引
+                    const potentialCoord = yCoords[actualYCoord];
+                    if (Math.abs(potentialCoord) > Math.abs(actualYCoord)) {
+                        actualYCoord = potentialCoord;
+                    }
+                }
+                
+                console.log('🔧 热力图Y坐标修复 (厚度) - 增强版:', {
+                    'point.y (索引)': point.y,
+                    'point.z (厚度值)': point.z,
+                    'point.pointNumber': point.pointNumber,
+                    'point.pointIndex': point.pointIndex,
+                    'yIndex计算结果': yIndex,
+                    'yCoords数组长度': yCoords ? yCoords.length : 'undefined',
+                    'yCoords[前5项]': yCoords ? yCoords.slice(0, 5) : 'undefined',
+                    'actualYCoord最终值': actualYCoord,
+                    'point.x': point.x,
+                    '是否厚度为0': point.z === 0
+                });
+                
                 // 对于热力图，point.x和point.y是坐标值，point.z是强度值
                 // 为2D曝光图案创建特殊的点数据结构
                 const pointData = { 
@@ -4332,7 +4433,7 @@ function createThicknessHeatmap(container, data) {
                     z: point.z,
                     // 保存实际的2D坐标用于计算
                     actual_x: point.x,
-                    actual_y: point.y
+                    actual_y: actualYCoord  // 🔧 修复：使用实际的Y坐标
                 };
                 
                 showSinglePointDetailsPopup(pointData, 'thickness', container, eventData);
@@ -5671,9 +5772,29 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
     const y = point.y;
     
     // 直接从point对象中获取实际的2D坐标信息
-    let actualX = point.actual_x || point.x || 0;
-    let actualY = point.actual_y || point.y || 0;
-    let zValue = point.z || point.y || y;
+    // 🔧 修复：使用严格的undefined检查而不是逻辑或，避免0值被误判为false
+    let actualX = (point.actual_x !== undefined) ? point.actual_x : (point.x || 0);
+    let actualY = (point.actual_y !== undefined) ? point.actual_y : (point.y || 0);
+    let zValue = (point.z !== undefined) ? point.z : (point.y || y);
+    
+    // 🔧 调试信息：记录坐标值以帮助调试，特别关注厚度为0的情况
+    console.log('🔧 2D曝光图案弹窗坐标调试:', {
+        'point对象': point,
+        '输入x': x,
+        '输入y': y,
+        'point.actual_x': point.actual_x,
+        'point.actual_y': point.actual_y,
+        '最终actualX': actualX,
+        '最终actualY': actualY,
+        '最终zValue': zValue,
+        'plotType': plotType,
+        '是否厚度为0': zValue === 0 || y === 0,
+        'undefined检查': {
+            'actual_x是否undefined': point.actual_x === undefined,
+            'actual_y是否undefined': point.actual_y === undefined,
+            'actual_y === 0': point.actual_y === 0
+        }
+    });
 
     // 获取2D曝光图案的参数
     const lastData = window.lastPlotData || {};
@@ -15789,6 +15910,7 @@ function applyManualInput() {
         window.updateUnitSelectionUI();
     }
 }
+
 
 // 解析手动输入数据
 function parseManualInput() {

@@ -6278,7 +6278,7 @@ input:checked + .toggle-slider:hover {
 /* 操作按钮的新样式 - 与文件上传区域一致 */
 .action-btn {
     padding: 0.75rem 1.5rem;
-    border: none;
+    border: 1px solid #ddd;
     border-radius: 6px;
     font-weight: 500;
     cursor: pointer;
@@ -6287,6 +6287,8 @@ input:checked + .toggle-slider:hover {
     align-items: center;
     gap: 0.5rem;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    background: #f8f9fa;
+    color: #495057;
 }
 
 .action-btn:hover {
@@ -6301,22 +6303,24 @@ input:checked + .toggle-slider:hover {
 
 /* 蓝色按钮样式 - 预览数据 */
 .blue-btn {
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
+    background: linear-gradient(135deg, #3498db, #2980b9) !important;
+    color: white !important;
+    border-color: #3498db !important;
 }
 
 .blue-btn:hover {
-    background: linear-gradient(135deg, #5dade2, #3498db);
+    background: linear-gradient(135deg, #5dade2, #3498db) !important;
 }
 
 /* 红色按钮样式 - 卸载数据 */
 .red-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    color: white;
+    background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+    color: white !important;
+    border-color: #e74c3c !important;
 }
 
 .red-btn:hover {
-    background: linear-gradient(135deg, #ec7063, #e74c3c);
+    background: linear-gradient(135deg, #ec7063, #e74c3c) !important;
 }
 
 /* 多段曝光时间累积设置样式增强 */

@@ -2663,3 +2663,4 @@ def file_action():
         print(f"Error: {error_msg}")
         add_log_entry('error', 'system', error_msg)
         return jsonify(format_response(False, message=error_msg)), 500
+

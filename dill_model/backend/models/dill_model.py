@@ -1904,6 +1904,81 @@ class DillModel:
             custom_x = np.array(custom_intensity_data['x'])
             custom_intensity = np.array(custom_intensity_data['intensity'])
             
+            # 🔥 关键修复：智能单位转换
+            # 前端数据可能有各种单位，需要智能识别和转换
+            original_unit = custom_intensity_data.get('original_unit', 'mm')
+            unit_scale = custom_intensity_data.get('unit_scale', 1.0)
+            
+            # 判断目标坐标系单位
+            target_range = x_max - x_min
+            target_is_um = target_range > 100  # 如果范围>100，认为是微米单位
+            
+            # 智能数据范围检测
+            data_range = custom_x.max() - custom_x.min()
+            
+            logger.info(f"🔸 智能单位转换检查:")
+            logger.info(f"   - 声明单位: {original_unit}")
+            logger.info(f"   - 数据范围: [{custom_x.min():.6f}, {custom_x.max():.6f}] ({data_range:.6f})")
+            logger.info(f"   - 目标网格: [{x_min:.1f}, {x_max:.1f}] {'μm' if target_is_um else 'mm'}")
+            
+            # 异常检测和智能修正
+            unit_mismatch_detected = False
+            corrected_unit = original_unit
+            
+            if original_unit == 'mm':
+                if data_range < 0.01:  # 小于0.01mm，可能是纳米或微米数据误标为mm
+                    if data_range < 0.00001:  # <0.01μm，可能是纳米数据
+                        logger.info(f"⚠️  检测到异常：数据范围{data_range*1000000:.1f}nm，可能是纳米数据误标为mm")
+                        corrected_unit = 'nm'
+                        unit_mismatch_detected = True
+                    else:  # 0.01μm - 10μm，可能是微米数据
+                        logger.info(f"⚠️  检测到异常：数据范围{data_range*1000:.3f}μm，可能是微米数据误标为mm")
+                        corrected_unit = 'μm'
+                        unit_mismatch_detected = True
+                elif data_range > 100:  # 大于100mm，可能是微米数据误标为mm
+                    logger.info(f"⚠️  检测到异常：数据范围{data_range:.1f}mm过大，可能是微米数据误标为mm")
+                    corrected_unit = 'μm'
+                    unit_mismatch_detected = True
+            
+            if unit_mismatch_detected:
+                logger.info(f"🔧 智能修正：{original_unit} → {corrected_unit}")
+            
+            # 执行单位转换
+            if target_is_um:  # 目标是微米网格
+                if corrected_unit == 'mm':
+                    custom_x = custom_x * 1000.0
+                    logger.info(f"🔸 单位转换: mm → μm，坐标×1000")
+                elif corrected_unit == 'nm':
+                    custom_x = custom_x * 1000000.0  # nm → μm 需要乘1000000
+                    logger.info(f"🔸 单位转换: nm → μm，坐标×1000000")
+                elif corrected_unit in ['μm', 'um', 'micron']:
+                    logger.info(f"🔸 单位匹配: μm → μm，无需转换")
+                logger.info(f"   - 转换后范围: [{custom_x.min():.1f}, {custom_x.max():.1f}] μm")
+            else:  # 目标是毫米网格
+                if corrected_unit in ['μm', 'um', 'micron']:
+                    custom_x = custom_x / 1000.0
+                    logger.info(f"🔸 单位转换: μm → mm，坐标÷1000")
+                elif corrected_unit == 'nm':
+                    custom_x = custom_x / 1000000.0  # nm → mm 需要除1000000
+                    logger.info(f"🔸 单位转换: nm → mm，坐标÷1000000")
+                elif corrected_unit == 'mm':
+                    logger.info(f"🔸 单位匹配: mm → mm，无需转换")
+                logger.info(f"   - 转换后范围: [{custom_x.min():.3f}, {custom_x.max():.3f}] mm")
+            
+            # 验证转换后的数据是否在合理范围内（插值可以处理边界外的情况）
+            data_span = custom_x.max() - custom_x.min()
+            target_span = x_max - x_min
+            coverage_ratio = data_span / target_span if target_span > 0 else 0
+            
+            if coverage_ratio > 0.8:  # 数据范围覆盖目标80%以上
+                coverage_status = "✅ 范围良好"
+            elif coverage_ratio > 0.1:  # 数据范围覆盖目标10%以上  
+                coverage_status = "⚠️  范围较小，插值可能平滑"
+            else:  # 数据范围太小
+                coverage_status = "❌ 范围过小，可能影响效果"
+                
+            logger.info(f"🔍 数据范围检查: {coverage_status} (覆盖比例: {coverage_ratio*100:.1f}%)")
+            
             # 关键修复：只对X的1D坐标插值，然后广播到2D网格
             # 严格按照MATLAB逻辑：D0(i,j) 只依赖于X(i)，对所有j都相同
             # 自定义光强需要乘以I_avg系数
