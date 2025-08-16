@@ -239,6 +239,11 @@ function calculateCarModel() {
     .then(data => {
         if (data.success) {
             displayCarResults(data.data);
+            
+            // 保存参数和结果到localStorage，供验证页面使用
+            if (typeof saveCalculationParams === 'function') {
+                saveCalculationParams(requestData, data.data);
+            }
         } else {
             showErrorMessage(data.message || '计算失败');
         }

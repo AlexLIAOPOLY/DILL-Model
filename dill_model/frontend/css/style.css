@@ -469,7 +469,7 @@ header::before {
 }
 
 .parameter-value {
-    display: none; /* 隐藏右上角的数值显示，避免重复 */
+    /* 在验证页面显示参数值，在其他页面隐藏右上角的数值显示 */
     font-weight: 700;
     color: var(--primary-color);
     font-size: 1.1rem;
@@ -480,6 +480,11 @@ header::before {
     min-width: 60px;
     text-align: center;
     box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);
+}
+
+/* 只在非验证页面隐藏参数值 */
+body:not([data-page="validation"]) .parameter-value {
+    display: none;
 }
 
 .parameter-input {

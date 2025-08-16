@@ -15,6 +15,14 @@ import time
 # 全局日志存储
 calculation_logs = []
 
+# 全局最近计算结果存储
+latest_calculation_result = {
+    'timestamp': None,
+    'parameters': None,
+    'results': None,
+    'model_type': None
+}
+
 def add_log_entry(log_type, model_type, message, timestamp=None, dimension=None, details=None):
     """添加增强的日志条目"""
     if timestamp is None:
@@ -1259,6 +1267,16 @@ def calculate_data():
                 add_log_entry('success', 'enhanced_dill', f"✅ Enhanced Dill 2D数据准备完成，前端显示已就绪", dimension='2d')
             else:
                 add_log_entry('warning', 'enhanced_dill', f"⚠️ Enhanced Dill 2D兼容性数据不完整", dimension='2d')
+        
+        # 保存最近的计算结果，供验证页面使用
+        global latest_calculation_result
+        latest_calculation_result.update({
+            'timestamp': datetime.datetime.now().isoformat(),
+            'parameters': data,  # 保存输入参数
+            'results': plot_data,  # 保存计算结果
+            'model_type': data.get('model_type', 'unknown')
+        })
+        print(f"✅ 已保存最近计算结果到全局存储，模型类型: {data.get('model_type')}")
         
         return jsonify(format_response(True, data=plot_data)), 200
     except Exception as e:
@@ -2662,5 +2680,503 @@ def file_action():
         error_msg = f"文件操作失败: {str(e)}"
         print(f"Error: {error_msg}")
         add_log_entry('error', 'system', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+# === 结果验证相关API ===
+
+@api_bp.route('/latest_calculation', methods=['GET'])
+def get_latest_calculation():
+    """获取最近的计算结果，供验证页面使用"""
+    try:
+        global latest_calculation_result
+        
+        if latest_calculation_result['timestamp'] is None:
+            return jsonify(format_response(False, message="暂无计算结果，请先在单一计算页面完成计算")), 404
+        
+        # 返回最近的计算结果
+        result_data = {
+            'timestamp': latest_calculation_result['timestamp'],
+            'parameters': latest_calculation_result['parameters'],
+            'results': latest_calculation_result['results'],
+            'model_type': latest_calculation_result['model_type']
+        }
+        
+        print(f"✅ 验证页面请求最近计算结果，模型类型: {result_data['model_type']}")
+        return jsonify(format_response(True, data=result_data))
+        
+    except Exception as e:
+        error_msg = f"获取最近计算结果失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'validation', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+@api_bp.route('/save_validation_data', methods=['POST'])
+def save_validation_data():
+    """保存验证数据到Excel文件"""
+    try:
+        # 检查Excel支持
+        try:
+            import openpyxl
+        except ImportError:
+            return jsonify(format_response(False, message="Excel支持库(openpyxl)未安装，无法保存数据。请运行: pip install openpyxl")), 500
+            
+        data = request.get_json()
+        if not data:
+            return jsonify(format_response(False, message="无效的请求数据")), 400
+        
+        timestamp = data.get('timestamp')
+        parameters = data.get('parameters', {})
+        annotations = data.get('annotations', [])
+        
+        if not annotations:
+            return jsonify(format_response(False, message="缺少标注数据")), 400
+        
+        # 导入Excel处理库
+        import pandas as pd
+        import os
+        
+        # 定义Excel文件路径
+        excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
+        
+        # 准备数据行列表
+        rows_data = []
+        for annotation in annotations:
+            row_data = {
+                'timestamp': timestamp,
+                'model_type': parameters.get('model_type', ''),
+                'sine_type': parameters.get('sine_type', ''),
+                'I_avg': parameters.get('I_avg', ''),
+                'V': parameters.get('V', ''),
+                'K': parameters.get('K', ''),
+                't_exp': parameters.get('t_exp', ''),
+                'acid_gen_efficiency': parameters.get('acid_gen_efficiency', ''),
+                'diffusion_length': parameters.get('diffusion_length', ''),
+                'reaction_rate': parameters.get('reaction_rate', ''),
+                'amplification': parameters.get('amplification', ''),
+                'contrast': parameters.get('contrast', ''),
+                'Kx': parameters.get('Kx', ''),
+                'Ky': parameters.get('Ky', ''),
+                'Kz': parameters.get('Kz', ''),
+                'phi_expr': parameters.get('phi_expr', ''),
+                'exposure_calculation_method': parameters.get('exposure_calculation_method', ''),
+                'annotation_x': annotation.get('x', ''),
+                'annotation_y': annotation.get('y', ''),
+                'simulated_value': annotation.get('simulatedValue', ''),
+                'actual_value': annotation.get('actualValue', ''),
+                'annotation_timestamp': annotation.get('timestamp', '')
+            }
+            rows_data.append(row_data)
+        
+        # 读取或创建Excel文件
+        if os.path.exists(excel_file):
+            try:
+                df = pd.read_excel(excel_file)
+                new_df = pd.DataFrame(rows_data)
+                df = pd.concat([df, new_df], ignore_index=True)
+            except Exception as e:
+                print(f"读取现有Excel文件失败: {e}")
+                df = pd.DataFrame(rows_data)
+        else:
+            df = pd.DataFrame(rows_data)
+        
+        # 保存到Excel文件
+        try:
+            df.to_excel(excel_file, index=False)
+            print(f"Excel文件保存成功: {excel_file}")
+            print(f"文件路径: {os.path.abspath(excel_file)}")
+        except Exception as e:
+            print(f"保存Excel文件失败: {e}")
+            raise
+        
+        # 获取总记录数
+        total_records = len(df) if 'df' in locals() else 0
+        
+        add_log_entry('success', 'validation', f'保存验证数据成功，共{len(annotations)}个标注点')
+        return jsonify(format_response(True, 
+                                       message=f"验证数据保存成功",
+                                       data={'total_records': total_records}))
+        
+    except Exception as e:
+        error_msg = f"保存验证数据失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'validation', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+@api_bp.route('/train_model', methods=['POST'])
+def train_model():
+    """训练参数预测模型"""
+    try:
+        # 检查Excel支持
+        try:
+            import openpyxl
+        except ImportError:
+            return jsonify(format_response(False, message="Excel支持库(openpyxl)未安装，无法读取训练数据。请运行: pip install openpyxl")), 500
+            
+        import pandas as pd
+        import os
+        import numpy as np
+        from sklearn.ensemble import RandomForestRegressor
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import mean_squared_error, r2_score
+        import joblib
+        
+        # 检查数据文件是否存在
+        excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
+        if not os.path.exists(excel_file):
+            return jsonify(format_response(False, message="没有找到验证数据文件")), 404
+        
+        # 读取数据
+        df = pd.read_excel(excel_file)
+        
+        if len(df) < 5:
+            return jsonify(format_response(False, message=f"数据量不足，至少需要5条数据，当前仅有{len(df)}条")), 400
+        
+        # 准备特征和目标变量
+        # 特征：位置坐标和实际测量值
+        feature_columns = ['annotation_x', 'annotation_y', 'actual_value']
+        target_columns = ['I_avg', 'V', 'K', 't_exp', 'acid_gen_efficiency', 
+                         'diffusion_length', 'reaction_rate', 'amplification', 'contrast']
+        
+        # 过滤有效数据
+        valid_rows = df.dropna(subset=feature_columns + target_columns)
+        
+        if len(valid_rows) < 3:
+            return jsonify(format_response(False, message="有效数据不足，无法训练模型")), 400
+        
+        X = valid_rows[feature_columns].values
+        y = valid_rows[target_columns].values
+        
+        # 分割训练和测试集
+        if len(valid_rows) >= 10:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        else:
+            # 数据较少时使用全部数据训练
+            X_train, y_train = X, y
+            X_test, y_test = X, y
+        
+        # 训练模型（使用简单的随机森林）
+        model = RandomForestRegressor(n_estimators=50, random_state=42, max_depth=5)
+        model.fit(X_train, y_train)
+        
+        # 评估模型
+        y_pred = model.predict(X_test)
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        
+        # 保存模型
+        model_file = os.path.join(os.getcwd(), 'validation_model.pkl')
+        joblib.dump(model, model_file)
+        
+        # 计算准确率（这里用R²分数作为准确率指标）
+        accuracy = max(0, r2)  # R²可能为负数，这里限制最小值为0
+        
+        add_log_entry('success', 'validation', f'模型训练完成，准确率: {accuracy:.3f}')
+        return jsonify(format_response(True, 
+                                       message="模型训练完成",
+                                       data={
+                                           'accuracy': accuracy,
+                                           'mse': mse,
+                                           'r2_score': r2,
+                                           'training_samples': len(X_train),
+                                           'test_samples': len(X_test)
+                                       }))
+        
+    except Exception as e:
+        error_msg = f"模型训练失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'validation', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+@api_bp.route('/predict_parameters', methods=['POST'])
+def predict_parameters():
+    """预测最优参数"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify(format_response(False, message="无效的请求数据")), 400
+        
+        # 获取输入数据
+        x = data.get('x', 0)
+        y = data.get('y', 0)
+        target_thickness = data.get('target_thickness', 1.0)
+        
+        import os
+        import joblib
+        import numpy as np
+        
+        # 检查模型文件是否存在
+        model_file = os.path.join(os.getcwd(), 'validation_model.pkl')
+        if not os.path.exists(model_file):
+            return jsonify(format_response(False, message="预测模型不存在，请先训练模型")), 404
+        
+        # 加载模型
+        model = joblib.load(model_file)
+        
+        # 准备预测数据
+        X_pred = np.array([[x, y, target_thickness]])
+        
+        # 进行预测
+        predictions = model.predict(X_pred)[0]
+        
+        # 构建结果
+        parameter_names = ['I_avg', 'V', 'K', 't_exp', 'acid_gen_efficiency', 
+                          'diffusion_length', 'reaction_rate', 'amplification', 'contrast']
+        
+        predicted_params = {}
+        for i, param_name in enumerate(parameter_names):
+            predicted_params[param_name] = float(predictions[i])
+        
+        add_log_entry('info', 'validation', f'参数预测完成，目标位置: ({x}, {y}), 目标厚度: {target_thickness}')
+        return jsonify(format_response(True, 
+                                       message="参数预测完成",
+                                       data={'predicted_parameters': predicted_params}))
+        
+    except Exception as e:
+        error_msg = f"参数预测失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'validation', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+@api_bp.route('/validation_stats', methods=['GET'])
+def get_validation_stats():
+    """获取验证数据统计信息"""
+    try:
+        # 检查Excel支持（如果文件存在的话）
+        try:
+            import openpyxl
+        except ImportError:
+            # 对于统计信息，如果Excel库不存在，返回基本信息即可
+            return jsonify(format_response(True, data={
+                'data_file_exists': False,
+                'model_file_exists': False,
+                'total_records': 0,
+                'unique_sessions': 0,
+                'excel_support': False,
+                'message': 'Excel支持库(openpyxl)未安装'
+            }))
+            
+        import pandas as pd
+        import os
+        
+        excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
+        model_file = os.path.join(os.getcwd(), 'validation_model.pkl')
+        
+        stats = {
+            'data_file_exists': os.path.exists(excel_file),
+            'model_file_exists': os.path.exists(model_file),
+            'total_records': 0,
+            'unique_sessions': 0
+        }
+        
+        if stats['data_file_exists']:
+            df = pd.read_excel(excel_file)
+            stats['total_records'] = len(df)
+            stats['unique_sessions'] = df['timestamp'].nunique() if 'timestamp' in df.columns else 0
+        
+        return jsonify(format_response(True, data=stats))
+        
+    except Exception as e:
+        error_msg = f"获取验证统计失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'validation', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+@api_bp.route('/get_validation_records', methods=['GET'])
+def get_validation_records():
+    """获取Excel文件中的验证记录"""
+    try:
+        # 检查Excel支持
+        try:
+            import openpyxl
+        except ImportError:
+            return jsonify(format_response(False, message="Excel支持库(openpyxl)未安装，请运行: pip install openpyxl")), 500
+            
+        import pandas as pd
+        import os
+        
+        # 获取请求参数
+        page = request.args.get('page', 1, type=int)
+        page_size = request.args.get('page_size', 50, type=int)
+        search_term = request.args.get('search', '', type=str)
+        sort_by = request.args.get('sort_by', 'timestamp', type=str)
+        sort_order = request.args.get('sort_order', 'desc', type=str)
+        
+        # 检查Excel文件是否存在
+        excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
+        if not os.path.exists(excel_file):
+            return jsonify(format_response(False, message="验证数据文件不存在，请先进行一些验证操作")), 404
+        
+        # 读取Excel数据
+        df = pd.read_excel(excel_file)
+        
+        if df.empty:
+            return jsonify(format_response(True, data={
+                'records': [],
+                'total_count': 0,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': 0,
+                'statistics': {
+                    'total_records': 0,
+                    'avg_accuracy': 0,
+                    'model_types': [],
+                    'date_range': None
+                }
+            }))
+        
+        # 数据清洗和格式化
+        df = df.fillna('')  # 填充空值
+        
+        # 如果有搜索条件，进行过滤
+        if search_term:
+            search_cols = ['model_type', 'x_coord', 'simulated_value', 'actual_value']
+            search_condition = False
+            for col in search_cols:
+                if col in df.columns:
+                    search_condition |= df[col].astype(str).str.contains(search_term, case=False, na=False)
+            df = df[search_condition]
+        
+        # 计算统计信息
+        total_count = len(df)
+        
+        # 排序
+        if sort_by in df.columns:
+            ascending = (sort_order == 'asc')
+            df = df.sort_values(by=sort_by, ascending=ascending)
+        
+        # 分页
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_df = df.iloc[start_idx:end_idx]
+        
+        # 转换为字典列表
+        records = []
+        for index, row in paginated_df.iterrows():
+            record = {}
+            for col in df.columns:
+                value = row[col]
+                # 处理NaN和特殊数值
+                if pd.isna(value):
+                    record[col] = ''
+                elif isinstance(value, (int, float)):
+                    if pd.isna(value):
+                        record[col] = ''
+                    else:
+                        record[col] = float(value) if value != int(value) else int(value)
+                else:
+                    record[col] = str(value)
+            records.append(record)
+        
+        # 计算总页数
+        total_pages = (total_count + page_size - 1) // page_size
+        
+        # 计算统计信息
+        statistics = {}
+        if total_count > 0:
+            # 基本统计
+            statistics['total_records'] = total_count
+            
+            # 准确性统计
+            if 'simulated_value' in df.columns and 'actual_value' in df.columns:
+                sim_vals = pd.to_numeric(df['simulated_value'], errors='coerce').dropna()
+                act_vals = pd.to_numeric(df['actual_value'], errors='coerce').dropna()
+                if len(sim_vals) > 0 and len(act_vals) > 0:
+                    # 计算平均相对误差
+                    relative_errors = abs((sim_vals - act_vals) / act_vals) * 100
+                    avg_accuracy = max(0, 100 - relative_errors.mean())
+                    statistics['avg_accuracy'] = round(avg_accuracy, 2)
+                    statistics['avg_error'] = round(relative_errors.mean(), 2)
+                    statistics['max_error'] = round(relative_errors.max(), 2)
+                    statistics['min_error'] = round(relative_errors.min(), 2)
+                else:
+                    statistics['avg_accuracy'] = 0
+                    statistics['avg_error'] = 0
+                    statistics['max_error'] = 0
+                    statistics['min_error'] = 0
+            
+            # 模型类型统计
+            if 'model_type' in df.columns:
+                model_counts = df['model_type'].value_counts().to_dict()
+                statistics['model_types'] = [{'type': k, 'count': v} for k, v in model_counts.items()]
+            
+            # 日期范围统计
+            if 'timestamp' in df.columns:
+                timestamps = pd.to_datetime(df['timestamp'], errors='coerce').dropna()
+                if len(timestamps) > 0:
+                    statistics['date_range'] = {
+                        'earliest': timestamps.min().strftime('%Y-%m-%d %H:%M:%S'),
+                        'latest': timestamps.max().strftime('%Y-%m-%d %H:%M:%S')
+                    }
+        
+        result_data = {
+            'records': records,
+            'total_count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': total_pages,
+            'statistics': statistics,
+            'columns': list(df.columns)
+        }
+        
+        add_log_entry('info', 'validation', f"成功获取验证记录，共{total_count}条记录，第{page}页")
+        return jsonify(format_response(True, data=result_data))
+        
+    except Exception as e:
+        error_msg = f"获取验证记录失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        print(f"Traceback: {traceback.format_exc()}")
+        add_log_entry('error', 'validation', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+@api_bp.route('/delete_validation_record', methods=['POST'])
+def delete_validation_record():
+    """删除指定的验证记录"""
+    try:
+        # 检查Excel支持
+        try:
+            import openpyxl
+        except ImportError:
+            return jsonify(format_response(False, message="Excel支持库(openpyxl)未安装，无法删除记录。请运行: pip install openpyxl")), 500
+            
+        import pandas as pd
+        import os
+        
+        data = request.get_json()
+        if not data or 'record_index' not in data:
+            return jsonify(format_response(False, message="缺少记录索引参数")), 400
+        
+        record_index = data['record_index']
+        
+        # 检查Excel文件是否存在
+        excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
+        if not os.path.exists(excel_file):
+            return jsonify(format_response(False, message="验证数据文件不存在")), 404
+        
+        # 读取Excel数据
+        df = pd.read_excel(excel_file)
+        
+        if df.empty or record_index < 0 or record_index >= len(df):
+            return jsonify(format_response(False, message="无效的记录索引")), 400
+        
+        # 删除指定行
+        df = df.drop(df.index[record_index])
+        
+        # 保存更新后的数据
+        df.to_excel(excel_file, index=False)
+        
+        add_log_entry('info', 'validation', f"成功删除第{record_index}条验证记录")
+        return jsonify(format_response(True, message=f"成功删除记录，剩余{len(df)}条记录"))
+        
+    except Exception as e:
+        error_msg = f"删除验证记录失败: {str(e)}"
+        print(f"Error: {error_msg}")
+        add_log_entry('error', 'validation', error_msg)
         return jsonify(format_response(False, message=error_msg)), 500
 

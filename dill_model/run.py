@@ -38,6 +38,165 @@ import requests
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
+def check_and_install_dependencies():
+    """检查并自动安装缺失的依赖包"""
+    print("🔍 检查系统依赖...")
+    
+    # 关键依赖列表
+    required_packages = {
+        'flask': 'flask>=3.0.0',
+        'flask_cors': 'flask-cors>=4.0.0',
+        'numpy': 'numpy>=1.24.0',
+        'matplotlib': 'matplotlib>=3.6.0',
+        'pandas': 'pandas>=2.0.0',
+        'openpyxl': 'openpyxl>=3.1.0',  # Excel处理的关键依赖
+        'scikit-learn': 'scikit-learn>=1.3.0',
+        'joblib': 'joblib>=1.3.0',
+        'scipy': 'scipy>=1.10.0',
+        'pillow': 'pillow>=10.0.0',
+        'requests': 'requests>=2.28.0',
+        'gunicorn': 'gunicorn>=21.0.0'
+    }
+    
+    missing_packages = []
+    
+    # 检查每个依赖包
+    for package_name, package_spec in required_packages.items():
+        try:
+            if package_name == 'flask_cors':
+                import flask_cors
+            elif package_name == 'scikit-learn':
+                import sklearn
+            elif package_name == 'pillow':
+                import PIL
+            else:
+                __import__(package_name)
+            print(f"✅ {package_name} 已安装")
+        except ImportError:
+            print(f"❌ {package_name} 未安装")
+            missing_packages.append(package_spec)
+    
+    # 如果有缺失的包，尝试安装
+    if missing_packages:
+        print(f"\n⚠️  发现 {len(missing_packages)} 个缺失的依赖包")
+        print("🔧 正在自动安装缺失的依赖...")
+        
+        try:
+            # 优先尝试pip安装，针对macOS添加--user和--break-system-packages选项
+            cmd = [sys.executable, '-m', 'pip', 'install']
+            
+            # 检测是否是macOS的externally-managed-environment
+            test_result = subprocess.run(
+                [sys.executable, '-m', 'pip', 'install', '--help'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if 'externally-managed-environment' in test_result.stderr or sys.platform == 'darwin':
+                print("🍎 检测到macOS系统，使用用户安装模式...")
+                cmd.extend(['--user', '--break-system-packages'])
+            
+            cmd.extend(missing_packages)
+            print(f"执行命令: {' '.join(cmd)}")
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300  # 5分钟超时
+            )
+            
+            if result.returncode == 0:
+                print("✅ 依赖安装成功！")
+                return True
+            else:
+                print(f"❌ pip安装失败: {result.stderr}")
+                
+                # 如果pip失败，尝试使用requirements.txt
+                req_file = os.path.join(current_dir, 'requirements.txt')
+                if os.path.exists(req_file):
+                    print("🔄 尝试使用requirements.txt安装...")
+                    cmd = [sys.executable, '-m', 'pip', 'install']
+                    if sys.platform == 'darwin':
+                        cmd.extend(['--user', '--break-system-packages'])
+                    cmd.extend(['-r', req_file])
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                    
+                    if result.returncode == 0:
+                        print("✅ 通过requirements.txt安装成功！")
+                        return True
+                    else:
+                        print(f"❌ requirements.txt安装也失败: {result.stderr}")
+                
+                return False
+                
+        except subprocess.TimeoutExpired:
+            print("❌ 安装超时，请手动安装依赖")
+            return False
+        except Exception as e:
+            print(f"❌ 安装过程中出现错误: {str(e)}")
+            return False
+    else:
+        print("✅ 所有依赖都已安装")
+        return True
+
+def install_requirements_if_needed():
+    """如果需要，安装requirements.txt中的依赖"""
+    req_file = os.path.join(current_dir, 'requirements.txt')
+    if not os.path.exists(req_file):
+        print("⚠️  未找到requirements.txt文件")
+        return False
+    
+    try:
+        # 特别检查openpyxl，因为这是Excel功能的关键依赖
+        import openpyxl
+        print("✅ openpyxl (Excel支持) 已安装")
+        return True
+    except ImportError:
+        print("📦 正在安装Excel支持库 openpyxl...")
+        try:
+            # 针对macOS系统的特殊处理
+            cmd = [sys.executable, '-m', 'pip', 'install']
+            if sys.platform == 'darwin':
+                print("🍎 检测到macOS系统，使用用户安装模式...")
+                cmd.extend(['--user', '--break-system-packages'])
+            cmd.append('openpyxl>=3.1.0')
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            if result.returncode == 0:
+                print("✅ openpyxl 安装成功！")
+                return True
+            else:
+                print(f"❌ openpyxl 安装失败: {result.stderr}")
+                # 尝试安装整个requirements.txt
+                print("🔄 尝试安装完整依赖列表...")
+                cmd = [sys.executable, '-m', 'pip', 'install']
+                if sys.platform == 'darwin':
+                    cmd.extend(['--user', '--break-system-packages'])
+                cmd.extend(['-r', req_file])
+                
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                if result.returncode == 0:
+                    print("✅ 依赖安装完成！")
+                    return True
+                else:
+                    print(f"❌ 依赖安装失败: {result.stderr}")
+                    return False
+        except Exception as e:
+            print(f"❌ 安装过程出错: {str(e)}")
+            return False
+
 def check_and_activate_venv():
     """检查并激活虚拟环境"""
     venv_path = os.path.join(current_dir, 'venv')
@@ -498,9 +657,37 @@ def main():
     # 打印启动横幅
     print_banner()
     
-    # 检查依赖
+    # 首先检查并自动安装缺失的依赖（特别是Excel相关的openpyxl）
+    print("🔍 正在检查和安装必要的依赖包...")
+    dependency_check_success = True
+    
+    try:
+        # 优先安装Excel支持
+        if not install_requirements_if_needed():
+            print("⚠️  Excel支持库安装可能有问题，但将继续启动...")
+        
+        # 全面检查依赖
+        if not check_and_install_dependencies():
+            print("⚠️  某些依赖包可能缺失，但将尝试继续启动...")
+            dependency_check_success = False
+            
+    except Exception as e:
+        print(f"⚠️  依赖安装过程中出现问题: {str(e)}")
+        print("将尝试继续启动，但某些功能可能不可用...")
+        dependency_check_success = False
+    
+    # 检查依赖（原有的检查逻辑）
     if not check_dependencies():
+        if not dependency_check_success:
+            print("\n❌ 关键依赖缺失且自动安装失败。")
+            print("请尝试手动运行以下命令安装依赖:")
+            print(f"cd {current_dir}")
+            print("pip install -r requirements.txt")
+            print("或者:")
+            print("pip install openpyxl pandas flask flask-cors numpy matplotlib scikit-learn")
         sys.exit(1)
+    
+    print("✅ 依赖检查完成！")
     
     # 设置环境（确保在创建应用之前设置）
     setup_environment(verbose_logs=args.verbose_logs)
