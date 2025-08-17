@@ -202,6 +202,434 @@
         .btn-success:hover:not(:disabled) {
             background: #1e7e34;
         }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* 验证数据选择器样式 */
+        .validation-selector-container {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .selector-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .selector-header h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .selector-header p {
+            color: #6c757d;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .target-settings {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .custom-settings {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        .custom-settings h5 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .setting-row select {
+            flex: 1;
+            max-width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .setting-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-row label {
+            min-width: 120px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .setting-row input {
+            flex: 1;
+            max-width: 150px;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .validation-records-list {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+
+        .records-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            background: #f8f9fa;
+        }
+
+        .record-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .selected-count {
+            margin-left: auto;
+            font-weight: 500;
+            color: #007bff;
+        }
+
+        .records-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .validation-record {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: white;
+            position: relative;
+            gap: 12px;
+        }
+
+        .validation-record:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+        }
+
+        .validation-record.selected {
+            background: #e3f2fd;
+            border-color: #007bff;
+            box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+        }
+
+        .validation-record.dragging {
+            opacity: 0.5;
+            transform: rotate(3deg);
+            z-index: 1000;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .record-drag-handle {
+            color: #6c757d;
+            cursor: grab;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 5px;
+            -webkit-user-select: none;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            opacity: 0.6;
+            transition: all 0.2s ease;
+        }
+
+        .record-drag-handle:hover {
+            color: #007bff;
+            opacity: 1;
+        }
+
+        .record-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .record-placeholder {
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 10px;
+            background: #f8f9ff;
+            text-align: center;
+            color: #007bff;
+            opacity: 0.7;
+            animation: pulse 1.5s infinite;
+        }
+
+        .placeholder-text {
+            font-style: italic;
+            font-size: 14px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .record-checkbox {
+            margin-right: 12px;
+        }
+
+        .record-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .record-timestamp {
+            font-size: 12px;
+            color: #6c757d;
+            background: #f8f9fa;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .record-values {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .record-deviation-visual {
+            margin: 10px 0;
+        }
+
+        .deviation-bar-container {
+            position: relative;
+            height: 24px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+
+        .deviation-bar-container::before {
+            content: "需减少曝光";
+            position: absolute;
+            left: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 9px;
+            color: #6c757d;
+            z-index: 0;
+        }
+
+        .deviation-bar-container::after {
+            content: "需增加曝光";
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 9px;
+            color: #6c757d;
+            z-index: 0;
+        }
+
+        .deviation-center-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: #6c757d;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        .deviation-bar {
+            position: absolute;
+            top: 50%;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 500;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 2;
+        }
+
+        .deviation-bar.deviation-accurate {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .deviation-bar.deviation-slightly-under {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+        }
+
+        .deviation-bar.deviation-under {
+            background: linear-gradient(135deg, #fd7e14, #dc3545);
+        }
+
+        .deviation-bar.deviation-slightly-over {
+            background: linear-gradient(135deg, #17a2b8, #007bff);
+        }
+
+        .deviation-bar.deviation-over {
+            background: linear-gradient(135deg, #007bff, #6f42c1);
+        }
+
+        .deviation-bar.deviation-neutral {
+            background: linear-gradient(135deg, #6c757d, #495057);
+        }
+
+        .deviation-text {
+            white-space: nowrap;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .record-position {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .record-values {
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+        }
+
+        .record-simulated {
+            color: #6c757d;
+        }
+
+        .record-actual {
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .record-deviation {
+            font-weight: 500;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .record-deviation.positive {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .record-deviation.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .record-deviation.neutral {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .record-analysis {
+            font-size: 12px;
+            color: #6c757d;
+            text-align: right;
+        }
+
+        .optimization-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        /* 分析结果样式 */
+        .analysis-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .analysis-header h5 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .analysis-content {
+            display: grid;
+            gap: 10px;
+        }
+
+        .analysis-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .analysis-item:last-child {
+            border-bottom: none;
+        }
+
+        .analysis-label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .analysis-value {
+            color: #007bff;
+            font-weight: 500;
+        }
         
         .annotation-list {
             margin-top: 15px;
@@ -1301,6 +1729,103 @@
                 margin-bottom: 0;
             }
         }
+
+        /* 折叠标题样式 */
+        .collapsible-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 15px 20px;
+            margin: 0 -20px 15px -20px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+        }
+
+        .collapsible-title:hover {
+            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .collapsible-title .title-text {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .collapse-icon {
+            transition: transform 0.3s ease;
+            color: #6c757d;
+            font-size: 16px;
+        }
+
+        .collapsible-title.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .collapsible-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 1000px;
+            opacity: 1;
+        }
+
+        .collapsible-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: 0;
+        }
+
+        .scrollable-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+
+        .scrollable-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollable-container::-webkit-scrollbar-track {
+            background: #f1f3f4;
+            border-radius: 4px;
+        }
+
+        .scrollable-container::-webkit-scrollbar-thumb {
+            background: #c1c8cd;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        .scrollable-container::-webkit-scrollbar-thumb:hover {
+            background: #9da5ab;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+            justify-content: flex-end;
+        }
+
+        .action-buttons .btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+
+        .action-buttons .btn i {
+            font-size: 12px;
+        }
     </style>
 </head>
 <body data-page="validation">
@@ -1378,22 +1903,29 @@
         <div class="validation-container">
             <!-- 参数显示区域 -->
             <div class="section">
-                <h2 class="section-title">
-                    计算参数配置
+                <h2 class="section-title collapsible-title collapsed" id="parameters-section-title">
+                    <span class="title-text">计算参数配置</span>
+                    <i class="fas fa-chevron-right collapse-icon" id="parameters-collapse-icon"></i>
                 </h2>
-                <div id="no-parameters-message" class="status-info">
-                    请先在"单一计算"页面完成计算，然后返回此页面查看参数配置。
-                </div>
-                <div id="parameters-container" style="display: none;">
-                    <div class="parameter-grid" id="parameters-grid">
-                        <!-- 参数将通过JavaScript动态填充 -->
+                <div class="collapsible-content collapsed" id="parameters-content">
+                    <div id="no-parameters-message" class="status-info">
+                        请先在"单一计算"页面完成计算，然后返回此页面查看参数配置。
                     </div>
-                    <button id="refresh-parameters" class="btn btn-secondary">
-刷新参数
-                    </button>
-                    <button id="edit-parameters" class="btn btn-primary">
-修改参数
-                    </button>
+                    <div id="parameters-container" style="display: none;">
+                        <div class="scrollable-container">
+                            <div class="parameter-grid" id="parameters-grid">
+                                <!-- 参数将通过JavaScript动态填充 -->
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="refresh-parameters" class="btn btn-secondary">
+                                <i class="fas fa-sync-alt"></i> 刷新参数
+                            </button>
+                            <button id="edit-parameters" class="btn btn-primary">
+                                <i class="fas fa-edit"></i> 修改参数
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1490,30 +2022,106 @@
                                 <h3>智能算法优化</h3>
                             </div>
                             <div class="method-description">
-                                <p>基于物理模型的数值算法，无需训练数据即可使用</p>
+                                <p>基于验证数据的经验优化，选择参考记录进行智能调整</p>
                                 <ul>
-                                    <li>无需验证数据即可使用</li>
-                                    <li>专注于曝光时间优化</li>
-                                    <li>基于Dill模型物理原理</li>
-                                    <li>提供快捷和自定义两种模式</li>
+                                    <li>手动选择参考验证记录</li>
+                                    <li>基于实际偏差进行优化</li>
+                                    <li>经验驱动的曝光时间调整</li>
                                 </ul>
                             </div>
                             <div class="method-actions">
-                                <button id="smart-optimize" class="btn btn-primary">
-快捷优化
-                                </button>
-                                <button id="show-optimization-input" class="btn btn-success">
-自定义优化
+                                <button id="show-validation-selector" class="btn btn-primary">
+选择验证数据
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
                 
+                <!-- 验证数据选择器 -->
+                <div id="validation-data-selector" class="validation-selector-container" style="display: none;">
+                    <div class="selector-header">
+                        <h4>选择参考验证记录</h4>
+                        <p>选择要用于优化参考的验证数据记录，系统将基于这些记录的模拟-实际偏差进行智能调整</p>
+                    </div>
+                    
+                    <!-- 目标参数设置 -->
+                    <div class="target-settings">
+                        <div class="setting-row">
+                            <label for="target-thickness-input">目标厚度 (μm):</label>
+                            <input type="number" id="target-thickness-input" step="0.1" value="1.0" min="0.1" max="5.0">
+                        </div>
+                        <div class="setting-row">
+                            <label for="target-position-x">目标位置 X:</label>
+                            <input type="number" id="target-position-x" step="1" value="0">
+                        </div>
+                        <div class="setting-row">
+                            <label for="target-position-y">目标位置 Y:</label>
+                            <input type="number" id="target-position-y" step="0.1" value="0">
+                        </div>
+                    </div>
+                    
+                    <!-- 自定义优化参数设置 -->
+                    <div id="custom-optimization-settings" class="custom-settings" style="display: none;">
+                        <h5>自定义优化参数</h5>
+                        <div class="setting-row">
+                            <label for="custom-sensitivity">算法敏感度:</label>
+                            <select id="custom-sensitivity">
+                                <option value="1.0">低敏感度 (保守)</option>
+                                <option value="2.0" selected>标准敏感度 (推荐)</option>
+                                <option value="3.0">高敏感度 (激进)</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <label for="custom-confidence-threshold">最低置信度:</label>
+                            <select id="custom-confidence-threshold">
+                                <option value="0.3">低要求 (30%)</option>
+                                <option value="0.5" selected>中等要求 (50%)</option>
+                                <option value="0.7">高要求 (70%)</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <label for="custom-strategy-count">生成策略数量:</label>
+                            <select id="custom-strategy-count">
+                                <option value="1">单一最优策略</option>
+                                <option value="3" selected>三种策略对比</option>
+                                <option value="5">五种策略全面分析</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- 验证记录列表 -->
+                    <div class="validation-records-list">
+                        <div class="records-header">
+                            <div class="record-controls">
+                                <button id="select-all-records" class="btn btn-secondary btn-small">全选</button>
+                                <button id="clear-all-records" class="btn btn-secondary btn-small">清空</button>
+                                <span class="selected-count">已选择: <span id="selected-records-count">0</span> 条</span>
+                            </div>
+                        </div>
+                        <div id="validation-records-container" class="records-container">
+                            <div class="loading-message">正在加载验证数据...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 优化按钮 -->
+                    <div class="optimization-buttons">
+                        <button id="quick-optimize-btn" class="btn btn-primary" disabled>
+                            快捷优化 (保守策略)
+                        </button>
+                        <button id="custom-optimize-btn" class="btn btn-success" disabled>
+                            自定义优化 (多种策略)
+                        </button>
+                        <button id="cancel-optimization" class="btn btn-secondary">
+                            取消
+                        </button>
+                    </div>
+                </div>
+
                 <!-- 优化结果显示区域 -->
                 <div id="optimization-result-section" class="result-display-area" style="display: none;">
                     <div class="result-header">
-                        <h4 id="result-title">优化结果</h4>
+                        <h4 id="result-title">基于验证数据的优化结果</h4>
                     </div>
                     <div class="result-content">
                         <div class="result-item">
@@ -1525,8 +2133,37 @@
                             <span class="result-value" id="strategy-value">--</span>
                         </div>
                         <div class="result-item">
-                            <span class="result-label">建议预测厚度：</span>
+                            <span class="result-label">预测厚度：</span>
                             <span class="result-value" id="thickness-value">--</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">置信度：</span>
+                            <span class="result-value" id="confidence-value">--</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">参考记录数：</span>
+                            <span class="result-value" id="reference-records-value">--</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 经验分析报告 -->
+                    <div id="experience-analysis" class="analysis-section" style="display: none;">
+                        <div class="analysis-header">
+                            <h5>经验分析报告</h5>
+                        </div>
+                        <div class="analysis-content">
+                            <div class="analysis-item">
+                                <span class="analysis-label">趋势分析：</span>
+                                <span class="analysis-value" id="trend-analysis">--</span>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">调整建议：</span>
+                                <span class="analysis-value" id="adjustment-recommendation">--</span>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">加权偏差：</span>
+                                <span class="analysis-value" id="weighted-deviation">--</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -2002,13 +2639,54 @@
     </div>
 
     <!-- 引入JavaScript文件 -->
+    <script src="js/common.js?v=1.0"></script>
     <script src="js/lang.js"></script>
     <script src="js/validation.js"></script>
     
     <!-- 通知系统脚本 -->
     <script>
+        // 初始化折叠功能
+        function initCollapsibleSection() {
+            const title = document.getElementById('parameters-section-title');
+            const content = document.getElementById('parameters-content');
+            const icon = document.getElementById('parameters-collapse-icon');
+            
+            if (title && content && icon) {
+                title.addEventListener('click', function() {
+                    const isCollapsed = content.classList.contains('collapsed');
+                    
+                    if (isCollapsed) {
+                        // 展开
+                        content.classList.remove('collapsed');
+                        title.classList.remove('collapsed');
+                        icon.classList.remove('fa-chevron-right');
+                        icon.classList.add('fa-chevron-down');
+                    } else {
+                        // 折叠
+                        content.classList.add('collapsed');
+                        title.classList.add('collapsed');
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-right');
+                    }
+                });
+            }
+        }
+
+        // 全局变量存储验证数据和选择状态
+        let validationRecords = [];
+        let selectedRecordIndices = [];
+
         // 页面加载完成后绑定事件
         document.addEventListener('DOMContentLoaded', function() {
+            // 初始化折叠功能
+            initCollapsibleSection();
+            
+            // 绑定验证数据选择器按钮
+            const showValidationSelectorBtn = document.getElementById('show-validation-selector');
+            if (showValidationSelectorBtn) {
+                showValidationSelectorBtn.addEventListener('click', showValidationDataSelector);
+            }
+            
             // 绑定快捷优化按钮事件
             const smartOptimizeBtn = document.getElementById('smart-optimize');
             if (smartOptimizeBtn) {
@@ -2235,13 +2913,13 @@
                 
                 resultSection.style.display = 'block';
                 
-                // 平滑滚动到结果区域
-                setTimeout(() => {
-                    resultSection.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                }, 100);
+                // 滚动由智能优化统一处理
+                // setTimeout(() => {
+                //     resultSection.scrollIntoView({ 
+                //         behavior: 'smooth', 
+                //         block: 'center' 
+                //     });
+                // }, 100);
             }
         }
 
@@ -2276,13 +2954,13 @@
                 
                 resultSection.style.display = 'block';
                 
-                // 平滑滚动到结果区域
-                setTimeout(() => {
-                    resultSection.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                }, 100);
+                // 滚动由智能优化统一处理
+                // setTimeout(() => {
+                //     resultSection.scrollIntoView({ 
+                //         behavior: 'smooth', 
+                //         block: 'center' 
+                //     });
+                // }, 100);
             }
             
             // 训练完成后启用参数预测按钮
@@ -2333,13 +3011,13 @@
                 
                 resultSection.style.display = 'block';
                 
-                // 平滑滚动到结果区域
-                setTimeout(() => {
-                    resultSection.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                }, 100);
+                // 滚动由智能优化统一处理
+                // setTimeout(() => {
+                //     resultSection.scrollIntoView({ 
+                //         behavior: 'smooth', 
+                //         block: 'center' 
+                //     });
+                // }, 100);
             }
         }
 
@@ -2481,13 +3159,13 @@
             showDataInsufficiencyWarning();
         }
                 
-                // 平滑滚动到结果区域
-                setTimeout(() => {
-                    resultSection.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                }, 100);
+                // 滚动由智能优化统一处理
+                // setTimeout(() => {
+                //     resultSection.scrollIntoView({ 
+                //         behavior: 'smooth', 
+                //         block: 'center' 
+                //     });
+                // }, 100);
             }
         }
 
@@ -2898,6 +3576,490 @@
                 alert('网络错误，请检查连接后重试');
             });
         }
+        // ================================
+        // 验证数据选择器相关函数
+        // ================================
+        
+        function showValidationDataSelector() {
+            console.log('显示验证数据选择器');
+            
+            // 隐藏其他区域
+            const optimizationResult = document.getElementById('optimization-result-section');
+            if (optimizationResult) optimizationResult.style.display = 'none';
+            
+            // 显示选择器
+            const selector = document.getElementById('validation-data-selector');
+            if (selector) {
+                selector.style.display = 'block';
+                // 加载验证数据
+                loadValidationDataForOptimization();
+                // 绑定事件
+                bindValidationSelectorEvents();
+            }
+        }
+        
+        function loadValidationDataForOptimization() {
+            const container = document.getElementById('validation-records-container');
+            if (!container) return;
+            
+            container.innerHTML = '<div class="loading-message">正在加载验证数据...</div>';
+            
+            fetch('/api/get_validation_data_for_optimization')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.records) {
+                        validationRecords = data.data.records;
+                        renderValidationRecords(validationRecords);
+                    } else {
+                        container.innerHTML = '<div class="loading-message">无法加载验证数据: ' + (data.message || '未知错误') + '</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('加载验证数据失败:', error);
+                    container.innerHTML = '<div class="loading-message">网络错误，请重试</div>';
+                });
+        }
+        
+        function renderValidationRecords(records) {
+            const container = document.getElementById('validation-records-container');
+            if (!container || !records || records.length === 0) {
+                container.innerHTML = '<div class="loading-message">没有找到验证数据记录</div>';
+                return;
+            }
+            
+            const recordsHtml = records.map((record, index) => {
+                // 计算偏差可视化参数
+                const maxDeviation = 0.3; // 最大偏差用于归一化
+                const normalizedDeviation = Math.max(-1, Math.min(1, record.deviation / maxDeviation));
+                const barWidthPercent = Math.abs(normalizedDeviation) * 40 + 10; // 10-50% 宽度
+                
+                // 修正逻辑：条只在对应方向显示
+                let barLeft, barWidth;
+                if (record.deviation > 0) {
+                    // 正偏差（预测偏薄）：从中心线向右延伸
+                    barLeft = 50; // 从中心开始
+                    barWidth = barWidthPercent; // 向右延伸的宽度
+                } else {
+                    // 负偏差（预测偏厚）：从中心线向左延伸
+                    barLeft = 50 - barWidthPercent; // 向左延伸
+                    barWidth = barWidthPercent; // 宽度
+                }
+                
+                // 根据偏差设置颜色类
+                let deviationClass = 'deviation-neutral';
+                if (Math.abs(record.deviation) < 0.05) {
+                    deviationClass = 'deviation-accurate';
+                } else if (record.deviation > 0.1) {
+                    deviationClass = 'deviation-under';
+                } else if (record.deviation < -0.1) {
+                    deviationClass = 'deviation-over';
+                } else if (record.deviation > 0) {
+                    deviationClass = 'deviation-slightly-under';
+                } else {
+                    deviationClass = 'deviation-slightly-over';
+                }
+                
+                // 格式化时间戳
+                const timestamp = record.timestamp ? new Date(record.timestamp).toLocaleString('zh-CN', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }) : '--';
+                
+                return `
+                    <div class="validation-record" data-index="${record.index}" draggable="true">
+                        <div class="record-drag-handle">⋮⋮</div>
+                        <input type="checkbox" class="record-checkbox" id="record-${record.index}">
+                        <div class="record-info">
+                            <div class="record-header">
+                                <div class="record-position">
+                                    位置: (${record.position_x.toFixed(0)}, ${record.position_y.toFixed(2)})
+                                </div>
+                                <div class="record-timestamp">${timestamp}</div>
+                            </div>
+                            <div class="record-values">
+                                <span class="record-simulated">模拟: ${record.simulated_value}</span>
+                                <span class="record-actual">实际: ${record.actual_value}</span>
+                            </div>
+                            <div class="record-deviation-visual">
+                                <div class="deviation-bar-container">
+                                    <div class="deviation-center-line"></div>
+                                    <div class="deviation-bar ${deviationClass}" 
+                                         style="left: ${barLeft}%; width: ${barWidth}%; transform: translateY(-50%);">
+                                        <span class="deviation-text">${record.deviation > 0 ? '+' : ''}${record.deviation} (${record.deviation_percentage > 0 ? '+' : ''}${record.deviation_percentage}%)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="record-analysis">
+                                ${record.analysis.message}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = recordsHtml;
+            
+            // 绑定拖拽事件
+            bindDragEvents();
+            
+            // 绑定记录点击事件
+            container.querySelectorAll('.validation-record').forEach(record => {
+                record.addEventListener('click', function(e) {
+                    if (e.target.type !== 'checkbox' && !e.target.classList.contains('record-drag-handle')) {
+                        const checkbox = this.querySelector('.record-checkbox');
+                        checkbox.checked = !checkbox.checked;
+                        updateRecordSelection();
+                    }
+                });
+            });
+            
+            container.querySelectorAll('.record-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', updateRecordSelection);
+            });
+        }
+        
+        // 拖拽排序功能
+        function bindDragEvents() {
+            const container = document.getElementById('validation-records-container');
+            let draggedElement = null;
+            let placeholder = null;
+            
+            container.querySelectorAll('.validation-record').forEach(record => {
+                record.addEventListener('dragstart', function(e) {
+                    draggedElement = this;
+                    this.classList.add('dragging');
+                    
+                    // 创建占位符
+                    placeholder = document.createElement('div');
+                    placeholder.className = 'record-placeholder';
+                    placeholder.innerHTML = '<div class="placeholder-text">在此放置</div>';
+                    
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', this.outerHTML);
+                });
+                
+                record.addEventListener('dragend', function(e) {
+                    this.classList.remove('dragging');
+                    if (placeholder && placeholder.parentNode) {
+                        placeholder.parentNode.removeChild(placeholder);
+                    }
+                    draggedElement = null;
+                    placeholder = null;
+                });
+                
+                record.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    if (this === draggedElement) return;
+                    
+                    const afterElement = getDragAfterElement(container, e.clientY);
+                    if (afterElement == null) {
+                        container.appendChild(placeholder);
+                    } else {
+                        container.insertBefore(placeholder, afterElement);
+                    }
+                });
+                
+                record.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    if (this === draggedElement) return;
+                    
+                    if (placeholder && placeholder.parentNode) {
+                        placeholder.parentNode.insertBefore(draggedElement, placeholder);
+                        placeholder.parentNode.removeChild(placeholder);
+                    }
+                });
+            });
+            
+            // 容器的拖拽事件
+            container.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(container, e.clientY);
+                if (afterElement == null) {
+                    container.appendChild(placeholder);
+                } else {
+                    container.insertBefore(placeholder, afterElement);
+                }
+            });
+            
+            container.addEventListener('drop', function(e) {
+                e.preventDefault();
+                if (placeholder && placeholder.parentNode && draggedElement) {
+                    placeholder.parentNode.insertBefore(draggedElement, placeholder);
+                    placeholder.parentNode.removeChild(placeholder);
+                }
+            });
+        }
+        
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.validation-record:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+        
+        function bindValidationSelectorEvents() {
+            // 全选按钮
+            const selectAllBtn = document.getElementById('select-all-records');
+            if (selectAllBtn) {
+                selectAllBtn.onclick = function() {
+                    document.querySelectorAll('.record-checkbox').forEach(cb => cb.checked = true);
+                    updateRecordSelection();
+                };
+            }
+            
+            // 清空按钮
+            const clearAllBtn = document.getElementById('clear-all-records');
+            if (clearAllBtn) {
+                clearAllBtn.onclick = function() {
+                    document.querySelectorAll('.record-checkbox').forEach(cb => cb.checked = false);
+                    updateRecordSelection();
+                };
+            }
+            
+            // 优化按钮
+            const quickOptimizeBtn = document.getElementById('quick-optimize-btn');
+            const customOptimizeBtn = document.getElementById('custom-optimize-btn');
+            
+            if (quickOptimizeBtn) {
+                quickOptimizeBtn.onclick = () => {
+                    // 隐藏自定义设置
+                    document.getElementById('custom-optimization-settings').style.display = 'none';
+                    performExperienceBasedOptimization('quick');
+                };
+            }
+            
+            if (customOptimizeBtn) {
+                customOptimizeBtn.onclick = () => {
+                    // 显示自定义设置
+                    const customSettings = document.getElementById('custom-optimization-settings');
+                    if (customSettings.style.display === 'none') {
+                        customSettings.style.display = 'block';
+                        customOptimizeBtn.textContent = '执行自定义优化';
+                    } else {
+                        performExperienceBasedOptimization('custom');
+                    }
+                };
+            }
+            
+            // 取消按钮
+            const cancelBtn = document.getElementById('cancel-optimization');
+            if (cancelBtn) {
+                cancelBtn.onclick = function() {
+                    document.getElementById('validation-data-selector').style.display = 'none';
+                    // 重置自定义设置显示状态
+                    document.getElementById('custom-optimization-settings').style.display = 'none';
+                    const customBtn = document.getElementById('custom-optimize-btn');
+                    if (customBtn) customBtn.textContent = '自定义优化 (多种策略)';
+                };
+            }
+        }
+        
+        function updateRecordSelection() {
+            const checkboxes = document.querySelectorAll('.record-checkbox');
+            selectedRecordIndices = [];
+            
+            checkboxes.forEach((checkbox, index) => {
+                const recordElement = checkbox.closest('.validation-record');
+                const recordIndex = parseInt(recordElement.dataset.index);
+                
+                if (checkbox.checked) {
+                    selectedRecordIndices.push(recordIndex);
+                    recordElement.classList.add('selected');
+                } else {
+                    recordElement.classList.remove('selected');
+                }
+            });
+            
+            // 更新选择计数
+            const countElement = document.getElementById('selected-records-count');
+            if (countElement) {
+                countElement.textContent = selectedRecordIndices.length;
+            }
+            
+            // 启用/禁用优化按钮
+            const quickBtn = document.getElementById('quick-optimize-btn');
+            const customBtn = document.getElementById('custom-optimize-btn');
+            const hasSelection = selectedRecordIndices.length > 0;
+            
+            if (quickBtn) quickBtn.disabled = !hasSelection;
+            if (customBtn) customBtn.disabled = !hasSelection;
+            
+            console.log('已选择记录:', selectedRecordIndices);
+        }
+        
+        function performExperienceBasedOptimization(type) {
+            if (selectedRecordIndices.length === 0) {
+                alert('请先选择至少一条验证记录');
+                return;
+            }
+            
+            // 获取目标参数
+            const targetThickness = parseFloat(document.getElementById('target-thickness-input').value) || 1.0;
+            const targetX = parseFloat(document.getElementById('target-position-x').value) || 0;
+            const targetY = parseFloat(document.getElementById('target-position-y').value) || 0;
+            
+            // 获取自定义参数
+            let customParams = {};
+            if (type === 'custom') {
+                customParams = {
+                    sensitivity: parseFloat(document.getElementById('custom-sensitivity').value) || 2.0,
+                    confidence_threshold: parseFloat(document.getElementById('custom-confidence-threshold').value) || 0.5,
+                    strategy_count: parseInt(document.getElementById('custom-strategy-count').value) || 3
+                };
+            }
+            
+            console.log(`开始${type}优化，基于${selectedRecordIndices.length}条记录`, customParams);
+            
+            // 禁用按钮并显示加载状态
+            const quickBtn = document.getElementById('quick-optimize-btn');
+            const customBtn = document.getElementById('custom-optimize-btn');
+            const originalQuickText = quickBtn ? quickBtn.textContent : '';
+            const originalCustomText = customBtn ? customBtn.textContent : '';
+            
+            if (quickBtn) {
+                quickBtn.disabled = true;
+                quickBtn.textContent = '优化中...';
+            }
+            if (customBtn) {
+                customBtn.disabled = true;
+                customBtn.textContent = '优化中...';
+            }
+            
+            // 调用后端API
+            const requestData = {
+                target_x: targetX,
+                target_y: targetY,
+                target_thickness: targetThickness,
+                selected_records: selectedRecordIndices,
+                optimization_type: type,
+                ...customParams
+            };
+            
+            fetch('/api/smart_optimize_exposure', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 恢复按钮状态
+                if (quickBtn) {
+                    quickBtn.disabled = false;
+                    quickBtn.textContent = originalQuickText;
+                }
+                if (customBtn) {
+                    customBtn.disabled = false;
+                    customBtn.textContent = originalCustomText;
+                }
+                
+                if (data.success) {
+                    const options = data.data?.exposure_options || [];
+                    console.log('收到优化结果:', options);
+                    
+                    if (options.length > 0) {
+                        // 选择合适的结果显示
+                        const selectedOption = type === 'quick' ? options[0] : 
+                                             options.find(opt => opt.type === 'balanced') || options[1] || options[0];
+                        
+                        showExperienceBasedOptimizationResult(selectedOption, selectedRecordIndices.length);
+                        
+                        // 隐藏选择器
+                        document.getElementById('validation-data-selector').style.display = 'none';
+                        
+                        // 重置自定义设置
+                        document.getElementById('custom-optimization-settings').style.display = 'none';
+                        const customBtn = document.getElementById('custom-optimize-btn');
+                        if (customBtn) customBtn.textContent = '自定义优化 (多种策略)';
+                    } else {
+                        alert('优化成功但未返回结果');
+                    }
+                } else {
+                    alert('优化失败：' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                // 恢复按钮状态
+                if (quickBtn) {
+                    quickBtn.disabled = false;
+                    quickBtn.textContent = originalQuickText;
+                }
+                if (customBtn) {
+                    customBtn.disabled = false;
+                    customBtn.textContent = originalCustomText;
+                }
+                
+                console.error('优化API调用失败:', error);
+                alert('网络错误，请检查连接后重试');
+            });
+        }
+        
+        function showExperienceBasedOptimizationResult(option, recordCount) {
+            // 显示结果区域
+            const resultSection = document.getElementById('optimization-result-section');
+            if (resultSection) {
+                resultSection.style.display = 'block';
+                
+                // 更新基本结果
+                document.getElementById('exposure-time-value').textContent = option.exposure_time + 's';
+                document.getElementById('strategy-value').textContent = option.label;
+                document.getElementById('thickness-value').textContent = option.predicted_thickness + 'μm';
+                document.getElementById('confidence-value').textContent = option.confidence;
+                document.getElementById('reference-records-value').textContent = recordCount + '条';
+                
+                // 显示经验分析
+                if (option.experience_summary) {
+                    const analysisSection = document.getElementById('experience-analysis');
+                    if (analysisSection) {
+                        analysisSection.style.display = 'block';
+                        
+                        document.getElementById('trend-analysis').textContent = option.experience_summary.trend;
+                        document.getElementById('adjustment-recommendation').textContent = option.experience_summary.recommendation;
+                        document.getElementById('weighted-deviation').textContent = option.analysis.weighted_deviation;
+                    }
+                }
+                
+                // 滚动到结果区域，但不要滚动到页面底部
+                setTimeout(() => {
+                    const resultSection = document.getElementById('optimization-result-section');
+                    if (resultSection) {
+                        // 获取结果区域的位置
+                        const resultRect = resultSection.getBoundingClientRect();
+                        const resultTop = window.pageYOffset + resultRect.top;
+                        const resultBottom = window.pageYOffset + resultRect.bottom;
+                        
+                        // 获取页脚位置
+                        const footer = document.querySelector('.professional-footer');
+                        let maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+                        
+                        if (footer) {
+                            const footerRect = footer.getBoundingClientRect();
+                            const footerTop = window.pageYOffset + footerRect.top;
+                            maxScroll = footerTop - 100; // 页脚上方100px
+                        }
+                        
+                        // 计算滚动目标：让结果区域可见，但不超过页脚
+                        let targetScroll = resultBottom - window.innerHeight + 50; // 结果底部留50px边距
+                        targetScroll = Math.min(targetScroll, maxScroll); // 不超过页脚限制
+                        targetScroll = Math.max(0, targetScroll); // 不小于0
+                        
+                        window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                    }
+                }, 100); // 短延时，确保DOM更新完成
+            }
+        }
+
     </script>
 </body>
 </html>

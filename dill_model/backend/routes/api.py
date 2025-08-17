@@ -3519,9 +3519,9 @@ def delete_validation_record():
 
 @api_bp.route('/smart_optimize_exposure', methods=['POST'])
 def smart_optimize_exposure():
-    """智能优化曝光时间算法"""
+    """基于验证数据的智能优化曝光时间算法"""
     try:
-        print("🔧 收到智能优化请求")
+        print("🔧 收到基于验证数据的智能优化请求")
         
         data = request.get_json()
         print(f"📥 请求数据: {data}")
@@ -3536,7 +3536,19 @@ def smart_optimize_exposure():
             target_x = float(data.get('target_x', 0))
             target_y = float(data.get('target_y', 0))
             target_thickness = float(data.get('target_thickness', 1.0))
+            selected_record_indices = data.get('selected_records', [])  # 用户选择的验证记录索引
+            optimization_type = data.get('optimization_type', 'quick')  # 'quick' 或 'custom'
+            
+            # 自定义参数
+            custom_params = {
+                'sensitivity': float(data.get('sensitivity', 2.0)),
+                'confidence_threshold': float(data.get('confidence_threshold', 0.5)),
+                'strategy_count': int(data.get('strategy_count', 3))
+            }
+            
             print(f"📊 解析参数: target_x={target_x}, target_y={target_y}, target_thickness={target_thickness}")
+            print(f"📋 选择的记录索引: {selected_record_indices}")
+            print(f"🔧 自定义参数: {custom_params}")
         except (ValueError, TypeError) as e:
             error_msg = f"参数格式错误: {str(e)}"
             print(f"❌ {error_msg}")
@@ -3551,18 +3563,19 @@ def smart_optimize_exposure():
             print(f"❌ {error_msg}")
             return jsonify(format_response(False, message=error_msg)), 400
         
-        print(f"🎯 开始智能优化计算")
+        print(f"🎯 开始基于验证数据的智能优化")
         
-        # 基于Dill模型的智能优化算法
-        optimized_exposures = calculate_optimal_exposure_times(
-            target_x, target_y, target_thickness, current_params
+        # 基于验证数据的智能优化算法
+        optimized_exposures = calculate_experience_based_exposure_times(
+            target_x, target_y, target_thickness, current_params, 
+            selected_record_indices, optimization_type, custom_params
         )
         
         print(f"✅ 智能优化完成，生成了 {len(optimized_exposures)} 个选项")
         
-        add_log_entry('info', 'validation', f'智能优化完成，目标位置: ({target_x}, {target_y}), 目标厚度: {target_thickness}')
+        add_log_entry('info', 'validation', f'基于验证数据的智能优化完成，目标位置: ({target_x}, {target_y}), 目标厚度: {target_thickness}, 基于{len(selected_record_indices)}条记录')
         return jsonify(format_response(True, 
-                                       message="智能优化完成",
+                                       message="基于验证数据的智能优化完成",
                                        data={'exposure_options': optimized_exposures}))
         
     except Exception as e:
@@ -3740,4 +3753,278 @@ def calculate_exposure_times_simple(target_x, target_y, target_thickness, curren
             "thickness_error": round(abs(target_thickness * 0.1), 4)
         }
     ]
+
+
+@api_bp.route('/get_validation_data_for_optimization', methods=['GET'])
+def get_validation_data_for_optimization():
+    """获取验证数据供优化选择使用"""
+    try:
+        import pandas as pd
+        import os
+        
+        # 检查Excel文件是否存在
+        excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
+        if not os.path.exists(excel_file):
+            return jsonify(format_response(False, message="验证数据文件不存在")), 404
+        
+        # 读取验证数据
+        df = pd.read_excel(excel_file)
+        
+        if df.empty:
+            return jsonify(format_response(False, message="验证数据为空")), 404
+        
+        # 格式化数据供前端使用
+        validation_records = []
+        for index, row in df.iterrows():
+            try:
+                simulated_val = float(row.get('simulated_value', 0))
+                actual_val = float(row.get('actual_value', 0))
+                deviation = actual_val - simulated_val
+                
+                record = {
+                    'index': index,
+                    'position_x': float(row.get('annotation_x', 0)),
+                    'position_y': float(row.get('annotation_y', 0)),
+                    'simulated_value': round(simulated_val, 4),
+                    'actual_value': round(actual_val, 4),
+                    'deviation': round(deviation, 4),
+                    'deviation_percentage': round((deviation / simulated_val * 100) if simulated_val != 0 else 0, 1),
+                    'timestamp': str(row.get('annotation_timestamp', '')),
+                    'analysis': get_deviation_analysis(deviation)
+                }
+                validation_records.append(record)
+            except (ValueError, TypeError) as e:
+                print(f"跳过无效记录 {index}: {e}")
+                continue
+        
+        print(f"📊 返回{len(validation_records)}条验证记录供选择")
+        return jsonify(format_response(True, data={'records': validation_records}))
+        
+    except Exception as e:
+        error_msg = f"获取验证数据失败: {str(e)}"
+        print(f"❌ {error_msg}")
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+def get_deviation_analysis(deviation):
+    """分析偏差并给出建议"""
+    if abs(deviation) < 0.05:
+        return {"type": "accurate", "message": "预测准确", "adjustment": "无需调整"}
+    elif deviation > 0.1:
+        return {"type": "under_predicted", "message": "预测偏薄", "adjustment": "建议减少曝光时间"}
+    elif deviation < -0.1:
+        return {"type": "over_predicted", "message": "预测偏厚", "adjustment": "建议增加曝光时间"}
+    elif deviation > 0:
+        return {"type": "slightly_under", "message": "略微偏薄", "adjustment": "可适当减少曝光时间"}
+    else:
+        return {"type": "slightly_over", "message": "略微偏厚", "adjustment": "可适当增加曝光时间"}
+
+
+def calculate_experience_based_exposure_times(target_x, target_y, target_thickness, current_params, selected_indices, optimization_type, custom_params=None):
+    """
+    基于用户选择的验证数据进行经验优化
+    """
+    import pandas as pd
+    import numpy as np
+    import os
+    
+    # 如果没有选择任何记录，使用传统算法
+    if not selected_indices:
+        print("⚠️ 未选择验证记录，使用传统优化算法")
+        return calculate_optimal_exposure_times(target_x, target_y, target_thickness, current_params)
+    
+    try:
+        # 读取验证数据
+        excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
+        df = pd.read_excel(excel_file)
+        
+        # 获取选中的记录
+        selected_records = []
+        for idx in selected_indices:
+            if 0 <= idx < len(df):
+                row = df.iloc[idx]
+                try:
+                    simulated_val = float(row.get('simulated_value', 0))
+                    actual_val = float(row.get('actual_value', 0))
+                    if simulated_val > 0:  # 确保有效数据
+                        selected_records.append({
+                            'simulated': simulated_val,
+                            'actual': actual_val,
+                            'deviation': actual_val - simulated_val,
+                            'position_x': float(row.get('annotation_x', 0)),
+                            'position_y': float(row.get('annotation_y', 0))
+                        })
+                except (ValueError, TypeError):
+                    continue
+        
+        if not selected_records:
+            print("⚠️ 选择的记录无效，使用传统优化算法")
+            return calculate_optimal_exposure_times(target_x, target_y, target_thickness, current_params)
+        
+        print(f"📊 基于{len(selected_records)}条验证记录进行经验优化")
+        
+        # 经验分析算法
+        deviations = [r['deviation'] for r in selected_records]
+        avg_deviation = np.mean(deviations)
+        deviation_std = np.std(deviations) if len(deviations) > 1 else 0
+        
+        # 计算位置权重（距离目标位置越近权重越大）
+        position_weights = []
+        for record in selected_records:
+            distance = np.sqrt((record['position_x'] - target_x)**2 + (record['position_y'] - target_y)**2)
+            weight = 1.0 / (1.0 + distance / 100.0)  # 距离权重函数
+            position_weights.append(weight)
+        
+        # 加权平均偏差
+        weighted_deviation = np.average(deviations, weights=position_weights)
+        
+        print(f"📈 经验分析结果:")
+        print(f"   - 平均偏差: {avg_deviation:.4f}")
+        print(f"   - 偏差标准差: {deviation_std:.4f}")
+        print(f"   - 加权偏差: {weighted_deviation:.4f}")
+        
+        # 获取当前基础曝光时间
+        base_t_exp = current_params.get('t_exp', 10.0)
+        
+        # 获取自定义参数
+        if custom_params is None:
+            custom_params = {'sensitivity': 2.0, 'confidence_threshold': 0.5, 'strategy_count': 3}
+        
+        sensitivity = custom_params.get('sensitivity', 2.0)
+        confidence_threshold = custom_params.get('confidence_threshold', 0.5)
+        strategy_count = custom_params.get('strategy_count', 3)
+        
+        # 智能调整系数计算（非线性）
+        # 使用sigmoid函数进行平滑调整，避免极端值
+        def sigmoid_adjustment(deviation, sensitivity=sensitivity):
+            """使用sigmoid函数计算调整系数"""
+            return 1.0 - (2.0 / (1.0 + np.exp(-sensitivity * deviation)) - 1.0) * 0.3
+        
+        # 基于加权偏差计算主要调整系数
+        primary_adjustment = sigmoid_adjustment(weighted_deviation)
+        
+        # 置信度计算
+        confidence_score = max(confidence_threshold, 1.0 - deviation_std / 0.5)  # 标准差越小置信度越高
+        
+        # 生成优化建议
+        strategies = []
+        
+        if optimization_type == 'quick':
+            # 快捷优化：保守策略
+            conservative_factor = primary_adjustment * 0.9  # 更保守
+            exposure_time = base_t_exp * conservative_factor
+            
+            strategies.append({
+                "type": "conservative",
+                "label": "保守策略",
+                "exposure_time": round(exposure_time, 3),
+                "description": f"基于{len(selected_records)}条记录的保守建议",
+                "confidence": f"{'高' if confidence_score > 0.7 else '中等' if confidence_score > 0.5 else '低'}",
+                "predicted_thickness": round(target_thickness * (2.0 - conservative_factor), 4),
+                "adjustment_factor": round(conservative_factor, 4),
+                "analysis": {
+                    "avg_deviation": round(avg_deviation, 4),
+                    "weighted_deviation": round(weighted_deviation, 4),
+                    "confidence_score": round(confidence_score, 3),
+                    "reference_records": len(selected_records)
+                }
+            })
+        else:
+            # 自定义优化：根据策略数量生成不同策略
+            if strategy_count == 1:
+                factors = {"optimal": primary_adjustment}
+            elif strategy_count == 3:
+                factors = {
+                    "conservative": primary_adjustment * 0.85,
+                    "balanced": primary_adjustment,
+                    "aggressive": primary_adjustment * 1.15
+                }
+            else:  # strategy_count == 5
+                factors = {
+                    "very_conservative": primary_adjustment * 0.7,
+                    "conservative": primary_adjustment * 0.85,
+                    "balanced": primary_adjustment,
+                    "aggressive": primary_adjustment * 1.15,
+                    "very_aggressive": primary_adjustment * 1.3
+                }
+            
+            strategy_labels = {
+                "very_conservative": "极保守策略",
+                "conservative": "保守策略", 
+                "balanced": "平衡策略",
+                "optimal": "最优策略",
+                "aggressive": "激进策略",
+                "very_aggressive": "极激进策略"
+            }
+            
+            for strategy_type, factor in factors.items():
+                exposure_time = base_t_exp * factor
+                strategies.append({
+                    "type": strategy_type,
+                    "label": strategy_labels.get(strategy_type, f"{strategy_type}策略"),
+                    "exposure_time": round(exposure_time, 3),
+                    "description": f"基于{len(selected_records)}条记录的{strategy_type}建议",
+                    "confidence": f"{'高' if confidence_score > 0.7 else '中等' if confidence_score > 0.5 else '低'}",
+                    "predicted_thickness": round(target_thickness * (2.0 - factor), 4),
+                    "adjustment_factor": round(factor, 4),
+                    "analysis": {
+                        "avg_deviation": round(avg_deviation, 4),
+                        "weighted_deviation": round(weighted_deviation, 4),
+                        "confidence_score": round(confidence_score, 3),
+                        "reference_records": len(selected_records),
+                        "sensitivity": sensitivity,
+                        "confidence_threshold": confidence_threshold
+                    }
+                })
+        
+        # 添加经验总结
+        experience_summary = generate_experience_summary(selected_records, weighted_deviation)
+        for strategy in strategies:
+            strategy["experience_summary"] = experience_summary
+        
+        return strategies
+        
+    except Exception as e:
+        print(f"❌ 经验优化算法失败: {e}")
+        import traceback
+        traceback.print_exc()
+        # 回退到传统算法
+        return calculate_optimal_exposure_times(target_x, target_y, target_thickness, current_params)
+
+
+def generate_experience_summary(selected_records, weighted_deviation):
+    """生成经验总结"""
+    total_records = len(selected_records)
+    
+    under_predicted = sum(1 for r in selected_records if r['deviation'] > 0.05)
+    over_predicted = sum(1 for r in selected_records if r['deviation'] < -0.05)
+    accurate = total_records - under_predicted - over_predicted
+    
+    if abs(weighted_deviation) < 0.05:
+        trend = "模型预测总体准确"
+        recommendation = "维持当前参数设置"
+    elif weighted_deviation > 0.1:
+        trend = "模型系统性预测偏薄"
+        recommendation = "建议减少曝光时间以获得更厚的光刻胶"
+    elif weighted_deviation < -0.1:
+        trend = "模型系统性预测偏厚"
+        recommendation = "建议增加曝光时间以减少光刻胶厚度"
+    elif weighted_deviation > 0:
+        trend = "模型略微偏向预测偏薄"
+        recommendation = "可适当减少曝光时间"
+    else:
+        trend = "模型略微偏向预测偏厚"
+        recommendation = "可适当增加曝光时间"
+    
+    return {
+        "trend": trend,
+        "recommendation": recommendation,
+        "statistics": {
+            "total_records": total_records,
+            "under_predicted": under_predicted,
+            "over_predicted": over_predicted,
+            "accurate": accurate,
+            "weighted_deviation": round(weighted_deviation, 4)
+        }
+    }
 
