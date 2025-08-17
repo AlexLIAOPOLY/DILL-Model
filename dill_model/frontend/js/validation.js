@@ -1857,3 +1857,407 @@ window.updateSearch = updateSearch;
 window.updatePageSize = updatePageSize;
 window.changePage = changePage;
 window.deleteRecord = deleteRecord;
+
+// 智能优化相关的全局变量
+let selectedExposureOption = null;
+
+/**
+ * 显示智能优化输入弹窗
+ */
+function showOptimizationModal() {
+    const modal = document.getElementById('optimization-modal');
+    if (!modal) {
+        console.error('找不到智能优化弹窗元素');
+        showStatusMessage('error', '智能优化弹窗初始化失败');
+        return;
+    }
+    
+    // 重置输入值
+    document.getElementById('target-x-coord').value = '0';
+    document.getElementById('target-y-coord').value = '0';
+    document.getElementById('target-thickness').value = '1.000';
+    
+    // 隐藏结果区域
+    document.getElementById('optimization-results').style.display = 'none';
+    selectedExposureOption = null;
+    
+    // 尝试加载当前参数（如果还没有的话）
+    loadParametersIfNeeded();
+    
+    // 更新初始模拟厚度
+    updateSimulatedThickness();
+    
+    modal.style.display = 'block';
+    
+    // 点击外部关闭弹窗
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeOptimizationModal();
+        }
+    };
+    
+    // 延迟聚焦到第一个输入框
+    setTimeout(() => {
+        const firstInput = document.getElementById('target-x-coord');
+        if (firstInput) {
+            firstInput.focus();
+            firstInput.select();
+        }
+    }, 300);
+}
+
+/**
+ * 关闭智能优化弹窗
+ */
+function closeOptimizationModal() {
+    const modal = document.getElementById('optimization-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    // 重置状态
+    selectedExposureOption = null;
+    document.getElementById('optimization-results').style.display = 'none';
+}
+
+/**
+ * 执行智能优化
+ */
+async function performSmartOptimization() {
+    try {
+        // 获取输入值
+        const targetX = parseFloat(document.getElementById('target-x-coord').value);
+        const targetY = parseFloat(document.getElementById('target-y-coord').value);
+        const targetThickness = parseFloat(document.getElementById('target-thickness').value);
+        
+        // 验证输入
+        if (isNaN(targetX) || isNaN(targetY) || isNaN(targetThickness)) {
+            showStatusMessage('error', '请输入有效的数值');
+            return;
+        }
+        
+        if (targetThickness <= 0) {
+            showStatusMessage('error', '期望厚度必须大于0');
+            return;
+        }
+        
+        showStatusMessage('info', '正在进行智能优化，请稍候...');
+        
+        // 调用后端API
+        const response = await fetch('/api/smart_optimize_exposure', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                target_x: targetX,
+                target_y: targetY,
+                target_thickness: targetThickness
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayOptimizationResults(result.data.exposure_options);
+            showStatusMessage('success', '智能优化完成！请选择合适的曝光策略。');
+        } else {
+            showStatusMessage('error', result.message || '智能优化失败');
+        }
+        
+    } catch (error) {
+        console.error('智能优化失败:', error);
+        showStatusMessage('error', '网络错误，请稍后重试');
+    }
+}
+
+/**
+ * 显示优化结果
+ */
+function displayOptimizationResults(exposureOptions) {
+    const resultsContainer = document.getElementById('optimization-results');
+    const optionsContainer = document.getElementById('exposure-options-container');
+    
+    if (!resultsContainer || !optionsContainer) {
+        console.error('找不到结果显示容器');
+        return;
+    }
+    
+    // 清空之前的结果
+    optionsContainer.innerHTML = '';
+    selectedExposureOption = null;
+    
+    // 生成曝光选项
+    exposureOptions.forEach((option, index) => {
+        const optionElement = document.createElement('div');
+        optionElement.className = 'exposure-option';
+        optionElement.dataset.type = option.type;
+        optionElement.dataset.exposureTime = option.exposure_time;
+        
+        // 根据置信度设置不同的样式
+        let confidenceColor = '#28a745';
+        if (option.confidence === '中等') {
+            confidenceColor = '#ffc107';
+        } else if (option.confidence === '低') {
+            confidenceColor = '#dc3545';
+        }
+        
+        optionElement.innerHTML = `
+            <div class="option-label">${option.label}</div>
+            <div class="option-value">${option.exposure_time}s</div>
+            <div class="option-description">${option.description}</div>
+            <div style="margin-top: 8px; font-size: 0.8em;">
+                <div style="color: ${confidenceColor}; font-weight: 600;">置信度: ${option.confidence}</div>
+                <div style="color: #6c757d;">预测厚度: ${option.predicted_thickness}μm</div>
+                <div style="color: #6c757d;">误差: ±${option.thickness_error}μm</div>
+            </div>
+        `;
+        
+        // 添加点击事件
+        optionElement.addEventListener('click', () => {
+            // 移除其他选项的选中状态
+            document.querySelectorAll('.exposure-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // 选中当前选项
+            optionElement.classList.add('selected');
+            selectedExposureOption = option;
+        });
+        
+        optionsContainer.appendChild(optionElement);
+        
+        // 默认选中第二个选项（标准策略）
+        if (index === 1) {
+            optionElement.classList.add('selected');
+            selectedExposureOption = option;
+        }
+    });
+    
+    // 显示结果区域
+    resultsContainer.style.display = 'block';
+}
+
+/**
+ * 应用选择的曝光参数
+ */
+function applySelectedExposure() {
+    if (!selectedExposureOption) {
+        showStatusMessage('error', '请先选择一个曝光策略');
+        return;
+    }
+    
+    // 这里可以将优化的参数应用到主计算页面
+    // 由于当前系统的限制，我们先显示一个信息提示
+    const exposureTime = selectedExposureOption.exposure_time;
+    const strategy = selectedExposureOption.label;
+    
+    showStatusMessage('success', 
+        `已选择${strategy}，推荐曝光时间: ${exposureTime}s。请在单一计算页面手动设置此参数。`);
+    
+    // 可以考虑将参数保存到localStorage，供单一计算页面使用
+    try {
+        localStorage.setItem('recommendedExposureTime', exposureTime);
+        localStorage.setItem('recommendedStrategy', strategy);
+        console.log('推荐参数已保存到本地存储');
+    } catch (error) {
+        console.warn('无法保存推荐参数到本地存储:', error);
+    }
+    
+    // 关闭弹窗
+    closeOptimizationModal();
+}
+
+/**
+ * 绑定智能优化相关的事件监听器
+ */
+function bindOptimizationEventListeners() {
+    // 显示优化输入弹窗按钮
+    const showOptBtn = document.getElementById('show-optimization-input');
+    if (showOptBtn) {
+        showOptBtn.addEventListener('click', showOptimizationModal);
+    }
+    
+    // 智能优化按钮（快捷优化功能）
+    const smartOptBtn = document.getElementById('smart-optimize');
+    if (smartOptBtn) {
+        smartOptBtn.addEventListener('click', performQuickOptimization);
+    }
+}
+
+// 在页面初始化时绑定事件监听器
+document.addEventListener('DOMContentLoaded', function() {
+    bindOptimizationEventListeners();
+});
+
+/**
+ * 快捷智能优化（自动使用默认参数）
+ */
+async function performQuickOptimization() {
+    try {
+        // 检查是否有当前参数数据，如果没有则尝试从后端获取
+        if (!currentParameters) {
+            console.log('当前参数为空，尝试从后端加载最新计算结果...');
+            try {
+                const response = await fetch('/api/latest_calculation');
+                console.log('API响应状态:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('API响应结果:', result);
+                
+                if (result.success && result.data) {
+                    currentParameters = result.data.parameters;
+                    thicknessData = result.data.results;
+                    console.log('成功从后端加载参数:', currentParameters);
+                } else {
+                    showStatusMessage('error', result.message || '无当前参数配置，请先在单一计算页面完成一次计算');
+                    return;
+                }
+            } catch (error) {
+                console.error('获取后端参数失败:', error);
+                showStatusMessage('error', `无法获取计算参数: ${error.message}`);
+                return;
+            }
+        }
+        
+        // 使用默认参数进行快捷优化
+        const defaultTargetX = 0;
+        const defaultTargetY = 0;
+        const defaultTargetThickness = 1.0;
+        
+        showStatusMessage('info', '正在进行快捷智能优化，使用默认参数...');
+        
+        console.log('准备调用智能优化API，参数:', {
+            target_x: defaultTargetX,
+            target_y: defaultTargetY,
+            target_thickness: defaultTargetThickness
+        });
+        
+        // 调用后端API
+        const response = await fetch('/api/smart_optimize_exposure', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                target_x: defaultTargetX,
+                target_y: defaultTargetY,
+                target_thickness: defaultTargetThickness
+            })
+        });
+        
+        console.log('智能优化API响应状态:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API响应错误:', errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('智能优化API响应结果:', result);
+        
+        if (result.success) {
+            const options = result.data.exposure_options;
+            const optimalOption = options.find(opt => opt.type === 'optimal') || options[1];
+            
+            // 直接显示推荐结果
+            showStatusMessage('success', 
+                `快捷优化完成！推荐曝光时间: ${optimalOption.exposure_time}s (${optimalOption.label})。建议预测厚度: ${optimalOption.predicted_thickness}μm`);
+            
+            // 保存推荐参数
+            try {
+                localStorage.setItem('recommendedExposureTime', optimalOption.exposure_time);
+                localStorage.setItem('recommendedStrategy', optimalOption.label);
+                console.log('快捷优化参数已保存到本地存储');
+            } catch (error) {
+                console.warn('无法保存推荐参数到本地存储:', error);
+            }
+            
+            // 如果用户想要查看详细选项，提示可以使用"开始优化"
+            setTimeout(() => {
+                showStatusMessage('info', '如需查看更多策略选项，请点击"自定义优化"按钮');
+            }, 3000);
+            
+        } else {
+            showStatusMessage('error', result.message || '快捷优化失败');
+        }
+        
+    } catch (error) {
+        console.error('快捷优化失败:', error);
+        showStatusMessage('error', '网络错误，请稍后重试');
+    }
+}
+
+/**
+ * 如需要，加载参数数据
+ */
+async function loadParametersIfNeeded() {
+    if (!currentParameters) {
+        console.log('当前参数为空，尝试从后端加载最新计算结果...');
+        try {
+            const response = await fetch('/api/latest_calculation');
+            const result = await response.json();
+            if (result.success && result.data) {
+                currentParameters = result.data.parameters;
+                thicknessData = result.data.results;
+                console.log('成功从后端加载参数:', currentParameters);
+            }
+        } catch (error) {
+            console.error('获取后端参数失败:', error);
+        }
+    }
+}
+
+/**
+ * 根据输入的坐标自动更新模拟厚度显示
+ */
+function updateSimulatedThickness() {
+    const xInput = document.getElementById('target-x-coord');
+    const yInput = document.getElementById('target-y-coord');
+    const thicknessDisplay = document.getElementById('current-simulated-thickness');
+    
+    if (!xInput || !yInput || !thicknessDisplay) {
+        return;
+    }
+    
+    const x = parseFloat(xInput.value) || 0;
+    const y = parseFloat(yInput.value) || 0;
+    
+    // 检查是否有数据
+    if (!thicknessData || !currentParameters) {
+        thicknessDisplay.textContent = '需要计算数据';
+        thicknessDisplay.style.color = '#6c757d';
+        return;
+    }
+    
+    try {
+        // 使用现有的计算函数
+        const simulatedThickness = calculateThicknessAtPosition(x, y);
+        thicknessDisplay.textContent = `${simulatedThickness.toFixed(3)} μm`;
+        thicknessDisplay.style.color = '#20c997';
+        
+        // 自动填充期望厚度（可选）
+        const targetThicknessInput = document.getElementById('target-thickness');
+        if (targetThicknessInput && (targetThicknessInput.value === '' || targetThicknessInput.value === '1.000')) {
+            targetThicknessInput.value = simulatedThickness.toFixed(3);
+        }
+        
+    } catch (error) {
+        console.error('计算模拟厚度失败:', error);
+        thicknessDisplay.textContent = '计算失败';
+        thicknessDisplay.style.color = '#dc3545';
+    }
+}
+
+// 导出智能优化相关的全局函数
+window.showOptimizationModal = showOptimizationModal;
+window.closeOptimizationModal = closeOptimizationModal;
+window.performSmartOptimization = performSmartOptimization;
+window.applySelectedExposure = applySelectedExposure;
+window.performQuickOptimization = performQuickOptimization;
+window.updateSimulatedThickness = updateSimulatedThickness;

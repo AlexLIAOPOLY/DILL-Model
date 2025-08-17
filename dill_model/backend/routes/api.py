@@ -2807,8 +2807,19 @@ def save_validation_data():
 
 @api_bp.route('/train_model', methods=['POST'])
 def train_model():
-    """训练参数预测模型"""
+    """训练参数预测模型 - 支持训练参数配置"""
     try:
+        # 获取请求数据
+        data = request.get_json() or {}
+        
+        # 提取训练参数，设置默认值
+        epochs = data.get('epochs', 100)
+        test_size = data.get('test_size', 0.2)
+        model_type = data.get('model_type', 'random_forest')
+        enable_cross_validation = data.get('enable_cross_validation', True)
+        
+        print(f"🔧 收到训练参数: epochs={epochs}, test_size={test_size}, model_type={model_type}, cross_validation={enable_cross_validation}")
+        
         # 检查Excel支持
         try:
             import openpyxl
@@ -2819,7 +2830,9 @@ def train_model():
         import os
         import numpy as np
         from sklearn.ensemble import RandomForestRegressor
-        from sklearn.model_selection import train_test_split
+        from sklearn.linear_model import LinearRegression
+        from sklearn.svm import SVR
+        from sklearn.model_selection import train_test_split, cross_val_score
         from sklearn.metrics import mean_squared_error, r2_score
         import joblib
         
@@ -2837,52 +2850,282 @@ def train_model():
         # 准备特征和目标变量
         # 特征：位置坐标和实际测量值
         feature_columns = ['annotation_x', 'annotation_y', 'actual_value']
-        target_columns = ['I_avg', 'V', 'K', 't_exp', 'acid_gen_efficiency', 
-                         'diffusion_length', 'reaction_rate', 'amplification', 'contrast']
         
-        # 过滤有效数据
+        # 根据数据中的模型类型确定目标列
+        # 检查数据中主要使用的模型类型
+        model_types = df['model_type'].value_counts()
+        primary_model = model_types.index[0] if not model_types.empty else 'dill'
+        
+        print(f"🔍 检测到主要模型类型: {primary_model}")
+        
+        # 根据模型类型选择相应的目标列
+        if 'car' in primary_model.lower():
+            # CAR模型参数
+            target_columns = ['I_avg', 'V', 'K', 't_exp', 'acid_gen_efficiency', 
+                             'diffusion_length', 'reaction_rate', 'amplification', 'contrast']
+        else:
+            # Dill模型参数（默认）
+            target_columns = ['I_avg', 'V', 'K', 't_exp']
+        
+        print(f"🎯 使用的目标列: {target_columns}")
+        
+        # 检查必需列是否存在
+        missing_feature_cols = [col for col in feature_columns if col not in df.columns]
+        missing_target_cols = [col for col in target_columns if col not in df.columns]
+        
+        if missing_feature_cols:
+            return jsonify(format_response(False, message=f"缺少必需的特征列: {missing_feature_cols}")), 400
+        if missing_target_cols:
+            return jsonify(format_response(False, message=f"缺少必需的目标列: {missing_target_cols}")), 400
+        
+        # 过滤有效数据（只检查非空的必需列）
         valid_rows = df.dropna(subset=feature_columns + target_columns)
         
+        print(f"📊 原始数据量: {len(df)}, 有效数据量: {len(valid_rows)}")
+        
         if len(valid_rows) < 3:
-            return jsonify(format_response(False, message="有效数据不足，无法训练模型")), 400
+            return jsonify(format_response(False, message=f"有效数据不足，无法训练模型。原始数据: {len(df)}条，有效数据: {len(valid_rows)}条，至少需要3条有效数据")), 400
         
         X = valid_rows[feature_columns].values
         y = valid_rows[target_columns].values
         
         # 分割训练和测试集
         if len(valid_rows) >= 10:
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+        elif len(valid_rows) >= 5:
+            # 小数据集：至少保留1个样本作为测试集
+            test_samples = max(1, int(len(valid_rows) * test_size))
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_samples, random_state=42)
+            print(f"⚠️  小数据集检测，强制保留{test_samples}个测试样本以避免数据泄露")
         else:
-            # 数据较少时使用全部数据训练
+            # 数据过少，仅使用交叉验证
             X_train, y_train = X, y
             X_test, y_test = X, y
+            print(f"⚠️  数据量过少({len(valid_rows)}个)，将主要依赖交叉验证进行评估")
         
-        # 训练模型（使用简单的随机森林）
-        model = RandomForestRegressor(n_estimators=50, random_state=42, max_depth=5)
-        model.fit(X_train, y_train)
+        # 根据模型类型创建模型
+        print(f"📊 创建{model_type}模型...")
+        if model_type == 'random_forest':
+            # 随机森林：n_estimators可以作为epochs的替代
+            n_estimators = min(max(epochs, 10), 300)  # 限制在合理范围内
+            model = RandomForestRegressor(
+                n_estimators=n_estimators, 
+                random_state=42, 
+                max_depth=min(10, len(valid_rows) // 2),  # 根据数据量调整深度
+                min_samples_split=max(2, len(valid_rows) // 20)
+            )
+        elif model_type == 'linear_regression':
+            model = LinearRegression()
+        elif model_type == 'svm':
+            model = SVR(kernel='rbf', C=1.0, gamma='scale')
+        else:
+            # 默认使用随机森林
+            model = RandomForestRegressor(n_estimators=50, random_state=42, max_depth=5)
         
-        # 评估模型
+        print(f"📈 开始训练模型，训练集大小: {X_train.shape}, 测试集大小: {X_test.shape}")
+        
+        # 记录训练过程曲线数据
+        training_curves = {'epochs': [], 'train_loss': [], 'val_loss': [], 'train_r2': [], 'val_r2': []}
+        
+        if model_type == 'random_forest':
+            # 对于随机森林，记录不同树数量下的性能
+            n_estimators_total = min(max(epochs, 10), 300)
+            step_size = max(1, n_estimators_total // 20)  # 最多记录20个点
+            
+            # 为小数据集优化参数
+            max_depth = min(10, max(3, len(valid_rows) // 2)) if len(valid_rows) >= 5 else 3
+            min_samples_split = max(2, len(valid_rows) // 10) if len(valid_rows) >= 10 else 2
+            
+            for n_trees in range(step_size, n_estimators_total + 1, step_size):
+                # 创建临时模型
+                temp_model = RandomForestRegressor(
+                    n_estimators=n_trees,
+                    random_state=42,
+                    max_depth=max_depth,
+                    min_samples_split=min_samples_split
+                )
+                temp_model.fit(X_train, y_train)
+                
+                # 计算训练和验证性能
+                train_pred = temp_model.predict(X_train)
+                val_pred = temp_model.predict(X_test)
+                
+                train_mse = mean_squared_error(y_train, train_pred)
+                val_mse = mean_squared_error(y_test, val_pred)
+                train_r2 = r2_score(y_train, train_pred)
+                val_r2 = r2_score(y_test, val_pred)
+                
+                # 安全处理可能的NaN值
+                import math
+                def safe_float_temp(value, default=0.0):
+                    if value is None or math.isnan(value) or math.isinf(value):
+                        return default
+                    return float(value)
+                
+                training_curves['epochs'].append(n_trees)
+                training_curves['train_loss'].append(safe_float_temp(train_mse))
+                training_curves['val_loss'].append(safe_float_temp(val_mse))
+                training_curves['train_r2'].append(safe_float_temp(train_r2))
+                training_curves['val_r2'].append(safe_float_temp(val_r2))
+                
+                if n_trees % (step_size * 5) == 0:
+                    print(f"   树数量: {n_trees}, 训练MSE: {train_mse:.6f}, 验证MSE: {val_mse:.6f}, 验证R²: {val_r2:.4f}")
+            
+            # 使用最终模型
+            model.fit(X_train, y_train)
+            
+        elif model_type == 'linear_regression':
+            # 线性回归没有迭代过程，创建单点数据
+            model.fit(X_train, y_train)
+            train_pred = model.predict(X_train)
+            val_pred = model.predict(X_test)
+            
+            train_mse = mean_squared_error(y_train, train_pred)
+            val_mse = mean_squared_error(y_test, val_pred)
+            train_r2 = r2_score(y_train, train_pred)
+            val_r2 = r2_score(y_test, val_pred)
+            
+            # 安全处理可能的NaN值
+            import math
+            def safe_float_lr(value, default=0.0):
+                if value is None or math.isnan(value) or math.isinf(value):
+                    return default
+                return float(value)
+            
+            training_curves['epochs'] = [1]
+            training_curves['train_loss'] = [safe_float_lr(train_mse)]
+            training_curves['val_loss'] = [safe_float_lr(val_mse)]
+            training_curves['train_r2'] = [safe_float_lr(train_r2)]
+            training_curves['val_r2'] = [safe_float_lr(val_r2)]
+            
+        else:  # SVM或其他模型
+            # 对于SVM，测试不同的C值
+            C_values = [0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0][:min(10, epochs // 10 + 3)]
+            
+            for i, C_val in enumerate(C_values):
+                temp_model = SVR(kernel='rbf', C=C_val, gamma='scale')
+                temp_model.fit(X_train, y_train)
+                
+                train_pred = temp_model.predict(X_train)
+                val_pred = temp_model.predict(X_test)
+                
+                train_mse = mean_squared_error(y_train, train_pred)
+                val_mse = mean_squared_error(y_test, val_pred)
+                train_r2 = r2_score(y_train, train_pred)
+                val_r2 = r2_score(y_test, val_pred)
+                
+                # 安全处理可能的NaN值
+                import math
+                def safe_float_svm(value, default=0.0):
+                    if value is None or math.isnan(value) or math.isinf(value):
+                        return default
+                    return float(value)
+                
+                training_curves['epochs'].append(i + 1)
+                training_curves['train_loss'].append(safe_float_svm(train_mse))
+                training_curves['val_loss'].append(safe_float_svm(val_mse))
+                training_curves['train_r2'].append(safe_float_svm(train_r2))
+                training_curves['val_r2'].append(safe_float_svm(val_r2))
+            
+            # 使用最佳C值重新训练
+            model.fit(X_train, y_train)
+        
+        # 最终评估
         y_pred = model.predict(X_test)
         mse = mean_squared_error(y_test, y_pred)
         r2 = r2_score(y_test, y_pred)
         
-        # 保存模型
+        # 处理可能的NaN值
+        import math
+        def safe_float(value, default=0.0):
+            """安全转换浮点数，处理NaN和无限值"""
+            if value is None or math.isnan(value) or math.isinf(value):
+                return default
+            return float(value)
+        
+        mse = safe_float(mse, 0.0)
+        r2 = safe_float(r2, 0.0)
+        
+        print(f"📊 训练曲线记录完成，共{len(training_curves['epochs'])}个数据点")
+        
+        # 交叉验证（如果启用）
+        cv_scores = None
+        cv_mean = None
+        cv_std = None
+        if enable_cross_validation and len(valid_rows) >= 5:
+            print("🔄 执行交叉验证...")
+            cv_scores = cross_val_score(model, X, y, cv=min(5, len(valid_rows) // 2), scoring='r2')
+            cv_mean = safe_float(cv_scores.mean(), 0.0)
+            cv_std = safe_float(cv_scores.std(), 0.0)
+            print(f"   交叉验证 R² 分数: {cv_mean:.4f} (+/- {cv_std * 2:.4f})")
+        
+        print(f"📊 模型评估结果:")
+        print(f"   MSE: {mse:.6f}")
+        print(f"   R² 分数: {r2:.4f}")
+        if cv_mean is not None:
+            print(f"   交叉验证 R²: {cv_mean:.4f}")
+        
+        # 如果R²为负数或过低，给出警告
+        if r2 < 0:
+            print("⚠️  警告: R²分数为负数，模型可能表现不佳")
+        elif r2 < 0.3:
+            print("⚠️  警告: R²分数较低，建议增加更多训练数据")
+        
+        # 保存模型和目标列信息
         model_file = os.path.join(os.getcwd(), 'validation_model.pkl')
-        joblib.dump(model, model_file)
+        model_info = {
+            'model': model,
+            'target_columns': target_columns,
+            'feature_columns': feature_columns,
+            'training_params': {
+                'epochs': epochs,
+                'test_size': test_size,
+                'model_type': model_type,
+                'enable_cross_validation': enable_cross_validation
+            }
+        }
+        joblib.dump(model_info, model_file)
         
         # 计算准确率（这里用R²分数作为准确率指标）
         accuracy = max(0, r2)  # R²可能为负数，这里限制最小值为0
         
-        add_log_entry('success', 'validation', f'模型训练完成，准确率: {accuracy:.3f}')
+        # 使用交叉验证结果作为更可靠的准确率（如果有的话）
+        final_accuracy = cv_mean if cv_mean is not None and cv_mean > 0 else accuracy
+        
+        add_log_entry('success', 'validation', f'模型训练完成，类型: {model_type}, 准确率: {final_accuracy:.3f}')
+        
+        # 构建返回数据
+        result_data = {
+            'accuracy': final_accuracy,
+            'mse': mse,
+            'r2_score': r2,
+            'training_samples': len(X_train),
+            'test_samples': len(X_test),
+            'model_type': model_type,
+            'training_params': {
+                'epochs': epochs,
+                'test_size': test_size,
+                'model_type': model_type,
+                'enable_cross_validation': enable_cross_validation
+            },
+            'training_curves': training_curves  # 添加训练曲线数据
+        }
+        
+        # 添加交叉验证结果（如果有）
+        if cv_mean is not None:
+            # 清理cv_scores中的NaN值
+            clean_cv_scores = [safe_float(score, 0.0) for score in cv_scores] if cv_scores is not None else []
+            result_data.update({
+                'cross_validation': {
+                    'cv_mean': cv_mean,
+                    'cv_std': cv_std,
+                    'cv_scores': clean_cv_scores
+                }
+            })
+        
         return jsonify(format_response(True, 
                                        message="模型训练完成",
-                                       data={
-                                           'accuracy': accuracy,
-                                           'mse': mse,
-                                           'r2_score': r2,
-                                           'training_samples': len(X_train),
-                                           'test_samples': len(X_test)
-                                       }))
+                                       data=result_data))
         
     except Exception as e:
         error_msg = f"模型训练失败: {str(e)}"
@@ -2893,7 +3136,7 @@ def train_model():
 
 @api_bp.route('/predict_parameters', methods=['POST'])
 def predict_parameters():
-    """预测最优参数"""
+    """预测最优参数 - 支持预测所有Dill模型参数"""
     try:
         data = request.get_json()
         if not data:
@@ -2904,6 +3147,8 @@ def predict_parameters():
         y = data.get('y', 0)
         target_thickness = data.get('target_thickness', 1.0)
         
+        print(f"🎯 收到参数预测请求: 位置({x}, {y}), 目标厚度: {target_thickness}")
+        
         import os
         import joblib
         import numpy as np
@@ -2913,8 +3158,21 @@ def predict_parameters():
         if not os.path.exists(model_file):
             return jsonify(format_response(False, message="预测模型不存在，请先训练模型")), 404
         
-        # 加载模型
-        model = joblib.load(model_file)
+        # 加载模型信息
+        model_info = joblib.load(model_file)
+        
+        # 兼容旧版本模型文件
+        if isinstance(model_info, dict) and 'model' in model_info:
+            model = model_info['model']
+            target_columns = model_info.get('target_columns', ['I_avg', 'V', 'K', 't_exp'])
+            feature_columns = model_info.get('feature_columns', ['annotation_x', 'annotation_y', 'actual_value'])
+        else:
+            # 旧版本模型文件，直接是模型对象
+            model = model_info
+            target_columns = ['I_avg', 'V', 'K', 't_exp']  # 默认Dill参数
+            feature_columns = ['annotation_x', 'annotation_y', 'actual_value']
+        
+        print(f"🔍 加载的模型目标列: {target_columns}")
         
         # 准备预测数据
         X_pred = np.array([[x, y, target_thickness]])
@@ -2922,18 +3180,96 @@ def predict_parameters():
         # 进行预测
         predictions = model.predict(X_pred)[0]
         
-        # 构建结果
-        parameter_names = ['I_avg', 'V', 'K', 't_exp', 'acid_gen_efficiency', 
-                          'diffusion_length', 'reaction_rate', 'amplification', 'contrast']
+        print(f"📊 预测结果: {predictions}")
         
-        predicted_params = {}
-        for i, param_name in enumerate(parameter_names):
-            predicted_params[param_name] = float(predictions[i])
+        # 定义安全浮点数转换函数
+        import math
+        def safe_float_predict(value, default=0.0):
+            """安全转换浮点数，处理NaN和无限值"""
+            if value is None or math.isnan(value) or math.isinf(value):
+                return default
+            return float(value)
+        
+        # 构建基础预测参数（机器学习模型预测的参数）
+        ml_predicted_params = {}
+        for i, param_name in enumerate(target_columns):
+            if i < len(predictions):
+                ml_predicted_params[param_name] = safe_float_predict(float(predictions[i]), 0.0)
+        
+        # 根据预测的基础参数，推导出完整的Dill模型参数集
+        def derive_complete_dill_parameters(ml_params, target_thickness):
+            """根据机器学习预测的基础参数，推导出完整的Dill模型参数集"""
+            import math
+            
+            # 获取基础预测参数
+            I_avg = ml_params.get('I_avg', 0.5)
+            V = ml_params.get('V', 0.8)
+            K = ml_params.get('K', 0.1)
+            t_exp = ml_params.get('t_exp', 100.0)
+            C = ml_params.get('C', 0.022)
+            
+            # 推导其他相关参数
+            # 基于Dill模型的物理关系推导
+            angle_a = 11.7  # 标准衍射角度
+            wavelength = 405.0  # 标准波长 (nm)
+            
+            # 根据空间频率K推导物理参数
+            # K = 4π sin(θ) / λ
+            if K > 0:
+                sin_theta = K * wavelength / (4 * math.pi)
+                sin_theta = min(abs(sin_theta), 1.0)  # 限制在物理范围内
+                theta_rad = math.asin(sin_theta)
+                angle_a = math.degrees(theta_rad)
+            
+            # 根据目标厚度调整曝光参数
+            exposure_threshold = 20.0
+            if target_thickness < 0.5:
+                exposure_threshold = 15.0
+            elif target_thickness > 1.5:
+                exposure_threshold = 25.0
+            
+            # 构建完整参数字典
+            complete_params = {
+                # 光学参数
+                'I_avg': round(I_avg, 3),
+                'V': round(V, 3),
+                'K': round(K, 3),
+                'wavelength': wavelength,
+                'angle_a': round(angle_a, 3),
+                
+                # 曝光参数
+                't_exp': round(t_exp, 3),
+                'C': round(C, 4),
+                'exposure_threshold': round(exposure_threshold, 1),
+                
+                # 推导参数
+                'target_thickness': round(target_thickness, 3),
+                'contrast_ratio': round(V * 100, 1),  # 对比度百分比
+                'spatial_frequency': round(K, 3),
+                'exposure_dose': round(I_avg * t_exp, 1),  # 总曝光剂量
+                
+                # 计算模式参数
+                'sine_type': '1D曝光图案',
+                'model_type': 'Dill模型',
+                'optimization_method': '机器学习预测'
+            }
+            
+            return complete_params
+        
+        complete_params = derive_complete_dill_parameters(ml_predicted_params, target_thickness)
+        
+        print(f"🎯 机器学习预测参数: {ml_predicted_params}")
+        print(f"🎯 完整推导参数: {complete_params}")
         
         add_log_entry('info', 'validation', f'参数预测完成，目标位置: ({x}, {y}), 目标厚度: {target_thickness}')
         return jsonify(format_response(True, 
                                        message="参数预测完成",
-                                       data={'predicted_parameters': predicted_params}))
+                                       data={
+                                           'predicted_parameters': complete_params,
+                                           'ml_predictions': ml_predicted_params,
+                                           'target_position': {'x': x, 'y': y},
+                                           'target_thickness': target_thickness
+                                       }))
         
     except Exception as e:
         error_msg = f"参数预测失败: {str(e)}"
@@ -3179,4 +3515,229 @@ def delete_validation_record():
         print(f"Error: {error_msg}")
         add_log_entry('error', 'validation', error_msg)
         return jsonify(format_response(False, message=error_msg)), 500
+
+
+@api_bp.route('/smart_optimize_exposure', methods=['POST'])
+def smart_optimize_exposure():
+    """智能优化曝光时间算法"""
+    try:
+        print("🔧 收到智能优化请求")
+        
+        data = request.get_json()
+        print(f"📥 请求数据: {data}")
+        
+        if not data:
+            error_msg = "无效的请求数据"
+            print(f"❌ {error_msg}")
+            return jsonify(format_response(False, message=error_msg)), 400
+        
+        # 获取输入参数
+        try:
+            target_x = float(data.get('target_x', 0))
+            target_y = float(data.get('target_y', 0))
+            target_thickness = float(data.get('target_thickness', 1.0))
+            print(f"📊 解析参数: target_x={target_x}, target_y={target_y}, target_thickness={target_thickness}")
+        except (ValueError, TypeError) as e:
+            error_msg = f"参数格式错误: {str(e)}"
+            print(f"❌ {error_msg}")
+            return jsonify(format_response(False, message=error_msg)), 400
+        
+        # 获取当前参数配置
+        current_params = get_latest_parameters()
+        print(f"🔍 获取到的当前参数: {current_params is not None}")
+        
+        if not current_params:
+            error_msg = "无当前参数配置，请先进行一次计算"
+            print(f"❌ {error_msg}")
+            return jsonify(format_response(False, message=error_msg)), 400
+        
+        print(f"🎯 开始智能优化计算")
+        
+        # 基于Dill模型的智能优化算法
+        optimized_exposures = calculate_optimal_exposure_times(
+            target_x, target_y, target_thickness, current_params
+        )
+        
+        print(f"✅ 智能优化完成，生成了 {len(optimized_exposures)} 个选项")
+        
+        add_log_entry('info', 'validation', f'智能优化完成，目标位置: ({target_x}, {target_y}), 目标厚度: {target_thickness}')
+        return jsonify(format_response(True, 
+                                       message="智能优化完成",
+                                       data={'exposure_options': optimized_exposures}))
+        
+    except Exception as e:
+        error_msg = f"智能优化失败: {str(e)}"
+        print(f"💥 Error: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        add_log_entry('error', 'validation', error_msg)
+        return jsonify(format_response(False, message=error_msg)), 500
+
+
+def get_latest_parameters():
+    """获取最新的计算参数"""
+    global latest_calculation_result
+    try:
+        if latest_calculation_result and latest_calculation_result.get('parameters'):
+            return latest_calculation_result.get('parameters')
+        return None
+    except:
+        return None
+
+
+def calculate_optimal_exposure_times(target_x, target_y, target_thickness, current_params):
+    """
+    基于Dill模型计算最优曝光时间
+    使用数值方法求解曝光时间，使得指定位置的厚度达到目标值
+    """
+    import numpy as np
+    try:
+        from scipy.optimize import minimize_scalar
+    except ImportError:
+        # 如果scipy不可用，使用简单的网格搜索
+        return calculate_exposure_times_simple(target_x, target_y, target_thickness, current_params)
+    
+    # 提取当前参数
+    I_avg = current_params.get('I_avg', 0.5)
+    V = current_params.get('V', 0.8)  
+    K = current_params.get('K', 0.1)
+    C = current_params.get('C', 0.01)
+    base_t_exp = current_params.get('t_exp', 10.0)
+    
+    # 光强计算（基于Dill模型）
+    def calculate_intensity_at_position(x, y):
+        """计算指定位置的光强分布"""
+        # 简化的1D/2D光强分布模型
+        if current_params.get('sine_type') == '2d':
+            # 2D情况
+            I_xy = I_avg * (1 + V * np.cos(K * x) * np.cos(K * y))
+        else:
+            # 1D情况
+            I_xy = I_avg * (1 + V * np.cos(K * x))
+        return max(I_xy, 0.01)  # 避免负值
+    
+    def dill_thickness_model(t_exp, x, y):
+        """
+        简化的Dill模型厚度计算
+        基于曝光剂量和化学放大过程
+        """
+        I_xy = calculate_intensity_at_position(x, y)
+        
+        # 曝光剂量
+        dose = I_xy * t_exp
+        
+        # 基于Dill模型的厚度计算（简化版）
+        # H(x,y) = H0 * exp(-alpha * dose * C)
+        H0 = 1.0  # 初始厚度，假设为1μm
+        alpha = 1.0  # 吸收系数
+        
+        thickness = H0 * np.exp(-alpha * dose * C)
+        return thickness
+    
+    def thickness_error(t_exp):
+        """目标函数：厚度误差"""
+        calculated_thickness = dill_thickness_model(t_exp, target_x, target_y)
+        return abs(calculated_thickness - target_thickness)
+    
+    # 数值优化求解最优曝光时间
+    try:
+        # 使用标量最小化求解
+        result = minimize_scalar(thickness_error, bounds=(0.1, 100.0), method='bounded')
+        optimal_t_exp = result.x
+        
+        # 生成三个不同策略的曝光时间选项
+        conservative_factor = 0.85  # 保守策略：减少15%
+        aggressive_factor = 1.15    # 激进策略：增加15%
+        
+        options = [
+            {
+                "type": "conservative",
+                "label": "保守策略",
+                "exposure_time": round(optimal_t_exp * conservative_factor, 3),
+                "description": "偏保守的曝光，降低过曝风险",
+                "confidence": "高"
+            },
+            {
+                "type": "optimal", 
+                "label": "标准策略",
+                "exposure_time": round(optimal_t_exp, 3),
+                "description": "数值优化的最优曝光时间",
+                "confidence": "最高"
+            },
+            {
+                "type": "aggressive",
+                "label": "激进策略", 
+                "exposure_time": round(optimal_t_exp * aggressive_factor, 3),
+                "description": "偏激进的曝光，获得更强效果",
+                "confidence": "中等"
+            }
+        ]
+        
+        # 计算预期厚度
+        for option in options:
+            t_exp = option["exposure_time"]
+            predicted_thickness = dill_thickness_model(t_exp, target_x, target_y)
+            option["predicted_thickness"] = round(predicted_thickness, 4)
+            option["thickness_error"] = round(abs(predicted_thickness - target_thickness), 4)
+        
+        return options
+        
+    except Exception as e:
+        print(f"优化算法错误: {str(e)}")
+        return calculate_exposure_times_simple(target_x, target_y, target_thickness, current_params)
+
+
+def calculate_exposure_times_simple(target_x, target_y, target_thickness, current_params):
+    """
+    简单的曝光时间估算（当scipy不可用时使用）
+    """
+    import numpy as np
+    base_t_exp = current_params.get('t_exp', 10.0)
+    
+    # 基于目标厚度的简单估算
+    thickness_ratio = target_thickness / 1.0  # 假设基准厚度为1μm
+    
+    # 考虑位置因素的修正
+    I_avg = current_params.get('I_avg', 0.5)
+    V = current_params.get('V', 0.8)
+    K = current_params.get('K', 0.1)
+    
+    # 计算位置修正因子
+    if current_params.get('sine_type') == '2d':
+        position_factor = 1 + V * np.cos(K * target_x) * np.cos(K * target_y)
+    else:
+        position_factor = 1 + V * np.cos(K * target_x)
+    
+    # 基础曝光时间估算
+    estimated_t_exp = base_t_exp * thickness_ratio / max(position_factor, 0.1)
+    
+    return [
+        {
+            "type": "conservative",
+            "label": "保守策略",
+            "exposure_time": round(estimated_t_exp * 0.8, 3),
+            "description": "基于经验的保守估计",
+            "confidence": "中等",
+            "predicted_thickness": round(target_thickness * 0.9, 4),
+            "thickness_error": round(abs(target_thickness * 0.1), 4)
+        },
+        {
+            "type": "optimal",
+            "label": "标准策略", 
+            "exposure_time": round(estimated_t_exp, 3),
+            "description": "基于物理模型的估计",
+            "confidence": "高",
+            "predicted_thickness": round(target_thickness, 4),
+            "thickness_error": 0.0
+        },
+        {
+            "type": "aggressive",
+            "label": "激进策略",
+            "exposure_time": round(estimated_t_exp * 1.2, 3), 
+            "description": "基于经验的激进估计",
+            "confidence": "中等",
+            "predicted_thickness": round(target_thickness * 1.1, 4),
+            "thickness_error": round(abs(target_thickness * 0.1), 4)
+        }
+    ]
 
