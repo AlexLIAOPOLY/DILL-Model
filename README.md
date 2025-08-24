@@ -1,23 +1,35 @@
-## DILL-Model | 光刻 DILL 模型计算与可视化工具
+# DILL-Model | 光刻 DILL 模型计算与可视化工具 ⚡
 
-基于 DILL（Dill parameters）曝光模型的轻量级 Web 工具，用于从光强参数快速计算光刻胶厚度分布，并结合验证数据进行“多策略曝光时间”智能优化与可视化。
+<div align="center">
 
-### 功能特性
-- 计算与可视化
-  - 一维正弦/自定义光强分布下的厚度计算与曲线可视化（支持多段曝光累积）。
-  - 支持自定义光强数据（CSV/JSON）上传，范围外补零或外推。
-  - 结果面板展示“推荐曝光时间、优化策略（含置信度）、预测厚度”。
-- 验证数据驱动的智能优化（Validation）
-  - 读取历史验证记录，按目标位置与目标厚度给出 1 / 3 / 5 种曝光时间策略。
-  - 置信度按策略类型自适应计算（保守/平衡/激进/最优），可直观比较与选择。
-  - 结果“胶囊”悬停可查看策略来源与置信度，推荐项自动高亮。
-- 友好的前后端一体化
-  - 后端 Flask + 前端原生 HTML/CSS/JS，零依赖数据库，开箱即用。
-  - 所有页面与静态资源均在仓库中，便于二次开发与私有部署。
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-Web%20Backend-green?logo=flask&logoColor=white)
+![HTML5](https://img.shields.io/badge/Frontend-HTML5%2FJS-orange?logo=html5&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-brightgreen)
+
+</div>
+
+> 基于 DILL（Dill parameters）曝光模型的轻量级 Web 工具，用于从光强参数快速计算光刻胶厚度分布，并结合验证数据进行"多策略曝光时间"智能优化与可视化。
+
+## ✨ 功能特性
+
+### 📊 计算与可视化
+- 一维正弦/自定义光强分布下的厚度计算与曲线可视化（支持多段曝光累积）
+- 支持自定义光强数据（CSV/JSON）上传，范围外补零或外推
+- 结果面板展示"推荐曝光时间、优化策略（含置信度）、预测厚度"
+
+### 🧠 验证数据驱动的智能优化（Validation）
+- 读取历史验证记录，按目标位置与目标厚度给出 1 / 3 / 5 种曝光时间策略
+- 置信度按策略类型自适应计算（保守/平衡/激进/最优），可直观比较与选择
+- 结果"胶囊"悬停可查看策略来源与置信度，推荐项自动高亮
+
+### 🚀 友好的前后端一体化
+- 后端 Flask + 前端原生 HTML/CSS/JS，零依赖数据库，开箱即用
+- 所有页面与静态资源均在仓库中，便于二次开发与私有部署
 
 ---
 
-### 目录结构
+## 📁 目录结构
 ```
 DILL-Model/
 ├── Dill/
@@ -40,19 +52,19 @@ DILL-Model/
 
 ---
 
-### 快速开始（本地）
-要求：Python 3.10+（推荐 3.12）
+## 🚀 快速开始
+**系统要求：** Python 3.10+（推荐 3.12）
 
 ```bash
-# 1) 安装依赖（建议在虚拟环境中）
+# 1️⃣ 安装依赖（建议在虚拟环境中）
 cd Dill/DILL/dill_model
 pip install -r requirements.txt
 
-# 2) 运行
+# 2️⃣ 运行
 python3 run.py
 # 首次启动会自动选择可用端口（默认 8081），并打开浏览器
 
-# 3) 访问
+# 3️⃣ 访问
 # http://127.0.0.1:8081
 # 主页（index.html）；验证与优化页（/validation.html）
 ```
@@ -61,7 +73,7 @@ python3 run.py
 
 ---
 
-### 关键页面
+## 📄 关键页面
 - `frontend/validation.html`（推荐入口）
   - 加载验证记录 → 选择目标位置/厚度 → 一键“智能优化”
   - 返回多策略曝光时间（保守/平衡/激进/最优等），“胶囊”视图支持悬停提示与高亮推荐
@@ -71,10 +83,10 @@ python3 run.py
 
 ---
 
-### 常用 API（节选）
+## 🔌 常用 API（节选）
 后端均位于 `backend/routes/api.py`，以下仅列出核心接口的典型用法（请求体字段非穷举）：
 
-1. 计算厚度（DILL）
+### 1️⃣ 计算厚度（DILL）
 ```
 POST /api/calculate_data
 {
@@ -93,7 +105,7 @@ POST /api/calculate_data
 }
 ```
 
-2. 智能优化曝光时间（基于验证数据）
+### 2️⃣ 智能优化曝光时间（基于验证数据）
 ```
 POST /api/smart_optimize_exposure
 {
@@ -120,14 +132,14 @@ POST /api/smart_optimize_exposure
 }
 ```
 
-3. 其它常用接口
+### 3️⃣ 其它常用接口
 - `GET /api/get_validation_data_for_optimization`  获取/刷新验证记录
 - `GET /api/latest_calculation`                     最近一次计算结果
 - `GET /api/example-files`                          示例文件清单
 
 ---
 
-### 参数说明（常用）
+## ⚙️ 参数说明（常用）
 - `I_avg`：平均光强
 - `V`：干涉条纹可见度/对比度
 - `K`：空间频率（rad/μm）
@@ -139,7 +151,7 @@ POST /api/smart_optimize_exposure
 
 ---
 
-### 典型工作流
+## 🔄 典型工作流
 1. 在 `validation.html` 载入/筛选历史验证记录
 2. 设置目标位置与目标厚度，选择优化类型（快捷/自定义）与策略数量
 3. 提交“智能优化”，在右侧查看多策略曝光时间与置信度，点击对比与应用
@@ -147,19 +159,25 @@ POST /api/smart_optimize_exposure
 
 ---
 
-### 开发与二次封装
+## 🛠️ 开发与二次封装
 - 样式与行为均为原生实现（不依赖框架），便于嵌入到现有系统。
 - 大部分交互文本已中文化，若需多语言可在 `frontend/js/lang.js` 衍生。
 - 页面与图形组件（Plotly 等）已解耦，可只引用 `validation.html` 作为独立模块。
 
 ---
 
-### 常见问题
+## ❓ 常见问题
 - 端口被占用：启动脚本会自动切换至 8081，并在控制台打印可访问的地址。
 - GitHub Push 鉴权失败：在 GitHub Desktop 中 Preferences → Accounts 重新登录后再 Push；或改用 SSH 远程。
 
 ---
 
+## 🤝 贡献
+
 如需问题排查或功能扩展，请在仓库提 Issue，或直接提交 PR。欢迎共同完善 DILL-Model！
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE](LICENSE) 文件
 
 
