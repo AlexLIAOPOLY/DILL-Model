@@ -1215,42 +1215,22 @@ body[data-lang="en"] .lang-select {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
+    padding: 8px;
     color: white;
     text-decoration: none;
-    font-size: 18px;
+    font-size: 20px;
     transition: all 0.3s ease;
     position: relative;
-    overflow: hidden;
+    border-radius: 4px;
 }
 
 .github-link:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffd700;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: scale(1.1);
 }
 
-.github-link:hover::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    animation: shimmer 0.5s ease;
-}
 
-@keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
-}
 
 /* GitHub工具提示 */
 .github-tooltip {
@@ -1314,15 +1294,14 @@ body[data-lang="en"] .lang-select {
 /* 移动端响应式适配 */
 @media (max-width: 768px) {
     .github-link {
-        width: 36px;
-        height: 36px;
-        font-size: 16px;
+        font-size: 18px;
+        padding: 6px;
     }
     
     .github-tooltip {
         font-size: 11px;
         padding: 4px 8px;
-        top: 45px;
+        top: 40px;
     }
     
     .header-utilities {
@@ -1332,9 +1311,8 @@ body[data-lang="en"] .lang-select {
 
 @media (max-width: 480px) {
     .github-link {
-        width: 32px;
-        height: 32px;
-        font-size: 14px;
+        font-size: 16px;
+        padding: 4px;
     }
     
     .github-tooltip {
