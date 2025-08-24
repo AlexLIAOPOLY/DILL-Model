@@ -65,9 +65,9 @@
 /* 动态LOGO容器样式 */
 .dynamic-logo-container {
     position: relative;
-    width: 80px;
-    height: 80px;
-    margin-right: 15px;
+    width: 108px; /* 放大LOGO容器 */
+    height: 108px;
+    margin-right: 18px;
     flex-shrink: 0;
     z-index: 5;
     perspective: 1200px; /* 增加透视深度 */
@@ -96,14 +96,14 @@
 /* LOGO中心圆点 */
 .dynamic-logo-circle {
     position: absolute;
-    width: 26px;
-    height: 26px;
+    width: 34px; /* 放大中心圆 */
+    height: 34px;
     top: 50%;
     left: 50%;
     transform: translate3d(-50%, -50%, 0);
     background: radial-gradient(circle, #FFD700 0%, #FF8C00 100%);
     border-radius: 50%;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 140, 0, 0.5);
+    box-shadow: 0 0 22px rgba(255, 215, 0, 0.85), 0 0 36px rgba(255, 140, 0, 0.55);
     animation: pulseCore 3s ease-in-out infinite alternate;
     z-index: 3;
 }
@@ -122,14 +122,14 @@
 /* LOGO外环 - 真3D结构 */
 .dynamic-logo-ring {
     position: absolute;
-    width: 65px;
-    height: 65px;
+    width: 88px; /* 放大外环与轨道整体比例 */
+    height: 88px;
     top: 50%;
     left: 50%;
     transform: translate3d(-50%, -50%, 0);
     border: 3px solid rgba(255, 215, 0, 0.5);
     border-radius: 50%;
-    box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.35);
     z-index: 2;
     transform-style: preserve-3d;
     /* 外环独立旋转 */
@@ -157,8 +157,8 @@
 
 /* 水平轨道 */
 .orbit-1 {
-    width: 52px;
-    height: 52px;
+    width: 70px;
+    height: 70px;
     border: 1.5px solid rgba(255, 215, 0, 0.4);
     transform: translate3d(-50%, -50%, 0) rotateX(70deg);
     animation: orbit1Rotate 12s infinite linear;
@@ -175,8 +175,8 @@
 
 /* 垂直轨道 */
 .orbit-2 {
-    width: 78px;
-    height: 39px;
+    width: 104px;
+    height: 52px;
     border: 1.5px solid rgba(135, 206, 235, 0.4);
     transform: translate3d(-50%, -50%, 0) rotateY(70deg);
     animation: orbit2Rotate 18s infinite linear reverse;
