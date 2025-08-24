@@ -7,9 +7,7 @@
     <!-- 引入Google字体 -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <!-- 引入Font Awesome图标库 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- 备用Font Awesome CDN -->
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.1/css/all.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- 引入样式文件 -->
     <link rel="stylesheet" href="css/style.css?v=1.2">
     <link rel="stylesheet" href="css/animations.css?v=1.1">
@@ -20,6 +18,7 @@
     <link rel="stylesheet" href="css/theme-colors.css?v=1.0">
     <link rel="stylesheet" href="css/professional-header-footer.css?v=1.1">
     <link rel="stylesheet" href="css/animation-controls.css?v=2.0">
+    <link rel="stylesheet" href="css/photo-recognition.css?v=1.0">
     <!-- 添加数学公式所需的样式 -->
     <style>
         /* 隐藏浏览器默认的网络状态指示器和进度条 */
@@ -960,6 +959,7 @@
                             <div class="custom-input-tabs">
                                 <button class="tab-button active" data-tab="file-upload">文件上传</button>
                                 <button class="tab-button" data-tab="manual-input">手动输入</button>
+                                <button class="tab-button" data-tab="photo-recognition">照片识别</button>
                             </div>
 
                             <!-- 文件上传标签页 -->
@@ -1241,6 +1241,153 @@ intensity3
                                         <button id="apply-intensity-btn" class="red-btn action-btn">
                                             <i class="fas fa-times"></i> 卸载数据
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 照片识别标签页 -->
+                            <div id="photo-recognition-tab" class="tab-content">
+                                <div class="photo-recognition-area">
+                                    <div class="photo-input-control-section">
+                                        <div class="photo-input-info">
+                                            <div class="status-text">
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 统一的输入区域 -->
+                                        <div class="unified-input-section">
+                                            <div class="upload-controls">
+                                                <div class="upload-area" id="photo-upload-zone">
+                                                    <div class="upload-content">
+                                                        <div class="upload-icon">📁</div>
+                                                        <div class="upload-title">选择图片或拖拽到此处</div>
+                                                        <div class="upload-subtitle">支持 JPG, PNG, GIF 格式</div>
+                                                    </div>
+                                                    <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- 相机控制按钮 -->
+                                            <div class="camera-controls-unified">
+                                                <div class="divider-text">或</div>
+                                                <div class="camera-buttons">
+                                                    <button id="start-camera-btn" class="camera-btn start-btn">启动相机拍照</button>
+                                                    <button id="take-photo-btn" class="camera-btn capture-btn" style="display:none;">拍照</button>
+                                                    <button id="stop-camera-btn" class="camera-btn stop-btn" style="display:none;">关闭相机</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 相机预览区域 -->
+                                    <div id="camera-preview-section" class="camera-preview-section" style="display:none;">
+                                        <div class="video-container">
+                                            <video id="camera-video" autoplay muted playsinline></video>
+                                            <div class="video-overlay">
+                                                <div class="crosshair"></div>
+                                                <div class="guide-text">将光源对准中心拍摄</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 图片预览区域 -->
+                                    <div id="photo-preview-section" class="photo-preview-section" style="display:none;">
+                                        <div class="preview-header">
+                                            <h4 id="photo-preview-title">图片预览</h4>
+                                            <div class="preview-actions">
+                                                <button id="retake-photo-btn" class="camera-btn stop-btn">重新选择</button>
+                                            </div>
+                                        </div>
+                                        <div class="image-preview-container">
+                                            <div class="image-column">
+                                                <h5>原始图片</h5>
+                                                <canvas id="original-photo-canvas"></canvas>
+                                            </div>
+                                            <div class="image-column">
+                                                <h5>灰度预览</h5>
+                                                <canvas id="grayscale-photo-canvas"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 图像处理参数 -->
+                                    <div id="photo-processing-params" class="photo-processing-params" style="display:none;">
+                                        <div class="params-header">
+                                            <h4>图像处理参数</h4>
+                                        </div>
+                                        <div class="param-grid">
+                                            <div class="param-item">
+                                                <label for="grayscale-method">灰度转换方法:</label>
+                                                <select id="grayscale-method" class="form-control">
+                                                    <option value="weighted">加权平均 (推荐)</option>
+                                                    <option value="average">简单平均</option>
+                                                    <option value="luminance">亮度方法</option>
+                                                    <option value="max">最大值方法</option>
+                                                </select>
+                                            </div>
+                                            <div class="param-item">
+                                                <label for="vector-direction">向量提取方向:</label>
+                                                <select id="vector-direction" class="form-control">
+                                                    <option value="horizontal">水平方向</option>
+                                                    <option value="vertical">垂直方向</option>
+                                                    <option value="center">中心线</option>
+                                                </select>
+                                            </div>
+                                            <div class="param-item">
+                                                <label for="crop-mode">图像裁剪:</label>
+                                                <select id="crop-mode" class="form-control">
+                                                    <option value="none">不裁剪</option>
+                                                    <option value="center">中心裁剪</option>
+                                                </select>
+                                            </div>
+                                            <div class="param-item">
+                                                <label for="coordinate-unit">坐标单位:</label>
+                                                <select id="coordinate-unit" class="form-control">
+                                                    <option value="pixels">像素</option>
+                                                    <option value="mm">毫米</option>
+                                                    <option value="um">微米</option>
+                                                    <option value="custom">自定义</option>
+                                                </select>
+                                            </div>
+                                            <div class="param-item">
+                                                <label for="scale-factor">缩放因子:</label>
+                                                <input type="number" id="scale-factor" value="1" min="0.001" step="0.1" class="form-control">
+                                            </div>
+                                            <div class="param-item">
+                                                <label for="smoothing-method">数据平滑:</label>
+                                                <select id="smoothing-method" class="form-control">
+                                                    <option value="none">无</option>
+                                                    <option value="gaussian">高斯平滑</option>
+                                                    <option value="moving_average">移动平均</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="processing-actions">
+                                            <button id="generate-vector-btn" class="camera-btn start-btn">生成向量</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 向量预览区域 -->
+                                    <div id="vector-preview-section" class="vector-preview-section" style="display:none;">
+                                        <div class="params-header">
+                                            <h4>生成的向量数据</h4>
+                                            <div class="data-stats">
+                                                <span id="vector-data-count">0 个数据点</span>
+                                            </div>
+                                        </div>
+                                        <div class="vector-preview-container">
+                                            <canvas id="vector-preview-canvas"></canvas>
+                                        </div>
+                                        <div class="vector-actions">
+                                            <button id="apply-vector-data-btn" class="camera-btn start-btn">应用到模型</button>
+                                            <button id="export-vector-data-btn" class="camera-btn">导出数据</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 处理指示器 -->
+                                    <div id="processing-indicator" class="processing-indicator" style="display:none;">
+                                        <div class="processing-spinner"></div>
+                                        <div class="processing-text">处理中...</div>
                                     </div>
                                 </div>
                             </div>
@@ -3545,6 +3692,7 @@ intensity3
     <script src="js/car-model.js?v=1.0"></script>
     <script src="js/validation.js?v=1.0"></script>
     <script src="js/logs-manager.js"></script>
+    <script src="js/photo-recognition.js?v=1.0"></script>
     <script>
     // 模型切换逻辑
     const modelSelect = document.getElementById('model-select');
@@ -3576,6 +3724,26 @@ intensity3
     document.addEventListener('DOMContentLoaded', function() {
         if (modelSelect) {
             applyThemeColor(modelSelect.value || 'dill');
+        }
+        
+        // 初始化照片识别功能
+        if (typeof PhotoRecognition !== 'undefined') {
+            try {
+                window.photoRecognition = new PhotoRecognition();
+                window.photoRecognition.init();
+                console.log('✅ 照片识别功能初始化成功');
+                
+                // 页面卸载时清理资源
+                window.addEventListener('beforeunload', function() {
+                    if (window.photoRecognition) {
+                        window.photoRecognition.cleanup();
+                    }
+                });
+            } catch (error) {
+                console.error('❌ 照片识别功能初始化失败:', error);
+            }
+        } else {
+            console.warn('⚠️ PhotoRecognition类未加载');
         }
     });
     

@@ -1208,20 +1208,40 @@ body[data-lang="en"] .lang-select {
     display: flex;
     align-items: center;
     position: relative;
+    margin-left: 0.8rem; /* 向右移动GitHub图标 */
 }
+
+/* 确保GitHub图标在所有情况下都能显示的备用样式 */
+.github-link i {
+    font-family: 'Font Awesome 6 Brands', 'Font Awesome 5 Brands Free', 'fab' !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    display: inline-block !important;
+    line-height: 1 !important;
+    text-rendering: auto !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* 如果Font Awesome没有加载，显示备用内容 */
+.github-link i.fab.fa-github:before {
+    content: "\f09b" !important; /* GitHub图标的Unicode */
+}
+
+/* 移除备用文字显示 */
 
 /* GitHub链接样式 */
 .github-link {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
+    padding: 10px;
     color: white;
     text-decoration: none;
-    font-size: 20px;
+    font-size: 28px; /* 从20px增加到28px */
     transition: all 0.3s ease;
     position: relative;
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .github-link:hover {
@@ -1294,8 +1314,12 @@ body[data-lang="en"] .lang-select {
 /* 移动端响应式适配 */
 @media (max-width: 768px) {
     .github-link {
-        font-size: 18px;
-        padding: 6px;
+        font-size: 24px; /* 从18px增加到24px */
+        padding: 8px; /* 从6px增加到8px */
+    }
+    
+    .github-link-container {
+        margin-left: 0.6rem; /* 移动端稍微减少左边距 */
     }
     
     .github-tooltip {
@@ -1311,8 +1335,12 @@ body[data-lang="en"] .lang-select {
 
 @media (max-width: 480px) {
     .github-link {
-        font-size: 16px;
-        padding: 4px;
+        font-size: 22px; /* 从16px增加到22px */
+        padding: 6px; /* 从4px增加到6px */
+    }
+    
+    .github-link-container {
+        margin-left: 0.4rem; /* 小屏幕进一步减少左边距 */
     }
     
     .github-tooltip {

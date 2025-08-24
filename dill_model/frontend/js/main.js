@@ -3741,11 +3741,20 @@ function createExposurePlot(container, data) {
     const currentModelType = modelSelect ? modelSelect.value : 'dill';
     
     // 🔥 检查是否是理想曝光模型数据或多段曝光模式
+    console.log('🔍 检查光强分布渲染条件:', {
+        is_ideal_exposure_model: data.is_ideal_exposure_model,
+        exposure_calculation_method: data.exposure_calculation_method,
+        has_intensity_distribution: !!data.intensity_distribution,
+        is_array: Array.isArray(data.intensity_distribution),
+        custom_intensity_mode: data.custom_intensity_mode
+    });
+    
     if ((data.is_ideal_exposure_model || data.exposure_calculation_method === 'cumulative') && 
         data.intensity_distribution && Array.isArray(data.intensity_distribution)) {
         
         const isCumulativeMode = data.exposure_calculation_method === 'cumulative';
-        console.log(`🎨 渲染DILL模型的强度分布 (${isCumulativeMode ? '多段曝光模式' : '理想曝光模式'})`);
+        const isCustomIntensityMode = data.custom_intensity_mode;
+        console.log(`🎨 渲染DILL模型的强度分布 (${isCumulativeMode ? '多段曝光模式' : isCustomIntensityMode ? '自定义光强模式' : '理想曝光模式'})`);
         
         if (isCumulativeMode) {
             console.log('🔥 多段曝光模式详细信息:', {
@@ -3784,6 +3793,9 @@ function createExposurePlot(container, data) {
                 // 累积模式下直接使用累积时间标题，不需要检查曝光时间窗口开关
                 const totalTime = data.segment_count * data.segment_duration;
                 titleText = `DILL模型 - 光强分布 (累积模式) t=${totalTime.toFixed(1)}s`;
+            } else if (isCustomIntensityMode) {
+                // 自定义光强模式
+                titleText = 'DILL模型 - 光强分布 (基于照片灰度)';
             }
             
             const layout = {
@@ -5928,7 +5940,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
 
         // 确定具体的模式组合描述
         const modeDescription = (() => {
-            const intensityMode = isUsingCustomData ? '自定义向量' : '公式计算';
+            const intensityMode = isUsingCustomData ? (customIntensityData.source === 'photo-recognition' ? '照片识别' : '自定义向量') : '公式计算';
             const exposureMode = exposureCalculationMethod === 'cumulative' ? '累积模式' : '标准模式';
             return `${intensityMode} + ${exposureMode}`;
         })();
@@ -5945,7 +5957,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
             <div>• 曝光时间 t<sub>exp</sub>: ${exposureTime}s</div>
             `}
             ${isUsingCustomData ? `
-            <div>• 光强输入: 自定义向量数据 (${customIntensityData.x ? customIntensityData.x.length : 0}点)</div>
+            <div>• 光强输入: ${customIntensityData.source === 'photo-recognition' ? '照片灰度数据' : '💾 自定义向量数据'} (${customIntensityData.x ? customIntensityData.x.length : 0}点)</div>
             ` : `
             <div>• 光强输入: 公式计算模式</div>
             `}
@@ -5974,7 +5986,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
             `}
             ${isUsingCustomData ? `
             <div>• 自定义向量：基于用户上传的光强分布数据</div>
-            <div>• 数据范围: X ∈ [${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 'N/A'}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 'N/A'}] mm</div>
+            <div>• 数据范围: X ∈ [${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 'N/A'}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 'N/A'}] ${customIntensityData.source === 'photo-recognition' ? 'μm' : 'mm'}</div>
             <div>• 插值计算: 线性插值到计算网格 [-1, 1] mm</div>
             <div>• ⚠️ 十字架效应: 当自定义范围 < 计算范围时出现</div>
             <div>• 边界处理: 范围外区域补零，产生十字架图案</div>
@@ -6011,7 +6023,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
 
         // 确定具体的模式组合描述
         const modeDescription = (() => {
-            const intensityMode = isUsingCustomData ? '自定义向量' : '公式计算';
+            const intensityMode = isUsingCustomData ? (customIntensityData.source === 'photo-recognition' ? '照片识别' : '自定义向量') : '公式计算';
             const exposureMode = exposureCalculationMethod === 'cumulative' ? '累积模式' : '标准模式';
             return `${intensityMode} + ${exposureMode}`;
         })();
@@ -6030,8 +6042,8 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
             <div>• 曝光时间: ${exposureTime}s</div>
             `}
             ${isUsingCustomData ? `
-            <div>• 光强输入: 自定义向量数据 (${customIntensityData.x ? customIntensityData.x.length : 0}点)</div>
-            <div>• 数据范围: X ∈ [${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 'N/A'}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 'N/A'}] mm</div>
+            <div>• 光强输入: ${customIntensityData.source === 'photo-recognition' ? '照片灰度数据' : '💾 自定义向量数据'} (${customIntensityData.x ? customIntensityData.x.length : 0}点)</div>
+            <div>• 数据范围: X ∈ [${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 'N/A'}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 'N/A'}] ${customIntensityData.source === 'photo-recognition' ? 'μm' : 'mm'}</div>
             <div>• 插值计算: 线性插值到计算网格 [-1, 1] mm</div>
             <div>• ⚠️ 十字架效应: 当自定义范围 < 计算范围时出现</div>
             ` : `
@@ -6283,7 +6295,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             valueLabel = '光强分布:';
             valueUnit = '(自定义单位)';
             formulaTitle = '1D DILL模型 - 自定义向量 + 多段曝光时间累积模式：';
-            formulaMath = '💾 <strong>基于用户自定义数据的多段曝光时间累积</strong><br/>' +
+            formulaMath = '<strong>基于用户自定义数据的多段曝光时间累积</strong><br/>' +
                           'I<sub>segment</sub>(x) = 用户提供的光强向量数据 × 段落权重<br/>' +
                           'D<sub>total</sub>(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>base</sub>(x) × w<sub>i</sub> × t<sub>i</sub>]';
             
@@ -6390,11 +6402,16 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 </div>
             `;
             
+            // 检查数据来源并生成相应的描述
+            const isFromPhoto = customIntensityData.source === 'photo-recognition';
+            const dataSourceDesc = isFromPhoto ? '照片灰度识别数据' : '💾 用户自定义向量';
+            const unitDisplay = isFromPhoto ? 'μm (照片像素映射)' : (customIntensityData.x_unit || 'pixels');
+            
             formulaExplanation = `
                 <div>🔧 <strong>自定义向量 + 多段曝光时间累积模式：</strong></div>
-                <div>• 基础数据: 用户自定义向量</div>
+                <div>• 基础数据: ${dataSourceDesc}</div>
                 <div>• 数据点总数: ${totalDataPoints} 个</div>
-                <div>• X坐标范围: [${xRange[0].toFixed(3)}, ${xRange[1].toFixed(3)}]</div>
+                <div>• X坐标范围: [${xRange[0].toFixed(3)}, ${xRange[1].toFixed(3)}] ${unitDisplay}</div>
                 <div>• 基础光强范围: [${intensityRange[0].toFixed(6)}, ${intensityRange[1].toFixed(6)}]</div>
                 <div class="formula-separator"></div>
                 <div>⏱️ <strong>多段曝光时间参数：</strong></div>
@@ -7637,12 +7654,12 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             </div>
         </div>
         <div class="point-info-section">
-            <h4>📋 ${LANGS[currentLang].popup_section_params_dill || '参数组'}: ${setName} (${isUsingCustomData ? '自定义向量DILL模型' : isIdealExposureModel ? 'DILL模型' : 'Dill模型'})</h4>
+            <h4>📋 ${LANGS[currentLang].popup_section_params_dill || '参数组'}: ${setName} (${isUsingCustomData ? (customIntensityData.source === 'photo-recognition' ? '照片识别DILL模型' : '自定义向量DILL模型') : isIdealExposureModel ? 'DILL模型' : 'Dill模型'})</h4>
             <div class="info-grid responsive-grid">
                 ${isUsingCustomData ? `
-                <div class="info-item"><span class="info-label">数据来源:</span><span class="info-value">自定义向量</span></div>
+                <div class="info-item"><span class="info-label">数据来源:</span><span class="info-value">${customIntensityData.source === 'photo-recognition' ? '照片灰度识别' : '💾 自定义向量'}</span></div>
                 <div class="info-item"><span class="info-label">数据点数:</span><span class="info-value">${customIntensityData.x ? customIntensityData.x.length : 0} 个</span></div>
-                <div class="info-item"><span class="info-label">X范围:</span><span class="info-value">[${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 0}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 0}]</span></div>
+                <div class="info-item"><span class="info-label">X范围:</span><span class="info-value">[${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 0}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 0}] ${customIntensityData.source === 'photo-recognition' ? 'μm' : (customIntensityData.x_unit || 'pixels')}</span></div>
                 <div class="info-item"><span class="info-label">光强范围:</span><span class="info-value">[${customIntensityData.intensity ? Math.min(...customIntensityData.intensity).toFixed(3) : 0}, ${customIntensityData.intensity ? Math.max(...customIntensityData.intensity).toFixed(3) : 0}]</span></div>
                 <div class="info-item"><span class="info-label">C常数:</span><span class="info-value">${params.C || 0.022}</span></div>
                 <div class="info-item"><span class="info-label">阈值(cd):</span><span class="info-value">${params.exposure_threshold || 20}</span></div>
@@ -19876,3 +19893,126 @@ function initPlotlyResizableFeature(exposureContainer, thicknessContainer) {
     
     console.log('🎯 Plotly图表拖拽缩放功能初始化完成');
 }
+
+/**
+ * 设置自定义光强数据（供照片识别等模块调用）
+ * @param {Object} vectorData - 向量数据对象
+ */
+function setCustomIntensityData(vectorData) {
+    try {
+        console.log('📊 设置自定义光强数据 (来自照片识别):', vectorData);
+        
+        // 更新全局customIntensityData
+        customIntensityData.x = vectorData.x;
+        customIntensityData.intensity = vectorData.intensity;
+        customIntensityData.loaded = true;
+        customIntensityData.source = vectorData.method || 'photo-recognition';
+        customIntensityData.fileName = `photo_vector_${new Date().getTime()}`;
+        customIntensityData.x_unit = vectorData.parameters?.coordinateUnit || 'mm';
+        // 根据来源参数推断并记录单位缩放：统一以mm为内部标准
+        // 若坐标单位为像素，无法推断尺寸，置为1；若为μm，则缩放到mm；自定义按传入scaleFactor尝试估计
+        (function computeUnitScale(){
+            try {
+                const params = vectorData.parameters || {};
+                const unit = params.coordinateUnit || 'mm';
+                let unitScale = 1.0; // x(mm) = x(original) * unitScale
+                if (unit === 'um' || unit === 'μm') {
+                    unitScale = 0.001; // μm → mm
+                } else if (unit === 'mm') {
+                    unitScale = 1.0;
+                } else if (unit === 'custom' && typeof params.scaleFactor === 'number') {
+                    // scaleFactor 表示每个索引的物理间距，按 mm 记
+                    unitScale = params.scaleFactor; // 视作 mm/像素
+                } else {
+                    // 像素或未知单位，保持1.0，后续允许用户在UI中调整
+                    unitScale = 1.0;
+                }
+                customIntensityData.unit_scale = unitScale;
+            } catch (e) {
+                console.warn('计算 unit_scale 失败:', e);
+                customIntensityData.unit_scale = 1.0;
+            }
+        })();
+        customIntensityData.x_range = {
+            min: Math.min(...vectorData.x),
+            max: Math.max(...vectorData.x)
+        };
+        customIntensityData.auto_detected = true;
+        customIntensityData.outside_range_mode = 'zero';
+        customIntensityData.custom_intensity_value = 0;
+        
+        // 自动计算平均光强
+        customIntensityData.auto_calculated_I_avg = calculateAutoI_avg(vectorData.intensity);
+        
+        // 更新UI状态（隐藏显示区域，保持静默模式）
+        // updateDataStatusDisplay(); // 注释掉，不显示"已加载的光强数据"区域
+        
+        // 切换输入方式为自定义向量
+        const methodSelect = document.getElementById('intensity_input_method');
+        if (methodSelect) {
+            methodSelect.value = 'custom';
+            handleIntensityMethodChange();
+        }
+        
+        console.log('✅ 自定义光强数据设置完成');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ 设置自定义光强数据失败:', error);
+        return false;
+    }
+}
+
+/**
+ * 更新数据状态显示
+ */
+function updateDataStatusDisplay() {
+    try {
+        const statusElement = document.getElementById('intensity-data-status');
+        if (!statusElement) return;
+        
+        if (customIntensityData.loaded && customIntensityData.x.length > 0) {
+            // 显示状态区域
+            statusElement.style.display = 'block';
+            
+            // 更新统计信息
+            const pointCountElement = document.getElementById('intensity-point-count');
+            const xRangeElement = document.getElementById('intensity-x-range');
+            const valueRangeElement = document.getElementById('intensity-value-range');
+            const outsideRangeModeElement = document.getElementById('outside-range-mode');
+            
+            if (pointCountElement) {
+                pointCountElement.textContent = customIntensityData.x.length;
+            }
+            
+            if (xRangeElement) {
+                const xMin = Math.min(...customIntensityData.x);
+                const xMax = Math.max(...customIntensityData.x);
+                xRangeElement.textContent = `${xMin.toFixed(3)} 到 ${xMax.toFixed(3)} ${customIntensityData.x_unit}`;
+            }
+            
+            if (valueRangeElement) {
+                const intensityMin = Math.min(...customIntensityData.intensity);
+                const intensityMax = Math.max(...customIntensityData.intensity);
+                valueRangeElement.textContent = `${intensityMin.toFixed(3)} 到 ${intensityMax.toFixed(3)}`;
+            }
+            
+            if (outsideRangeModeElement) {
+                const mode = customIntensityData.outside_range_mode;
+                outsideRangeModeElement.textContent = mode === 'zero' ? '范围外为零' : 
+                                                   mode === 'boundary' ? '边界值延续' : '自定义值';
+                outsideRangeModeElement.className = `info-value mode-${mode}`;
+            }
+        } else {
+            // 隐藏状态区域
+            statusElement.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('❌ 更新数据状态显示失败:', error);
+    }
+}
+
+// 将函数暴露到全局作用域
+window.setCustomIntensityData = setCustomIntensityData;
+window.updateDataStatusDisplay = updateDataStatusDisplay;

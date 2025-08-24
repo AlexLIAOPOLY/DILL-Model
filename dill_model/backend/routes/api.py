@@ -4230,3 +4230,235 @@ def generate_experience_summary(selected_records, weighted_deviation):
         }
     }
 
+
+@api_bp.route('/process-photo', methods=['POST'])
+def process_photo():
+    """
+    处理上传的照片，进行彩色转灰度转换并生成向量数据
+    """
+    try:
+        from PIL import Image
+        import io
+        import base64
+        from scipy import ndimage
+        from sklearn.preprocessing import MinMaxScaler
+        
+        add_log_entry('info', 'system', '开始处理照片识别请求')
+        
+        # 获取请求数据
+        data = request.get_json()
+        
+        if not data or 'image_data' not in data:
+            add_error_log('system', '缺少图像数据')
+            return jsonify(format_response(False, message="缺少图像数据")), 400
+        
+        # 获取处理参数
+        image_data = data['image_data']
+        grayscale_method = data.get('grayscale_method', 'weighted')
+        vector_direction = data.get('vector_direction', 'horizontal')
+        coordinate_unit = data.get('coordinate_unit', 'mm')
+        scale_factor = float(data.get('scale_factor', 0.1))
+        smoothing_method = data.get('smoothing_method', 'none')
+        crop_mode = data.get('crop_mode', 'none')
+        
+        add_progress_log('system', f'处理参数: 灰度方法={grayscale_method}, 方向={vector_direction}')
+        
+        # 解码base64图像数据
+        try:
+            # 移除data:image前缀
+            if ',' in image_data:
+                image_data = image_data.split(',')[1]
+            
+            # 解码base64
+            image_bytes = base64.b64decode(image_data)
+            
+            # 打开图像
+            image = Image.open(io.BytesIO(image_bytes))
+            
+            add_progress_log('system', f'成功解码图像: {image.size[0]}x{image.size[1]} pixels')
+            
+        except Exception as e:
+            add_error_log('system', f'图像解码失败: {str(e)}')
+            return jsonify(format_response(False, message=f"图像解码失败: {str(e)}")), 400
+        
+        # 转换为RGB模式（如果不是的话）
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+            add_progress_log('system', f'图像模式转换为RGB')
+        
+        # 图像裁剪处理
+        if crop_mode == 'center':
+            width, height = image.size
+            crop_size = min(width, height) // 2
+            left = (width - crop_size) // 2
+            top = (height - crop_size) // 2
+            right = left + crop_size
+            bottom = top + crop_size
+            image = image.crop((left, top, right, bottom))
+            add_progress_log('system', f'中心裁剪完成: {crop_size}x{crop_size}')
+        
+        # 转换为numpy数组
+        image_array = np.array(image)
+        height, width, channels = image_array.shape
+        
+        add_progress_log('system', f'图像数组形状: {image_array.shape}')
+        
+        # 彩色转灰度转换
+        grayscale_array = convert_to_grayscale_numpy(image_array, grayscale_method)
+        add_progress_log('system', f'灰度转换完成，方法: {grayscale_method}')
+        
+        # 从灰度图像提取向量
+        vector_data = extract_vector_from_grayscale(
+            grayscale_array, 
+            vector_direction, 
+            coordinate_unit, 
+            scale_factor
+        )
+        add_progress_log('system', f'向量提取完成，数据点数: {len(vector_data["intensity"])}')
+        
+        # 应用平滑处理
+        if smoothing_method != 'none':
+            vector_data['intensity'] = apply_smoothing(vector_data['intensity'], smoothing_method)
+            add_progress_log('system', f'数据平滑完成，方法: {smoothing_method}')
+        
+        # 生成响应数据
+        response_data = {
+            'success': True,
+            'vector_data': {
+                'x': vector_data['x'],
+                'intensity': vector_data['intensity']
+            },
+            'metadata': {
+                'original_size': f"{width}x{height}",
+                'grayscale_method': grayscale_method,
+                'vector_direction': vector_direction,
+                'coordinate_unit': coordinate_unit,
+                'scale_factor': scale_factor,
+                'smoothing_method': smoothing_method,
+                'data_points': len(vector_data['x']),
+                'x_range': [float(min(vector_data['x'])), float(max(vector_data['x']))],
+                'intensity_range': [float(min(vector_data['intensity'])), float(max(vector_data['intensity']))]
+            }
+        }
+        
+        add_success_log('system', f'照片处理完成，生成{len(vector_data["x"])}个数据点')
+        
+        return jsonify(response_data)
+        
+    except ImportError as e:
+        add_error_log('system', f'缺少必要的图像处理库: {str(e)}')
+        return jsonify(format_response(False, message=f"服务器配置错误：缺少图像处理库 {str(e)}")), 500
+        
+    except Exception as e:
+        add_error_log('system', f'照片处理过程中发生错误: {str(e)}')
+        traceback.print_exc()
+        return jsonify(format_response(False, message=f"照片处理失败: {str(e)}")), 500
+
+
+def convert_to_grayscale_numpy(image_array, method='weighted'):
+    """
+    使用numpy进行彩色转灰度转换
+    """
+    if method == 'weighted':
+        # 加权平均法（推荐）
+        grayscale = 0.299 * image_array[:, :, 0] + 0.587 * image_array[:, :, 1] + 0.114 * image_array[:, :, 2]
+    elif method == 'average':
+        # 平均值法
+        grayscale = np.mean(image_array, axis=2)
+    elif method == 'luminance':
+        # 亮度法
+        grayscale = 0.21 * image_array[:, :, 0] + 0.72 * image_array[:, :, 1] + 0.07 * image_array[:, :, 2]
+    elif method == 'max':
+        # 最大值法
+        grayscale = np.max(image_array, axis=2)
+    else:
+        # 默认使用加权平均法
+        grayscale = 0.299 * image_array[:, :, 0] + 0.587 * image_array[:, :, 1] + 0.114 * image_array[:, :, 2]
+    
+    return grayscale.astype(np.uint8)
+
+
+def extract_vector_from_grayscale(grayscale_array, direction, coordinate_unit, scale_factor):
+    """
+    从灰度图像中提取向量数据
+    """
+    height, width = grayscale_array.shape
+    
+    if direction == 'horizontal':
+        # 水平方向：沿中间行提取
+        middle_row = height // 2
+        intensity_values = grayscale_array[middle_row, :] / 255.0  # 归一化到0-1
+        data_length = width
+        
+    elif direction == 'vertical':
+        # 垂直方向：沿中间列提取
+        middle_col = width // 2
+        intensity_values = grayscale_array[:, middle_col] / 255.0
+        data_length = height
+        
+    elif direction == 'center-line':
+        # 中心线提取：对角线平均
+        min_size = min(width, height)
+        diagonal1 = np.array([grayscale_array[i, i] for i in range(min_size)])
+        diagonal2 = np.array([grayscale_array[i, min_size-1-i] for i in range(min_size)])
+        intensity_values = (diagonal1 + diagonal2) / (2 * 255.0)  # 归一化
+        data_length = min_size
+        
+    else:
+        # 默认水平方向
+        middle_row = height // 2
+        intensity_values = grayscale_array[middle_row, :] / 255.0
+        data_length = width
+    
+    # 生成坐标
+    coordinates = generate_coordinates(data_length, coordinate_unit, scale_factor)
+    
+    return {
+        'x': coordinates.tolist(),
+        'intensity': intensity_values.tolist()
+    }
+
+
+def generate_coordinates(length, unit, scale_factor):
+    """
+    生成坐标数组
+    """
+    # 根据单位设置缩放因子
+    if unit == 'mm':
+        final_scale = scale_factor
+    elif unit == 'um':
+        final_scale = scale_factor * 1000  # 毫米转微米
+    elif unit == 'pixels':
+        final_scale = 1
+    else:  # custom
+        final_scale = scale_factor
+    
+    # 生成对称的坐标（以0为中心）
+    center = (length - 1) / 2
+    coordinates = np.array([(i - center) * final_scale for i in range(length)])
+    
+    return coordinates
+
+
+def apply_smoothing(data, method):
+    """
+    应用数据平滑处理
+    """
+    data_array = np.array(data)
+    
+    if method == 'gaussian':
+        # 高斯平滑
+        from scipy import ndimage
+        smoothed = ndimage.gaussian_filter1d(data_array, sigma=2)
+        
+    elif method == 'moving-average':
+        # 移动平均
+        window_size = 3
+        smoothed = np.convolve(data_array, np.ones(window_size)/window_size, mode='same')
+        
+    else:
+        # 无平滑
+        smoothed = data_array
+    
+    return smoothed.tolist()
+
