@@ -1184,10 +1184,10 @@ function updateKInputState() {
 /**
  * 自动计算空间频率K值
  * 根据公式：K = 4π × sin(a) / λ
- * 其中 a 是角度参数（度），λ 是波长（nm）
+ * 其中 a 是周期参数（度），λ 是波长（nm）
  */
 function autoCalculateSpaceFrequencyK(showNotice = true) {
-    // 获取角度参数和波长的元素
+    // 获取周期参数和波长的元素
     const angleSlider = document.getElementById('angle_a');
     const wavelengthSlider = document.getElementById('wavelength');
     const wavelengthInput = document.getElementById('wavelength_number');
@@ -1200,10 +1200,10 @@ function autoCalculateSpaceFrequencyK(showNotice = true) {
         return;
     }
     
-    // 获取角度参数值（度）
+    // 获取周期参数值（度）
     let angleValue = parseFloat(angleSlider.value);
     if (isNaN(angleValue)) {
-        console.warn('⚠️ 角度参数值无效:', angleSlider.value);
+        console.warn('⚠️ 周期参数值无效:', angleSlider.value);
         return;
     }
     
@@ -1220,7 +1220,7 @@ function autoCalculateSpaceFrequencyK(showNotice = true) {
         return;
     }
     
-    // 将角度转换为弧度
+    // 将周期转换为弧度
     const angleInRadians = angleValue * Math.PI / 180;
     
     // 计算空间频率K = 4π × sin(a) / λ
@@ -1252,7 +1252,7 @@ function autoCalculateSpaceFrequencyK(showNotice = true) {
     
     // 记录计算过程（仅在调试时显示）
     console.log(`🔄 自动计算空间频率K:
-        角度 a = ${angleValue}° (${angleInRadians.toFixed(4)} rad)
+        周期 a = ${angleValue}° (${angleInRadians.toFixed(4)} rad)
         波长 λ = ${wavelengthValue} nm  
         计算结果 K = 4π×sin(${angleValue}°)/${wavelengthValue} = ${calculatedK.toFixed(6)}
         最终值 K = ${roundedK} rad/μm`);
@@ -1388,7 +1388,7 @@ function bindSliderEvents() {
                 input.classList.remove('pulse');
             }, 300);
             
-            // 检查是否需要自动计算空间频率K（角度参数或波长变化时）
+            // 检查是否需要自动计算空间频率K（周期参数或波长变化时）
             if (slider.id === 'angle_a' || slider.id === 'wavelength') {
                 autoCalculateSpaceFrequencyK();
             }
@@ -1440,7 +1440,7 @@ function bindSliderEvents() {
                 input.classList.remove('blink');
             }, 300);
             
-            // 检查是否需要自动计算空间频率K（角度参数或波长变化时）
+            // 检查是否需要自动计算空间频率K（周期参数或波长变化时）
             if (input.id === 'angle_a' || input.id === 'wavelength_number') {
                 autoCalculateSpaceFrequencyK();
             }
@@ -2207,7 +2207,7 @@ function convert2DExposurePatternToHeatmapData(data) {
         sine_type: '2d_exposure_pattern',
         // 添加专用标题，确保显示正确的中文标题，包含当前使用的曝光时间
         exposure_title: `曝光计量分布 (2D) - t=${exposureTime}`,
-        thickness_title: `光刻胶厚度分布 (2D) - t=${exposureTime}`
+        thickness_title: `形貌分布 (2D) - t=${exposureTime}`
     };
 }
 
@@ -2286,18 +2286,18 @@ function displayInteractiveResults(data) {
     // Dynamically set titles based on data dimensions
     if (has3DData) {
         if (exposureTitleElement) exposureTitleElement.textContent = '曝光剂量分布 (3D)';
-        if (thicknessTitleElement) thicknessTitleElement.textContent = '光刻胶厚度分布 (3D)';
+        if (thicknessTitleElement) thicknessTitleElement.textContent = '形貌分布 (3D)';
     } else if (has2DData) {
         if (currentModelType === 'dill' || currentModelType === 'car') {
             if (exposureTitleElement) exposureTitleElement.textContent = '曝光计量分布 (2D)';
-            if (thicknessTitleElement) thicknessTitleElement.textContent = '光刻胶厚度分布 (2D)';
+            if (thicknessTitleElement) thicknessTitleElement.textContent = '形貌分布 (2D)';
         } else { // For 'enhanced_dill' model
             if (exposureTitleElement) exposureTitleElement.textContent = '曝光计量分布 (2D) (Y, Z平面)';
-            if (thicknessTitleElement) thicknessTitleElement.textContent = '光刻胶厚度分布 (2D) (Y, Z平面)';
+            if (thicknessTitleElement) thicknessTitleElement.textContent = '形貌分布 (2D) (Y, Z平面)';
         }
     } else {
-        if (exposureTitleElement) exposureTitleElement.textContent = '光强分布 (1D)';
-        if (thicknessTitleElement) thicknessTitleElement.textContent = '刻蚀深度分布 (1D)';
+        if (exposureTitleElement) exposureTitleElement.textContent = '曝光剂量分布 (1D)';
+        if (thicknessTitleElement) thicknessTitleElement.textContent = '形貌分布 (1D)';
     }
 
     // 新增：CAR模型特殊处理 - 始终使用2D热图
@@ -3653,7 +3653,7 @@ function createThickness3DPlot(container, data) {
     };
 
     const layout = {
-        title: '光刻胶厚度分布 (3D)',
+        title: '形貌分布 (3D)',
         scene: {
             xaxis: { title: 'X (μm)' },
             yaxis: { title: 'Y (μm)' },
@@ -3714,6 +3714,19 @@ function standardizeHeatmapData(data, xCoords, yCoords) {
 }
 
 /**
+ * 动态检测坐标数据的单位（毫米或微米）
+ * @param {Array} coords - 坐标数组
+ * @returns {string} - 'mm' 或 'μm'
+ */
+function detectCoordinateUnit(coords) {
+    if (!coords || !Array.isArray(coords) || coords.length === 0) {
+        return 'μm'; // 默认单位
+    }
+    const range = Math.max(...coords) - Math.min(...coords);
+    return range > 100 ? 'mm' : 'μm'; // 如果范围大于100，认为是毫米单位
+}
+
+/**
  * 创建1D曝光剂量分布线图
  * 
  * @param {HTMLElement} container - 容器元素
@@ -3751,6 +3764,9 @@ function createExposurePlot(container, data) {
                 return;
             }
             
+            // 根据数据的实际数值范围动态判断单位
+            const xUnit = detectCoordinateUnit(xCoords);
+            
             const trace = {
                 x: xCoords,
                 y: data.intensity_distribution,
@@ -3759,7 +3775,7 @@ function createExposurePlot(container, data) {
                 line: { color: '#1f77b4', width: 2 },
                 marker: { size: 4, color: '#1f77b4' },
                 name: '光强分布',
-                hovertemplate: `位置: %{x:.3f} mm<br>光强: %{y:.6f}<extra></extra>`
+                hovertemplate: `位置: %{x:.3f} ${xUnit}<br>光强: %{y:.6f}<extra></extra>`
             };
             
             // 🔥 多段曝光模式下的标题
@@ -3772,7 +3788,7 @@ function createExposurePlot(container, data) {
             
             const layout = {
                 title: titleText,
-                xaxis: { title: '位置 (mm)' },
+                xaxis: { title: `位置 (${xUnit})` },
                 yaxis: { title: '归一化光强' },
                 margin: { l: 60, r: 20, t: 60, b: 60 },
                 showlegend: false
@@ -3826,16 +3842,18 @@ function createExposurePlot(container, data) {
             hovertemplate: `位置: %{x}<br>${(window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].hover_exposure_value) || '曝光剂量值'}: %{y}<extra></extra>`
         };
 
-        // 根据模型类型设置不同的轴标签
+        // 根据模型类型和实际数据范围动态设置轴标签
         let xAxisTitle;
         if (currentModelType === 'enhanced_dill') {
             xAxisTitle = 'Z 位置 (μm)'; // 增强DILL模型关注深度方向
         } else {
-            xAxisTitle = (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].x_position) || 'X 位置 (μm)';
+            // 根据数据的实际数值范围动态判断单位
+            const xUnit = detectCoordinateUnit(xCoords);
+            xAxisTitle = `位置 (${xUnit})`;
         }
 
         const layout = {
-            title: '光强分布 (1D)',
+            title: (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].exposure_dist) || '曝光剂量分布 (1D)',
             xaxis: { title: xAxisTitle },
             yaxis: { title: (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].exposure_dose_trace_name) || '曝光剂量 (mJ/cm²)' },
             margin: { l: 60, r: 20, t: 60, b: 60 },
@@ -3861,7 +3879,7 @@ function createExposurePlot(container, data) {
 }
 
 /**
- * 创建1D刻蚀深度分布线图
+ * 创建1D形貌分布线图
  * 
  * @param {HTMLElement} container - 容器元素
  * @param {Object} data - 数据对象
@@ -3886,6 +3904,9 @@ function createThicknessPlot(container, data) {
                 return;
             }
             
+            // 根据数据的实际数值范围动态判断单位
+            const xUnit = detectCoordinateUnit(xCoords);
+            
             // 为每个曝光时间创建一条曲线
             const traces = [];
             const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2'];
@@ -3902,7 +3923,7 @@ function createThicknessPlot(container, data) {
                             width: 2 
                         },
                         name: `t=${etchData.time}s`,
-                        hovertemplate: `位置: %{x:.3f} mm<br>蚀刻深度: %{y:.6f}<br>曝光时间: ${etchData.time}s<extra></extra>`
+                        hovertemplate: `位置: %{x:.3f} ${xUnit}<br>形貌深度: %{y:.6f}<br>曝光时间: ${etchData.time}s<extra></extra>`
                     });
                 }
             });
@@ -3920,7 +3941,7 @@ function createThicknessPlot(container, data) {
             const enableExposureTimeWindow = document.getElementById('enable_exposure_time_window_dill');
             const showMultiSegmentText = enableExposureTimeWindow && enableExposureTimeWindow.checked && !isCumulativeExposure;
             
-            let titleText = showMultiSegmentText ? 'DILL模型 - 刻蚀深度分布 (多曝光时间)' : 'DILL模型 - 刻蚀深度分布';
+            let titleText = showMultiSegmentText ? 'DILL模型 - 形貌分布 (多曝光时间)' : 'DILL模型 - 形貌分布';
             if (isCumulativeExposure) {
                 // 获取多段曝光的总时间
                 const segmentCountInput = document.getElementById('segment_count');
@@ -3930,16 +3951,16 @@ function createThicknessPlot(container, data) {
                 const totalTime = segmentCount * segmentDuration;
                 
                 if (showMultiSegmentText) {
-                    titleText = `DILL模型 - 刻蚀深度分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
+                    titleText = `DILL模型 - 形貌分布 (多段曝光时间) t=${totalTime.toFixed(1)}s`;
                 } else {
-                    titleText = `DILL模型 - 刻蚀深度分布 t=${totalTime.toFixed(1)}s`;
+                    titleText = `DILL模型 - 形貌分布 t=${totalTime.toFixed(1)}s`;
                 }
             }
             
             const layout = {
                 title: titleText,
-                xaxis: { title: '位置 (mm)' },
-                yaxis: { title: '蚀刻深度' },
+                xaxis: { title: `位置 (${xUnit})` },
+                yaxis: { title: '相对厚度' },
                 margin: { l: 70, r: 20, t: 80, b: 60 },
                 showlegend: showMultiSegmentText, // 只有在启用自定义多段曝光时间比较时才显示图例
                 legend: {
@@ -4005,7 +4026,7 @@ function createThicknessPlot(container, data) {
             const segmentDuration = segmentDurationInput ? parseFloat(segmentDurationInput.value) || 1 : 1;
             const totalTime = segmentCount * segmentDuration;
             
-            traceName = `刻蚀深度分布 t=${totalTime.toFixed(1)}s`;
+            traceName = `形貌分布 t=${totalTime.toFixed(1)}s`;
         }
         
         const trace = {
@@ -4019,22 +4040,24 @@ function createThicknessPlot(container, data) {
             hovertemplate: `位置: %{x}<br>${(window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].hover_thickness_value) || '相对厚度值'}: %{y}<extra></extra>`
         };
 
-        // 根据模型类型设置不同的轴标签
+        // 根据模型类型和实际数据范围动态设置轴标签
         let xAxisTitle;
         if (currentModelType === 'enhanced_dill') {
             xAxisTitle = 'Z 位置 (μm)'; // 增强DILL模型关注深度方向
         } else {
-            xAxisTitle = (window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].x_position) || 'X 位置 (μm)';
+            // 根据数据的实际数值范围动态判断单位
+            const xUnit = detectCoordinateUnit(xCoords);
+            xAxisTitle = `位置 (${xUnit})`;
         }
 
-        let titleText = '刻蚀深度分布 (1D)';
+        let titleText = '形貌分布 (1D)';
         if (isCumulativeExposure) {
             // 使用前面计算的总时间
             const totalTime = (segmentCount * segmentDuration);
             if (showMultiSegmentText) {
-                titleText = `刻蚀深度分布 (1D) - 多段曝光时间累积 t=${totalTime.toFixed(1)}s`;
+                titleText = `形貌分布 (1D) - 多段曝光时间累积 t=${totalTime.toFixed(1)}s`;
             } else {
-                titleText = `刻蚀深度分布 (1D) t=${totalTime.toFixed(1)}s`;
+                titleText = `形貌分布 (1D) t=${totalTime.toFixed(1)}s`;
             }
         }
         
@@ -4292,11 +4315,11 @@ function createThicknessHeatmap(container, data) {
             xAxisTitle = 'X 位置 (μm)';
             yAxisTitle = 'Y 位置 (μm)';
         } else if (currentModelType === 'enhanced_dill') {
-            title = '光刻胶厚度分布 (2D) (Y, Z平面)';
+            title = '形貌分布 (2D) (Y, Z平面)';
             xAxisTitle = 'Z 位置 (μm)';  // 对于增强DILL模型，横轴是深度方向
             yAxisTitle = 'Y 位置 (μm)';
         } else {
-            title = '光刻胶厚度分布 (2D)';
+            title = '形貌分布 (2D)';
             xAxisTitle = LANGS[currentLang].x_position || 'X 位置 (μm)';
             yAxisTitle = LANGS[currentLang].y_position || 'Y 位置 (μm)';
         }
@@ -4480,10 +4503,14 @@ function createExposureXYHeatmap(container, data) {
             hovertemplate: `X: %{x}<br>Y: %{y}<br>${LANGS[currentLang].hover_exposure_value || '曝光剂量值'}: %{z}<extra></extra>`
         };
         
+        // 动态检测X和Y轴的单位
+        const xUnit = detectCoordinateUnit(xCoords);
+        const yUnit = detectCoordinateUnit(yCoords);
+        
         const layout = {
             title: '曝光计量分布 (2D) (X, Y平面)',
-            xaxis: { title: LANGS[currentLang].x_position || 'X 位置 (μm)' },
-            yaxis: { title: LANGS[currentLang].y_position || 'Y 位置 (μm)' },
+            xaxis: { title: `X 位置 (${xUnit})` },
+            yaxis: { title: `Y 位置 (${yUnit})` },
             margin: { l: 60, r: 20, t: 60, b: 60 }
         };
         
@@ -4522,7 +4549,7 @@ function createExposureXYHeatmap(container, data) {
 }
 
 /**
- * 创建(x, y)平面的光刻胶厚度分布热力图
+ * 创建(x, y)平面的形貌分布热力图
  * 
  * @param {HTMLElement} container - 容器元素
  * @param {Object} data - 数据对象
@@ -4556,10 +4583,14 @@ function createThicknessXYHeatmap(container, data) {
             hovertemplate: `X: %{x}<br>Y: %{y}<br>${LANGS[currentLang].hover_thickness_value || '相对厚度值'}: %{z}<extra></extra>`
         };
         
+        // 动态检测X和Y轴的单位
+        const xUnit = detectCoordinateUnit(xCoords);
+        const yUnit = detectCoordinateUnit(yCoords);
+        
         const layout = {
-            title: LANGS[currentLang].thickness_xy_dist || '光刻胶厚度分布 (2D) (X, Y平面)',
-            xaxis: { title: LANGS[currentLang].x_position || 'X 位置 (μm)' },
-            yaxis: { title: LANGS[currentLang].y_position || 'Y 位置 (μm)' },
+            title: LANGS[currentLang].thickness_xy_dist || '形貌分布 (2D) (X, Y平面)',
+            xaxis: { title: `X 位置 (${xUnit})` },
+            yaxis: { title: `Y 位置 (${yUnit})` },
             margin: { l: 60, r: 20, t: 60, b: 60 }
         };
         
@@ -4652,10 +4683,14 @@ function createEnhancedDillXYExposureHeatmap(container, data) {
             hovertemplate: 'X: %{x}<br>Y: %{y}<br>曝光剂量: %{z}<extra></extra>'
         };
         
+        // 动态检测X和Y轴的单位
+        const xUnit = detectCoordinateUnit(xCoords);
+        const yUnit = detectCoordinateUnit(yCoords);
+        
         const layout = {
             title: 'XY平面曝光剂量分布 (表面)',
-            xaxis: { title: 'X 位置 (μm)' },
-            yaxis: { title: 'Y 位置 (μm)' },
+            xaxis: { title: `X 位置 (${xUnit})` },
+            yaxis: { title: `Y 位置 (${yUnit})` },
             margin: { l: 60, r: 20, t: 60, b: 60 }
         };
         
@@ -4735,10 +4770,14 @@ function createEnhancedDillXYThicknessHeatmap(container, data) {
             hovertemplate: 'X: %{x}<br>Y: %{y}<br>相对厚度: %{z}<extra></extra>'
         };
         
+        // 动态检测X和Y轴的单位
+        const xUnit = detectCoordinateUnit(xCoords);
+        const yUnit = detectCoordinateUnit(yCoords);
+        
         const layout = {
-            title: 'XY平面厚度分布 (表面)',
-            xaxis: { title: 'X 位置 (μm)' },
-            yaxis: { title: 'Y 位置 (μm)' },
+            title: 'XY平面形貌分布 (表面)',
+            xaxis: { title: `X 位置 (${xUnit})` },
+            yaxis: { title: `Y 位置 (${yUnit})` },
             margin: { l: 60, r: 20, t: 60, b: 60 }
         };
         
@@ -4902,7 +4941,7 @@ function createEnhancedDillXPlaneThicknessHeatmap(container, data) {
         };
         
         const layout = {
-            title: 'X平面厚度分布 (Y-Z截面)',
+            title: 'X平面形貌分布 (Y-Z截面)',
             xaxis: { title: 'Y 位置 (μm)' },
             yaxis: { title: 'Z 位置 (μm)' },
             margin: { l: 60, r: 20, t: 60, b: 60 }
@@ -4984,10 +5023,14 @@ function createEnhancedDillYPlaneExposureHeatmap(container, data) {
             hovertemplate: 'X: %{x}<br>Z: %{y}<br>曝光剂量: %{z}<extra></extra>'
         };
         
+        // 动态检测X和Z轴的单位
+        const xUnit = detectCoordinateUnit(xCoords);
+        const zUnit = detectCoordinateUnit(zCoords);
+        
         const layout = {
             title: 'Y平面曝光剂量分布 (X-Z截面)',
-            xaxis: { title: 'X 位置 (μm)' },
-            yaxis: { title: 'Z 位置 (μm)' },
+            xaxis: { title: `X 位置 (${xUnit})` },
+            yaxis: { title: `Z 位置 (${zUnit})` },
             margin: { l: 60, r: 20, t: 60, b: 60 }
         };
         
@@ -5067,10 +5110,14 @@ function createEnhancedDillYPlaneThicknessHeatmap(container, data) {
             hovertemplate: 'X: %{x}<br>Z: %{y}<br>相对厚度: %{z}<extra></extra>'
         };
         
+        // 动态检测X和Z轴的单位
+        const xUnit = detectCoordinateUnit(xCoords);
+        const zUnit = detectCoordinateUnit(zCoords);
+        
         const layout = {
-            title: 'Y平面厚度分布 (X-Z截面)',
-            xaxis: { title: 'X 位置 (μm)' },
-            yaxis: { title: 'Z 位置 (μm)' },
+            title: 'Y平面形貌分布 (X-Z截面)',
+            xaxis: { title: `X 位置 (${xUnit})` },
+            yaxis: { title: `Z 位置 (${zUnit})` },
             margin: { l: 60, r: 20, t: 60, b: 60 }
         };
         
@@ -5840,7 +5887,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
     // 🔧 根据情况确定哪些参数是默认值或自动计算的
     // 四种情况说明：
     // 1. 基础情况：公式计算 + 标准模式 - 所有参数都正常使用
-    // 2. 自定义向量：自定义向量 + 标准模式 - 波长、角度、对比度变成默认值，I_avg自动计算
+    // 2. 自定义向量：自定义向量 + 标准模式 - 波长、周期、对比度变成默认值，I_avg自动计算
     // 3. 多段曝光：公式计算 + 多段累积模式 - 曝光时间t_exp由多段累积计算
     // 4. 混合模式：自定义向量 + 多段累积模式 - 物理参数默认值 + I_avg自动计算 + 时间累积计算
     const defaultCalculatedParams = [];
@@ -5902,7 +5949,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
             ` : `
             <div>• 光强输入: 公式计算模式</div>
             `}
-            <div>• 角度参数 a: ${angle_a_deg}°</div>
+            <div>• 周期 a: ${angle_a_deg}°</div>
             <div>• 对比度 ctr: ${contrast_ctr}</div>
             <div>• 光波长 λ: ${wavelength_nm} nm</div>
             <div>• 空间频率: 4π×sin(a)/λ = ${spatial_freq.toFixed(6)} rad/nm</div>
@@ -5937,9 +5984,9 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
             `}
         `;
     } else if (plotType === 'thickness') {
-        valueLabel = '光刻胶厚度分布:';
+        valueLabel = '形貌分布:';
         valueUnit = '(归一化)';
-        formulaTitle = '2D DILL模型 - 光刻胶厚度分布计算：';
+        formulaTitle = '2D DILL模型 - 形貌分布计算：';
         formulaMath = 'M(x,y) = e<sup>-C × D(x,y)</sup> (当 D(x,y) ≥ c<sub>d</sub>)<br>' +
                      'H(x,y) = 1 - M(x,y)<br>' +
                      '其中 D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)';
@@ -6155,7 +6202,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
                 </div>
                 `}
                 <div class="info-item">
-                    <span class="info-label">角度:</span>
+                    <span class="info-label">周期:</span>
                     <span class="info-value">
                         ${angle_a_deg}°
                         ${defaultCalculatedParams.includes('angle_a') ? '<span class="default-calc-tag" title="此参数在自定义向量模式下不参与计算，为默认显示值"> [默认值]</span>' : ''}
@@ -6701,7 +6748,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>🔬 <strong>实际计算参数：</strong></div>
                 <div>• I<sub>avg</sub>: 平均入射光强度 (${iAvg} mW/cm²)</div>
                 <div>• V: 干涉条纹可见度 (${visibilityParam})</div>
-                <div>• a: 角度参数 (${angleParam}°)</div>
+                <div>• a: 周期 (${angleParam}°)</div>
                 <div>• λ: 光波长 (${wavelength} nm)</div>
                 <div>• 空间频率系数: 4π×sin(a)/λ = ${spatialFreq} rad/μm</div>
                 <div class="formula-separator"></div>
@@ -6756,7 +6803,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
         }
     } else if (plotType === 'thickness') {
         if (isUsingCustomData && isCumulativeExposure) {
-            // 自定义向量数据 + 多段曝光时间累积模式的厚度分布 (最具体的条件放在前面)
+            // 自定义向量数据 + 多段曝光时间累积模式的形貌分布 (最具体的条件放在前面)
             valueLabel = '蚀刻深度/厚度:';
             valueUnit = '(归一化)';
             formulaTitle = '1D DILL模型 - 自定义向量 + 多段曝光时间累积蚀刻深度：';
@@ -7079,7 +7126,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             `;
         }
         else if (isCumulativeExposure) {
-            // 多段曝光时间累积模式的厚度分布
+            // 多段曝光时间累积模式的形貌分布
             valueLabel = '蚀刻深度/厚度:';
             valueUnit = '(归一化)';
             formulaTitle = 'Dill模型 - 多段曝光时间累积模式蚀刻深度计算：';
@@ -7408,7 +7455,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             `;
         }
         else if (isUsingCustomData) {
-            // 仅自定义向量数据的厚度分布
+            // 仅自定义向量数据的形貌分布
             console.log('🔧 厚度图 - 进入: 仅自定义向量模式');
             valueLabel = '蚀刻深度/厚度:';
             valueUnit = '(自定义单位)';
@@ -7535,11 +7582,11 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• C: 光敏速率常数 (${exposureConstant} cm²/mJ)</div>
                 <div>• c<sub>d</sub>: 曝光阈值 (${thresholdCd} mJ/cm²)</div>
                 <div>• V: 干涉条纹可见度 (${visibilityParam})</div>
-                <div>• a: 角度参数 (${angleParam}°)</div>
+                <div>• a: 周期 (${angleParam}°)</div>
                 <div class="formula-separator"></div>
                 <div>📍 <strong>当前位置 x=${x.toFixed(3)}mm 的计算：</strong></div>
                 <div>• I<sub>0</sub>(x): 该点光强 = ${I0_at_x.toFixed(6)} mW/cm²</div>
-                <div>• H(x): 蚀刻深度 (当前值: ${y.toFixed(6)})</div>
+                <div>• H(x): 形貌深度 (当前值: ${y.toFixed(6)})</div>
                 <div class="formula-separator"></div>
                 <div>⚙️ <strong>不同曝光时间下的计算示例：</strong></div>
                 ${calculationDetails}
@@ -7602,7 +7649,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div class="info-item"><span class="info-label">曝光时间:</span><span class="info-value">${params.t_exp || 100} s</span></div>
                 ` : isIdealExposureModel ? `
                 <div class="info-item"><span class="info-label">干涉条纹可见度(V):</span><span class="info-value">${params.V || 1}</span></div>
-                <div class="info-item"><span class="info-label">角度(a):</span><span class="info-value">${params.angle_a || 11.7}°</span></div>
+                <div class="info-item"><span class="info-label">周期(a):</span><span class="info-value">${params.angle_a || 11.7}°</span></div>
                 <div class="info-item"><span class="info-label">波长(λ):</span><span class="info-value">${(params.parameters && params.parameters.wavelength_nm) || params.wavelength || 405} nm</span></div>
                 <div class="info-item"><span class="info-label">C常数:</span><span class="info-value">${params.C || 0.022}</span></div>
                 <div class="info-item"><span class="info-label">阈值(cd):</span><span class="info-value">${params.exposure_threshold || 20}</span></div>
@@ -8598,11 +8645,11 @@ function createThresholdAnalysisText(analysis, threshold, unit, plotType) {
         }
     } else {
         if (analysis.abovePercentage > 90) {
-            lines.push(`✅ 厚度分布良好`);
+            lines.push(`✅ 形貌分布良好`);
         } else if (analysis.abovePercentage > 70) {
-            lines.push(`⚠️ 厚度分布一般，可优化`);
+            lines.push(`⚠️ 形貌分布一般，可优化`);
         } else {
-            lines.push(`❌ 厚度分布不佳，需要调整`);
+            lines.push(`❌ 形貌分布不佳，需要调整`);
         }
     }
     return lines.join('\n');
@@ -11077,9 +11124,12 @@ function updateDill1DAnimationFrame(frameIndex) {
                 marker: { size: 4, color: '#3498db' }
             };
             
+            // 动态检测X轴单位
+            const xUnit = detectCoordinateUnit(exposureX);
+            
             const exposureLayout = {
                 title: `曝光剂量分布 (t=${timeValue.toFixed(2)}s)`,
-                xaxis: { title: 'X 位置 (μm)' },
+                xaxis: { title: `位置 (${xUnit})` },
                 yaxis: { title: '曝光剂量 (mJ/cm²)' },
                 margin: { t: 60, b: 60, l: 80, r: 30 },
                 plot_bgcolor: '#f8f9fa',
@@ -11095,10 +11145,10 @@ function updateDill1DAnimationFrame(frameIndex) {
         console.log('曝光剂量分布图更新完成');
     }
     
-    // 更新光刻胶厚度分布图 - 支持多条曝光时间线
+    // 更新形貌分布图 - 支持多条曝光时间线
     const thicknessContainer = document.getElementById('dill-thickness-1d-plot');
     if (thicknessContainer) {
-        console.log('开始更新光刻胶厚度分布图');
+        console.log('开始更新形貌分布图');
         
         // 清除占位符内容
         thicknessContainer.innerHTML = '';
@@ -11148,7 +11198,7 @@ function updateDill1DAnimationFrame(frameIndex) {
             });
             
             const thicknessLayout = {
-                title: `光刻胶厚度分布对比 (多个曝光时间) - 帧 ${frameIndex + 1}`,
+                title: `形貌分布对比 (多个曝光时间) - 帧 ${frameIndex + 1}`,
                 xaxis: { title: 'X 位置 (mm)' },
                 yaxis: { title: '相对厚度' },
                 margin: { t: 80, b: 60, l: 80, r: 30 },
@@ -11193,16 +11243,19 @@ function updateDill1DAnimationFrame(frameIndex) {
                     y: thicknessY,
                     type: 'scatter',
                     mode: 'lines+markers',
-                    name: `光刻胶厚度分布 (t=${timeValue.toFixed(2)}s)`,
+                    name: `形貌分布 (t=${timeValue.toFixed(2)}s)`,
                     line: { color: '#e74c3c', width: 3 },
                     marker: { size: 4, color: '#e74c3c' },
                     fill: 'tonexty',
                     fillcolor: 'rgba(231, 76, 60, 0.1)'
                 };
                 
+                // 动态检测X轴单位
+                const xUnit = detectCoordinateUnit(thicknessX);
+                
                 const thicknessLayout = {
-                    title: `光刻胶厚度分布 (t=${timeValue.toFixed(2)}s)`,
-                    xaxis: { title: 'X 位置 (μm)' },
+                    title: `形貌分布 (t=${timeValue.toFixed(2)}s)`,
+                    xaxis: { title: `位置 (${xUnit})` },
                     yaxis: { title: '相对厚度' },
                     margin: { t: 60, b: 60, l: 80, r: 30 },
                     plot_bgcolor: '#f8f9fa',
@@ -11213,7 +11266,7 @@ function updateDill1DAnimationFrame(frameIndex) {
             }
         }
         
-        console.log('光刻胶厚度分布图更新完成');
+        console.log('形貌分布图更新完成');
     }
     
     // 更新时间滑块和显示信息
@@ -11436,7 +11489,7 @@ function setupDill4DAnimationUI() {
             <div id="dill-4d-exposure" class="car-4d-plot"></div>
         </div>
         <div class="car-4d-plot-container">
-            <h3>光刻胶厚度分布 (3D+时间)</h3>
+            <h3>形貌分布 (3D+时间)</h3>
             <div id="dill-4d-thickness" class="car-4d-plot"></div>
         </div>
     `;
@@ -11466,7 +11519,7 @@ function setupEnhancedDill4DAnimationUI() {
             <div id="enhanced-dill-4d-exposure" class="car-4d-plot"></div>
         </div>
         <div class="car-4d-plot-container">
-            <h3>光刻胶厚度分布 (3D+时间)</h3>
+            <h3>形貌分布 (3D+时间)</h3>
             <div id="enhanced-dill-4d-thickness" class="car-4d-plot"></div>
         </div>
     `;
@@ -11685,7 +11738,7 @@ function update3DDillAnimationFrame(frameIndex, exposureFrames, thicknessFrames,
         
         const thicknessLayout = {
             ...common3DLayout,
-            title: `光刻胶厚度分布 (t=${timeValue.toFixed(2)}s)`,
+            title: `形貌分布 (t=${timeValue.toFixed(2)}s)`,
             scene: {
                 ...common3DLayout.scene,
                 xaxis: { title: 'Z 位置 (μm)' },
@@ -11740,7 +11793,7 @@ function update2DDillAnimationFrame(frameIndex, exposureFrames, thicknessFrames,
         }];
         
         const thicknessLayout = {
-            title: `光刻胶厚度分布 (t=${timeValue.toFixed(2)}s)`,
+            title: `形貌分布 (t=${timeValue.toFixed(2)}s)`,
             xaxis: { title: 'Z 位置 (μm)' },
             yaxis: { title: 'Y 位置 (μm)' },
             autosize: true,
@@ -11795,7 +11848,7 @@ function update1DDillAnimationFrame(frameIndex, exposureFrames, thicknessFrames,
         }];
         
         const thicknessLayout = {
-            title: `光刻胶厚度分布 (t=${timeValue.toFixed(2)}s)`,
+            title: `形貌分布 (t=${timeValue.toFixed(2)}s)`,
             xaxis: { title: 'Z 位置 (μm)' },
             yaxis: { title: '厚度 (μm)' },
             autosize: true,
@@ -12896,7 +12949,7 @@ function updateDill1DVEvaluationFrame(frameIndex) {
             // 添加V值标题
             const thicknessTitle = thicknessContainer.parentElement.querySelector('.v-evaluation-plot-title');
             if (thicknessTitle) {
-                thicknessTitle.textContent = `光刻胶厚度分布 (V=${frameData.v_value.toFixed(3)})`;
+                thicknessTitle.textContent = `形貌分布 (V=${frameData.v_value.toFixed(3)})`;
             }
         } catch (error) {
             console.error('更新V评估厚度图表失败:', error);
@@ -13318,7 +13371,7 @@ function exportPlotData(plotType) {
         case 'thickness':
             container = document.getElementById('thickness-plot-container');
             filename = 'thickness_data.csv';
-            header = '位置(mm),刻蚀深度\n';
+            header = '位置(mm),形貌深度\n';
             break;
         case 'exposure_xy':
             container = document.getElementById('exposure-xy-plot-container');
@@ -13387,7 +13440,7 @@ function exportPlotData(plotType) {
                     container.data.forEach((trace, index) => {
                         if (trace.name && trace.name.includes('t=')) {
                             const timeName = trace.name;
-                            csvContent += `,${timeName}_刻蚀深度`;
+                            csvContent += `,${timeName}_形貌深度`;
                             timeLabels.push(timeName);
                         }
                     });

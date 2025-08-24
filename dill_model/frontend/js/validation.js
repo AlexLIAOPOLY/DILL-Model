@@ -190,7 +190,7 @@ function displayParameters(params) {
                 'V': '对比度',
                 'K': '空间频率K',
                 'wavelength': '波长 (nm)',
-                'angle_a': '衍射角度 (°)'
+                'angle_a': '衍射周期 (°)'
             }
         },
         '曝光参数': {
@@ -374,6 +374,7 @@ function displayThicknessPlot(data) {
     
     try {
         let plotData;
+        let xUnit = 'μm'; // 默认单位，在所有分支外定义
         
         console.log('厚度数据类型:', typeof thicknessData, '是否为数组:', Array.isArray(thicknessData));
         console.log('厚度数据长度:', thicknessData.length);
@@ -382,6 +383,13 @@ function displayThicknessPlot(data) {
         if (Array.isArray(thicknessData) && Array.isArray(thicknessData[0])) {
             // 2D数据
             console.log('显示2D厚度图');
+            
+            // 为2D数据也检测X轴单位
+            if (xCoords && xCoords.length > 0) {
+                const xRange = Math.max(...xCoords) - Math.min(...xCoords);
+                xUnit = xRange > 100 ? 'mm' : 'μm';
+            }
+            
             plotData = [{
                 z: thicknessData,
                 type: 'heatmap',
@@ -399,6 +407,11 @@ function displayThicknessPlot(data) {
             // 1D数据
             console.log('显示1D厚度图');
             const xData = xCoords || Array.from({length: thicknessData.length}, (_, i) => (i - thicknessData.length/2) * 0.01);
+        
+            // 动态检测X轴坐标单位
+            const xRange = Math.max(...xData) - Math.min(...xData);
+            xUnit = xRange > 100 ? 'mm' : 'μm'; // 如果范围大于100，认为是毫米单位
+            
             plotData = [{
                 x: xData,
                 y: thicknessData,
@@ -410,8 +423,8 @@ function displayThicknessPlot(data) {
                     color: '#20c997',
                     symbol: 'circle'
                 },
-                name: '厚度分布',
-                hovertemplate: 'X: %{x:.2f}μm<br>厚度: %{y:.3f}μm<extra></extra>'
+                name: '形貌分布',
+                hovertemplate: `X: %{x:.2f}${xUnit}<br>厚度: %{y:.3f}μm<extra></extra>`
             }];
         } else {
             throw new Error('不支持的厚度数据格式');
@@ -419,14 +432,14 @@ function displayThicknessPlot(data) {
         
         const layout = {
             title: {
-                text: '光刻胶厚度分布 - 点击进行标注',
+                text: '形貌分布 - 点击进行标注',
                 font: { size: 18, family: 'Arial, sans-serif' },
                 x: 0.5
             },
             autosize: true,
             xaxis: { 
                 title: { 
-                    text: 'X坐标 (μm)',
+                    text: `X坐标 (${xUnit})`,
                     font: { size: 14 }
                 },
                 gridcolor: '#e0e0e0',
@@ -1555,15 +1568,15 @@ function displayExcelData(data) {
         'exposure_calculation_method': '曝光计算方法',
         
         // 标注数据
-        'annotation_x': '标注X坐标 (μm)',
-        'annotation_y': '标注Y坐标 (μm)',
+        'annotation_x': '标注X坐标',
+        'annotation_y': '标注Y坐标',
         'simulated_value': '模拟值 (mm)',
         'actual_value': '实测值 (mm)',
         'annotation_timestamp': '标注时间',
         
         // 兼容旧字段
-        'x_coord': 'X坐标 (μm)',
-        'y_coord': 'Y坐标 (μm)',
+        'x_coord': 'X坐标',
+        'y_coord': 'Y坐标',
         'relative_error': '相对误差 (%)',
         'C': '光敏速率常数'
     };

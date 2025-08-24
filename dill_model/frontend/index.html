@@ -1734,15 +1734,15 @@ intensity3
                         <!-- 参数1: angle_a -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">角度参数 (a)</span>
+                                <span class="parameter-name">周期 (a)</span>
                                 
                                 <span class="parameter-value">11.7</span>
                             </div>
                             <div class="parameter-input">
-                                <input type="range" id="angle_a" class="slider" min="1" max="45" step="0.1" value="11.7" title="角度参数滑块" aria-label="角度参数">
-                                <input type="number" class="number-input" value="11.7" min="1" max="45" step="0.1" title="角度参数数值输入" aria-label="角度参数数值">
+                                <input type="range" id="angle_a" class="slider" min="1" max="45" step="0.1" value="11.7" title="周期滑块" aria-label="周期">
+                                <input type="number" class="number-input" value="11.7" min="1" max="45" step="0.1" title="周期数值输入" aria-label="周期数值">
                             </div>
-                            <div class="parameter-description" data-i18n="param_desc_angle_a">光强分布阶段：控制干涉条纹角度，角度大=条纹密度高=空间频率高，角度小=条纹稀疏</div>
+                            <div class="parameter-description" data-i18n="param_desc_angle_a">光强分布阶段：控制干涉条纹周期，周期小=条纹密度高=空间频率高，周期大=条纹稀疏</div>
                         </div>
                         
                         <!-- 参数2: wavelength -->
@@ -3061,7 +3061,7 @@ intensity3
                     
                     <!-- 新增(X, Y)平面光刻胶厚度热力图 -->
                     <div class="plot-item" id="thickness-xy-plot-item" style="display:none;">
-                        <h3 class="plot-title">光刻胶厚度分布 (2D) (X, Y平面)</h3>
+                        <h3 class="plot-title">形貌分布 (2D) (X, Y平面)</h3>
                         <div id="thickness-xy-plot-container" class="plot-container"></div>
                         <div class="plot-export-btns">
                             <button id="export-thickness-xy-img">导出图片</button>
@@ -3071,7 +3071,7 @@ intensity3
 
                     <!-- 曝光剂量分布图 -->
                     <div class="plot-item">
-                        <h3 class="plot-title" data-i18n="exposure_dist">光强分布 (1D)</h3>
+                        <h3 class="plot-title" data-i18n="exposure_dist">曝光剂量分布 (1D)</h3>
                         <div id="exposure-plot-container" class="plot-container"></div>
                         <!-- 阈值控制模块已注释掉 -->
                         <!-- <div class="individual-threshold-controls threshold-analysis-hint" id="exposure-thresholds-container">
@@ -3091,9 +3091,9 @@ intensity3
                         <img id="exposure-plot" class="plot-image" style="display: none;" src="" alt="曝光剂量分布图">
                     </div>
                     
-                    <!-- 刻蚀深度分布图 -->
+                    <!-- 形貌分布图 -->
                     <div class="plot-item">
-                        <h3 class="plot-title" data-i18n="thickness_dist">刻蚀深度分布 (1D)</h3>
+                        <h3 class="plot-title" data-i18n="thickness_dist">形貌分布 (1D)</h3>
                         <div id="thickness-plot-container" class="plot-container"></div>
                         <!-- 阈值控制模块已注释掉 -->
                         <!-- <div class="individual-threshold-controls threshold-analysis-hint" id="thickness-thresholds-container">
@@ -3110,7 +3110,7 @@ intensity3
                             <button id="export-thickness-data" data-i18n="export_data">导出数据</button>
                         </div>
                         <!-- 保留原有图像作为后备 -->
-                        <img id="thickness-plot" class="plot-image" style="display: none;" src="" alt="刻蚀深度分布图">
+                        <img id="thickness-plot" class="plot-image" style="display: none;" src="" alt="形貌分布图">
                     </div>
 
                     <!-- 结果区增加二维热力图展示区域 -->
@@ -3168,7 +3168,7 @@ intensity3
                                 <div id="dill-thickness-1d-plot" class="plot-area" style="height: 400px; width: 100%; border: 1px solid #ddd; border-radius: 8px;">
                                     <div class="plot-placeholder">
                                         <i class="fas fa-chart-area" style="font-size: 48px; color: #ccc;"></i>
-                                        <p style="color: #999; margin-top: 10px;">刻蚀深度分布将在这里显示</p>
+                                        <p style="color: #999; margin-top: 10px;">形貌分布将在这里显示</p>
                                     </div>
                                 </div>
                             </div>
@@ -3227,7 +3227,7 @@ intensity3
                                 <div id="dill-v-thickness-1d-plot" class="plot-area" style="height: 400px; width: 100%; border: 1px solid #ddd; border-radius: 8px;">
                                     <div class="plot-placeholder">
                                         <i class="fas fa-chart-area" style="font-size: 48px; color: #ccc;"></i>
-                                        <p style="color: #999; margin-top: 10px;">V值变化的刻蚀深度分布将在这里显示</p>
+                                        <p style="color: #999; margin-top: 10px;">V值变化的形貌分布将在这里显示</p>
                                     </div>
                                 </div>
                             </div>

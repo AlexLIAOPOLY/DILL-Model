@@ -1136,7 +1136,7 @@ function updateCar4DAnimationFrame(frameIndex) {
         Plotly.newPlot('car-4d-deprotection', deprotectionData, deprotectionLayout, plotlyConfig);
     }
     
-    // 4. 更新光刻胶厚度分布图
+    // 4. 更新形貌分布图
     if (thicknessFrames && car4DAnimationData.x_coords && car4DAnimationData.y_coords) {
         const thicknessData = [{
             type: 'surface',

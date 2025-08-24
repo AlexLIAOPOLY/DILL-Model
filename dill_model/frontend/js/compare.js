@@ -1346,7 +1346,7 @@ function createThicknessComparisonPlot(container, data) {
         displaylogo: false,
         modeBarButtonsToRemove: ['lasso2d', 'select2d'],
         toImageButtonOptions: {
-            filename: '光刻胶厚度分布比较',
+            filename: '形貌分布比较',
             width: 1200,
             height: 800
         }
@@ -3021,11 +3021,11 @@ function createThresholdAnalysisText(analysis, threshold, unit, plotType) {
         }
     } else {
         if (analysis.abovePercentage > 90) {
-            lines.push(`✅ 厚度分布良好`);
+            lines.push(`✅ 形貌分布良好`);
         } else if (analysis.abovePercentage > 70) {
-            lines.push(`⚠️ 厚度分布一般，可优化`);
+            lines.push(`⚠️ 形貌分布一般，可优化`);
         } else {
-            lines.push(`❌ 厚度分布不佳，需要调整`);
+            lines.push(`❌ 形貌分布不佳，需要调整`);
         }
     }
     
