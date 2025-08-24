@@ -17,17 +17,17 @@ DILL模型计算工具是一款专业的光刻工艺仿真软件，实现了从�
 
 ## 技术架构
 
-### 后端架构
-- **核心框架**：Flask 3.0+ Web应用
-- **科学计算**：NumPy、SciPy数值计算引擎
-- **数据处理**：Pandas、OpenPyXL处理验证数据
-- **机器学习**：scikit-learn实现智能优化算法
-- **可视化生成**：Matplotlib图像渲染
+### 后端技术栈
+- ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white) **Flask 3.0+** Web应用框架
+- ![NumPy](https://img.shields.io/badge/NumPy-013243?style=flat&logo=numpy&logoColor=white) **科学计算引擎**：NumPy、SciPy数值计算
+- ![Pandas](https://img.shields.io/badge/Pandas-150458?style=flat&logo=pandas&logoColor=white) **数据处理**：Pandas、OpenPyXL处理验证数据
+- ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat&logo=scikit-learn&logoColor=white) **机器学习**：智能优化算法
+- ![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=flat&logo=python&logoColor=white) **可视化生成**：图像渲染
 
-### 前端架构
-- **界面技术**：原生HTML5 + CSS3 + JavaScript
-- **图表库**：Plotly.js交互式可视化
-- **UI增强**：Font Awesome图标、Google Fonts
+### 前端技术栈
+- ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black) **原生Web技术**
+- ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=flat&logo=plotly&logoColor=white) **交互式可视化**
+- ![Font Awesome](https://img.shields.io/badge/Font%20Awesome-528DD7?style=flat&logo=fontawesome&logoColor=white) **图标库**、Google Fonts
 - **多语言支持**：中英文切换
 
 ### 文件结构
