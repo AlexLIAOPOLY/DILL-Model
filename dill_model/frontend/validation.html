@@ -591,13 +591,54 @@
             font-style: italic;
         }
 
-        /* 分析结果样式 */
+        /* 分析结果样式（已停用显示） */
         .analysis-section {
             background: #f8f9fa;
             border-radius: 8px;
             padding: 20px;
             margin-top: 20px;
             border: 1px solid #e9ecef;
+            display: none !important;
+        }
+        
+        /* 结果说明样式 */
+        .result-hint {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 6px;
+            margin-bottom: 0;
+            line-height: 1.4;
+            font-style: italic;
+            display: block;
+            clear: both;
+            flex-basis: 100%;      /* 强制换行到下一行 */
+            width: 100%;           /* 占满一行 */
+            text-align: left;      /* 小字左对齐 */
+        }
+        
+        /* 结果项布局调整 */
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .result-item .result-label {
+            flex: 0 0 auto;
+        }
+        
+        .result-item .result-value {
+            flex: 0 0 auto;
+            text-align: right;
+            margin-left: auto;
+        }
+        
+        /* 多策略胶囊容器右对齐 */
+        .exposure-time-list {
+            margin-left: auto;
+            text-align: right;
         }
 
         .analysis-header h5 {
@@ -713,8 +754,8 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
             animation: fadeIn 0.3s ease;
         }
 
@@ -903,6 +944,214 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none !important;
+        }
+
+        /* 手动标注弹窗 - 简洁美观风格（仅作用于该弹窗） */
+        #manual-annotation-modal .annotation-modal-content {
+            width: 520px;
+            max-width: 92vw;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+        }
+
+        #manual-annotation-modal .annotation-modal-header {
+            background: linear-gradient(180deg, #ffffff 0%, #edf7ff 100%);
+            color: #0f172a;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        #manual-annotation-modal .annotation-modal-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        #manual-annotation-modal .annotation-modal-header .close-btn {
+            color: #64748b;
+        }
+
+        #manual-annotation-modal .annotation-modal-header .close-btn:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+
+        #manual-annotation-modal .annotation-modal-body {
+            padding: 20px 24px;
+        }
+
+        #manual-annotation-modal .coordinate-info {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+        }
+
+        #manual-annotation-modal .coordinate-value {
+            color: #0f172a;
+            border-color: #94a3b8;
+            background: #ffffff;
+        }
+
+        #manual-annotation-modal .measurement-input {
+            background: #f8fafc;
+            border-color: #e5e7eb;
+        }
+
+        #manual-annotation-modal .measurement-input:focus {
+            border-color: #0ea5e9;
+            background: #ffffff;
+        }
+
+        #manual-annotation-modal .modal-buttons {
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* 按钮色系：避免使用紫色与图标，保持简洁 */
+        .modal-btn-primary {
+            background: #0ea5e9;
+            color: #ffffff;
+        }
+
+        .modal-btn-primary:hover {
+            background: #0284c7;
+        }
+
+        .modal-btn-success {
+            background: #10b981;
+            color: #ffffff;
+        }
+
+        .modal-btn-success:hover {
+            background: #059669;
+        }
+
+        /* 数据点标注弹窗 - 简洁美观风格（仅作用于该弹窗） */
+        #annotation-modal .annotation-modal-content {
+            width: 520px;
+            max-width: 92vw;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+        }
+
+        #annotation-modal .annotation-modal-header {
+            background: linear-gradient(180deg, #ffffff 0%, #edf7ff 100%);
+            color: #0f172a;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        #annotation-modal .annotation-modal-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        #annotation-modal .annotation-modal-header .close-btn {
+            color: #64748b;
+        }
+
+        #annotation-modal .annotation-modal-header .close-btn:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+
+        #annotation-modal .annotation-modal-body {
+            padding: 20px 24px;
+        }
+
+        #annotation-modal .coordinate-info {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        #annotation-modal .coordinate-value {
+            color: #0f172a;
+            border-color: #94a3b8;
+            background: #ffffff;
+        }
+
+        #annotation-modal .measurement-input {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        #annotation-modal .measurement-input:focus {
+            border-color: #0ea5e9;
+            background: #ffffff;
+        }
+
+        #annotation-modal .modal-buttons {
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* 训练参数设置弹窗 - 简洁美观风格（仅作用于该弹窗） */
+        #training-settings-modal .annotation-modal-content {
+            max-width: 92vw;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+        }
+
+        #training-settings-modal .annotation-modal-header {
+            background: linear-gradient(180deg, #ffffff 0%, #edf7ff 100%);
+            color: #0f172a;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        #training-settings-modal .annotation-modal-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        #training-settings-modal .annotation-modal-header .close-btn {
+            color: #64748b;
+        }
+
+        #training-settings-modal .annotation-modal-header .close-btn:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+
+        #training-settings-modal .annotation-modal-body {
+            padding: 20px 24px;
+        }
+
+        #training-settings-modal .measurement-input {
+            background: #f8fafc;
+            border-color: #e5e7eb;
+        }
+
+        #training-settings-modal .measurement-input:focus {
+            border-color: #0ea5e9;
+            background: #ffffff;
+        }
+
+        /* 让“模型类型”看起来是下拉框 */
+        #training-settings-modal select.measurement-input {
+            appearance: none;
+            -moz-appearance: none;
+            -webkit-appearance: none;
+            padding-right: 36px;
+            cursor: pointer;
+            background-color: #f8fafc;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%2364748b' d='M5.23 7.21a.75.75 0 011.06.02L10 10.17l3.71-2.94a.75.75 0 111.04 1.08l-4.24 3.36a.75.75 0 01-.94 0L5.21 8.31a.75.75 0 01.02-1.1z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 18px 18px;
+        }
+
+        #training-settings-modal .modal-buttons {
+            justify-content: flex-end;
+            gap: 12px;
         }
 
 
@@ -1430,6 +1679,7 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
+            -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px);
             animation: fadeIn 0.3s ease;
         }
@@ -2011,7 +2261,7 @@
                                 <button id="show-training-settings" class="btn btn-primary">
 训练设置
                                 </button>
-                                <button id="predict-parameters" class="btn btn-success" disabled>
+                                <button id="predict-parameters" class="btn btn-success">
 参数预测
                                 </button>
                             </div>
@@ -2055,40 +2305,13 @@
                             <label for="target-position-x">目标位置 X:</label>
                             <input type="number" id="target-position-x" step="1" value="0">
                         </div>
-                        <div class="setting-row">
+                        <div class="setting-row y-coord-field" id="target-position-y-row">
                             <label for="target-position-y">目标位置 Y:</label>
                             <input type="number" id="target-position-y" step="0.1" value="0">
                         </div>
                     </div>
                     
-                    <!-- 自定义优化参数设置 -->
-                    <div id="custom-optimization-settings" class="custom-settings" style="display: none;">
-                        <h5>自定义优化参数</h5>
-                        <div class="setting-row">
-                            <label for="custom-sensitivity">算法敏感度:</label>
-                            <select id="custom-sensitivity">
-                                <option value="1.0">低敏感度 (保守)</option>
-                                <option value="2.0" selected>标准敏感度 (推荐)</option>
-                                <option value="3.0">高敏感度 (激进)</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label for="custom-confidence-threshold">最低置信度:</label>
-                            <select id="custom-confidence-threshold">
-                                <option value="0.3">低要求 (30%)</option>
-                                <option value="0.5" selected>中等要求 (50%)</option>
-                                <option value="0.7">高要求 (70%)</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label for="custom-strategy-count">生成策略数量:</label>
-                            <select id="custom-strategy-count">
-                                <option value="1">单一最优策略</option>
-                                <option value="3" selected>三种策略对比</option>
-                                <option value="5">五种策略全面分析</option>
-                            </select>
-                        </div>
-                    </div>
+                    <!-- 自定义优化参数设置（已移动到验证记录列表下方显示） -->
                     
                     <!-- 验证记录列表 -->
                     <div class="validation-records-list">
@@ -2101,6 +2324,38 @@
                         </div>
                         <div id="validation-records-container" class="records-container">
                             <div class="loading-message">正在加载验证数据...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 自定义优化参数设置：放在验证记录列表下方 -->
+                    <div id="custom-optimization-settings" class="custom-settings" style="display: none;">
+                        <h5>自定义优化参数</h5>
+                        <div class="setting-row">
+                            <label for="custom-sensitivity">算法敏感度:</label>
+                            <select id="custom-sensitivity">
+                                <option value="1.0">低敏感度 (保守)</option>
+                                <option value="2.0" selected>标准敏感度 (推荐)</option>
+                                <option value="3.0">高敏感度 (激进)</option>
+                            </select>
+                            <div class="param-hint">控制优化调整的幅度。数值越高越激进，收敛更快但波动可能更大；数值越低越保守，更平稳但调整较小。</div>
+                        </div>
+                        <div class="setting-row">
+                            <label for="custom-confidence-threshold">最低置信度:</label>
+                            <select id="custom-confidence-threshold">
+                                <option value="0.3">低要求 (30%)</option>
+                                <option value="0.5" selected>中等要求 (50%)</option>
+                                <option value="0.7">高要求 (70%)</option>
+                            </select>
+                            <div class="param-hint">用于过滤低可信的候选策略。阈值越高越严格，保留的策略更少但更可靠；阈值越低更宽松，策略更多样。</div>
+                        </div>
+                        <div class="setting-row">
+                            <label for="custom-strategy-count">生成策略数量:</label>
+                            <select id="custom-strategy-count">
+                                <option value="1">单一最优策略</option>
+                                <option value="3" selected>三种策略对比</option>
+                                <option value="5">五种策略全面分析</option>
+                            </select>
+                            <div class="param-hint">返回用于对比的候选方案数量。更多方案便于比较，但生成与选择时间会略有增加。</div>
                         </div>
                     </div>
                     
@@ -2127,27 +2382,24 @@
                         <div class="result-item">
                             <span class="result-label">推荐曝光时间：</span>
                             <span class="result-value" id="exposure-time-value">--</span>
+                            <div id="exposure-time-multi" class="exposure-time-list" style="display:none;"></div>
+                            <div class="result-hint">基于历史验证数据和模型计算得到的候选时间，选择不同策略会给出不同时间</div>
                         </div>
                         <div class="result-item">
                             <span class="result-label">优化策略：</span>
                             <span class="result-value" id="strategy-value">--</span>
+                            <div class="result-hint">描述生成该曝光时间的算法方法及其可靠性，置信度越高代表该策略在当前数据下更准确</div>
                         </div>
                         <div class="result-item">
                             <span class="result-label">预测厚度：</span>
                             <span class="result-value" id="thickness-value">--</span>
+                            <div class="result-hint">模型在所选策略与曝光时间下对最终厚度的预测值，供参考使用</div>
                         </div>
-                        <div class="result-item">
-                            <span class="result-label">置信度：</span>
-                            <span class="result-value" id="confidence-value">--</span>
-                        </div>
-                        <div class="result-item">
-                            <span class="result-label">参考记录数：</span>
-                            <span class="result-value" id="reference-records-value">--</span>
-                        </div>
+
                     </div>
                     
                     <!-- 经验分析报告 -->
-                    <div id="experience-analysis" class="analysis-section" style="display: none;">
+                    <div id="experience-analysis" class="analysis-section" style="display: none !important;">
                         <div class="analysis-header">
                             <h5>经验分析报告</h5>
                         </div>
@@ -2287,17 +2539,37 @@
     <!-- 参数预测输入弹窗 -->
     <div id="prediction-input-modal" class="annotation-modal">
         <div class="annotation-modal-content" style="width: 520px; max-width: 90vw; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
-            <div class="annotation-modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px 16px 0 0; padding: 24px; text-align: center;">
+            <div class="annotation-modal-header" style="background: linear-gradient(180deg, #ffffff 0%, #edf7ff 100%); color: #0f172a; border-radius: 16px 16px 0 0; padding: 20px 24px; text-align: left; border-bottom: 1px solid #e5e7eb;">
                 <h3 style="margin: 0; font-size: 20px; font-weight: 600;">智能参数预测</h3>
-                <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">输入目标条件，AI为您推荐最优参数组合</p>
-                <button class="close-btn" onclick="closePredictionInputModal()" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+                <p style="margin: 6px 0 0 0; font-size: 14px; color: #475569;">输入目标条件，AI为您推荐最优参数组合</p>
+                <button class="close-btn" onclick="closePredictionInputModal()" style="position: absolute; top: 16px; right: 16px; background: transparent; color: #64748b; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
             </div>
             <div class="annotation-modal-body" style="padding: 32px 24px;">
                 <div class="prediction-form-grid" style="display: grid; gap: 24px;">
+                    <!-- 模型选择 -->
+                    <div class="input-group-enhanced" style="position: relative;">
+                        <label class="input-label-enhanced" for="prediction-model-select" style="display: block; font-weight: 600; color: #333; margin-bottom: 8px; font-size: 14px;">
+                            选择预测模型
+                            <span style="color: #999; font-weight: normal; font-size: 12px; margin-left: 8px;">请选择要使用的训练模型</span>
+                        </label>
+                        <select id="prediction-model-select" 
+                                style="width: 100%; padding: 14px 16px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 16px; transition: all 0.3s ease; box-sizing: border-box; background: white;"
+                                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)'"
+                                onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'"
+                                onchange="updateModelInfo(this.value)">
+                            <option value="linear_regression">线性回归 - Linear Regression</option>
+                            <option value="random_forest">随机森林 - Random Forest</option>
+                            <option value="svm">支持向量机 - SVM</option>
+                        </select>
+                        <div id="model-status-info" style="margin-top: 6px; padding: 8px 12px; background: #f8f9fa; border-radius: 6px;">
+                            <small id="model-status-text" style="color: #28a745; font-size: 12px; font-weight: 500;">✅ 模型已训练，可用于预测</small>
+                        </div>
+                    </div>
+
                     <div class="input-group-enhanced" style="position: relative;">
                         <label class="input-label-enhanced" for="target-x" style="display: block; font-weight: 600; color: #333; margin-bottom: 8px; font-size: 14px;">
                             目标X坐标
-                            <span style="color: #999; font-weight: normal; font-size: 12px; margin-left: 8px;">单位：μm</span>
+                            <span id="target-x-unit" style="color: #999; font-weight: normal; font-size: 12px; margin-left: 8px;">单位：μm</span>
                         </label>
                         <input type="number" id="target-x" placeholder="输入X坐标" value="0" step="0.1" 
                                style="width: 100%; padding: 14px 16px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 16px; transition: all 0.3s ease; box-sizing: border-box;"
@@ -2305,17 +2577,7 @@
                                onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'">
                     </div>
                     
-                    <div class="input-group-enhanced" style="position: relative;">
-                        <label class="input-label-enhanced" for="target-y" style="display: block; font-weight: 600; color: #333; margin-bottom: 8px; font-size: 14px;">
-                            目标Y坐标
-                            <span style="color: #999; font-weight: normal; font-size: 12px; margin-left: 8px;">单位：μm</span>
-                        </label>
-                        <input type="number" id="target-y" placeholder="输入Y坐标" value="0" step="0.1" 
-                               style="width: 100%; padding: 14px 16px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 16px; transition: all 0.3s ease; box-sizing: border-box;"
-                               onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)'"
-                               onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'">
-                    </div>
-                    
+
                     <div class="input-group-enhanced" style="position: relative;">
                         <label class="input-label-enhanced" for="target-thickness" style="display: block; font-weight: 600; color: #333; margin-bottom: 8px; font-size: 14px;">
                             期待厚度
@@ -2326,7 +2588,7 @@
                                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102,126,234,0.1)'"
                                onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'">
                         <div style="margin-top: 6px; padding: 8px 12px; background: #f8f9fa; border-radius: 6px;">
-                            <small style="color: #28a745; font-size: 12px; font-weight: 500;">💡 建议范围：0.1 - 2.0 μm</small>
+                            <small style="color: #28a745; font-size: 12px; font-weight: 500;">建议范围：0.1 - 2.0 μm</small>
                         </div>
                     </div>
                 </div>
@@ -2339,9 +2601,9 @@
                     取消
                 </button>
                 <button type="button" onclick="startPrediction()" 
-                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 32px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(102,126,234,0.3);"
-                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(102,126,234,0.4)'"
-                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.3)'">
+                        style="background: #0ea5e9; color: white; border: none; padding: 12px 32px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(14,165,233,0.25);"
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.background='#0284c7'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.background='#0ea5e9'">
                     开始预测
                 </button>
             </div>
@@ -2448,10 +2710,10 @@
                     <button class="modal-btn modal-btn-cancel" onclick="closeManualAnnotationModal()">
                         取消
                     </button>
-                    <button class="modal-btn modal-btn-confirm" onclick="calculateSimulatedValue()">
+                    <button class="modal-btn modal-btn-primary" onclick="calculateSimulatedValue()">
                         计算模拟值
                     </button>
-                    <button class="modal-btn modal-btn-confirm" onclick="confirmManualAnnotation()">
+                    <button class="modal-btn modal-btn-success" onclick="confirmManualAnnotation()">
                         确认添加
                     </button>
                 </div>
@@ -2486,7 +2748,7 @@
                             oninput="updateSimulatedThickness()"
                         >
                     </div>
-                    <div class="input-group-opt">
+                    <div class="input-group-opt y-coord-field" id="target-y-coord-row">
                         <label class="input-label-opt" for="target-y-coord">
                             目标Y坐标 (μm):
                         </label>
@@ -2554,7 +2816,7 @@
 
     <!-- 训练参数设置弹窗 -->
     <div id="training-settings-modal" class="annotation-modal">
-        <div class="annotation-modal-content" style="width: 480px;">
+        <div class="annotation-modal-content" style="width: 520px;">
             <div class="annotation-modal-header">
                 <h3>
                     模型训练参数设置
@@ -2576,7 +2838,6 @@
                         min="10" 
                         max="1000"
                         step="10"
-                        style="background: white;"
                     >
                     <small style="color: #6c757d; font-size: 12px; margin-top: 5px; display: block;">
                         建议范围：50-200轮，数据量大时可适当增加
@@ -2595,7 +2856,6 @@
                         min="10" 
                         max="40"
                         step="5"
-                        style="background: white;"
                     >
                     <small style="color: #6c757d; font-size: 12px; margin-top: 5px; display: block;">
                         用于验证模型性能的数据比例
@@ -2606,7 +2866,7 @@
                     <label class="input-label" for="model-type-select">
                         模型类型:
                     </label>
-                    <select id="model-type-select" class="measurement-input" style="background: white;">
+                    <select id="model-type-select" class="measurement-input">
                         <option value="random_forest">随机森林 (推荐)</option>
                         <option value="linear_regression">线性回归</option>
                         <option value="svm">支持向量机</option>
@@ -2645,6 +2905,9 @@
     
     <!-- 通知系统脚本 -->
     <script>
+        // 全局变量，用于访问当前厚度数据
+        let currentThicknessData = null;
+        
         // 初始化折叠功能
         function initCollapsibleSection() {
             const title = document.getElementById('parameters-section-title');
@@ -2880,10 +3143,10 @@
             // 绑定参数预测按钮事件
             const predictBtn = document.getElementById('predict-parameters');
             if (predictBtn) {
-                // 初始状态下禁用参数预测按钮
-                predictBtn.disabled = true;
-                predictBtn.style.opacity = '0.5';
-                predictBtn.style.cursor = 'not-allowed';
+                // 参数预测按钮默认启用，可使用现有模型
+                predictBtn.disabled = false;
+                predictBtn.style.opacity = '1';
+                predictBtn.style.cursor = 'pointer';
                 
                 predictBtn.addEventListener('click', function() {
                     if (predictBtn.disabled) {
@@ -3050,6 +3313,22 @@
 
             // 关闭弹窗
             closeTrainingSettingsModal();
+            
+            // 隐藏所有结果区域，避免重叠显示
+            const sectionsToHide = [
+                'complete-prediction-section',
+                'optimization-result-section', 
+                'training-curves-section',
+                'experience-analysis',
+                'validation-data-selector'
+            ];
+            
+            sectionsToHide.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.display = 'none';
+                }
+            });
 
             // 显示训练状态
             const showTrainingSettingsBtn = document.getElementById('show-training-settings');
@@ -3149,12 +3428,17 @@
                 strategyElement.textContent = getModelTypeDisplayName(details.model_type);
                 thicknessElement.textContent = `${trainingsamples} 条数据，${details.epochs} 轮次`;
                 
+                // 置信度显示已删除，避免与训练准确度重复
+                
                 resultSection.style.display = 'block';
                 
                         // 显示训练曲线（如果有数据）
-        if (details.training_curves && details.training_curves.epochs && details.training_curves.epochs.length > 1) {
+        console.log('🔍 检查训练曲线数据:', details.training_curves);
+        if (details.training_curves && details.training_curves.epochs && details.training_curves.epochs.length >= 1) {
+            console.log('✅ 调用 showTrainingCurves, 数据点数量:', details.training_curves.epochs.length);
             showTrainingCurves(details.training_curves, details.model_type);
         } else {
+            console.log('⚠️ 训练曲线数据不足，显示警告');
             // 显示数据不足的提示
             showDataInsufficiencyWarning();
         }
@@ -3171,18 +3455,95 @@
 
         // 显示训练曲线
         function showTrainingCurves(trainingCurves, modelType) {
+            console.log('📊 showTrainingCurves 被调用', { trainingCurves, modelType });
+            
             const curvesSection = document.getElementById('training-curves-section');
-            if (!curvesSection) return;
-            
-            curvesSection.style.display = 'block';
-            
-            // 销毁现有图表（如果存在）
-            if (window.trainingChart) {
-                window.trainingChart.destroy();
+            if (!curvesSection) {
+                console.error('⚠️ 找不到 training-curves-section 元素');
+                return;
             }
             
-            const ctx = document.getElementById('training-loss-chart');
-            if (!ctx) return;
+            curvesSection.style.display = 'block';
+            console.log('✅ 训练曲线区域已显示');
+            
+            // 彻底清理所有Chart实例和全局状态
+            console.log('🧹 开始彻底清理Chart状态...');
+            
+            // 销毁现有图表实例
+            if (window.trainingChart) {
+                console.log('🗑️ 销毁现有图表实例');
+                try {
+                    window.trainingChart.destroy();
+                    window.trainingChart = null;
+                    delete window.trainingChart;
+                } catch (e) {
+                    console.warn('销毁图表时出错:', e);
+                    window.trainingChart = null;
+                }
+            }
+            
+            // 清理Chart.js全局注册表
+            if (window.Chart && window.Chart.instances) {
+                console.log('🧹 清理Chart.js全局实例注册表');
+                Object.keys(window.Chart.instances).forEach(key => {
+                    try {
+                        const instance = window.Chart.instances[key];
+                        if (instance && typeof instance.destroy === 'function') {
+                            instance.destroy();
+                        }
+                        delete window.Chart.instances[key];
+                    } catch (e) {
+                        console.warn('清理Chart实例失败:', e);
+                    }
+                });
+            }
+            
+            // 完全重新创建图表容器
+            console.log('🔄 重新创建图表容器');
+            const oldContainer = curvesSection.querySelector('div[style*="background: white"]');
+            if (oldContainer) {
+                curvesSection.removeChild(oldContainer);
+            }
+            
+            const chartContainer = document.createElement('div');
+            chartContainer.style.cssText = 'background: white; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef; height: 400px;';
+            curvesSection.appendChild(chartContainer);
+            
+            // 生成完全唯一的canvas ID
+            const timestamp = Date.now();
+            const random = Math.floor(Math.random() * 10000);
+            const canvasId = `chart-canvas-${timestamp}-${random}`;
+            
+            // 创建canvas元素
+            chartContainer.innerHTML = `<canvas id="${canvasId}" style="width: 100%; height: 100%;"></canvas>`;
+            
+            // 等待DOM更新
+            setTimeout(() => {
+                const ctx = document.getElementById(canvasId);
+                if (!ctx) {
+                    console.error('⚠️ 找不到 canvas 元素');
+                    chartContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #dc3545;">Canvas元素创建失败</div>';
+                    return;
+                }
+                
+                console.log('📊 Canvas准备就绪，ID:', canvasId);
+                
+                // 开始创建图表
+                createTrainingChart(ctx, trainingCurves, modelType, canvasId);
+            }, 100);
+        }
+        
+        // 独立的图表创建函数
+        function createTrainingChart(ctx, trainingCurves, modelType, canvasId) {
+            console.log('🎨 开始创建训练图表...', {modelType, canvasId});
+            
+            // 检查 Chart.js 是否可用
+            if (typeof Chart === 'undefined') {
+                console.error('⚠️ Chart.js 未加载');
+                const container = ctx.parentElement;
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: #dc3545;">Chart.js 未加载，无法显示图表</div>';
+                return;
+            }
             
             // 根据模型类型确定x轴标签
             let xAxisLabel = '';
@@ -3200,125 +3561,130 @@
                     xAxisLabel = 'Epochs';
             }
             
-            // 创建Chart.js图表
-            window.trainingChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: trainingCurves.epochs,
-                    datasets: [
-                        {
-                            label: '训练MSE',
-                            data: trainingCurves.train_loss,
-                            borderColor: '#007bff',
-                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                            tension: 0.4,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        },
-                        {
-                            label: '验证MSE',
-                            data: trainingCurves.val_loss,
-                            borderColor: '#dc3545',
-                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                            tension: 0.4,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: xAxisLabel,
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: '均方误差 (MSE)',
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
-                            },
-                            beginAtZero: true
-                        }
+            // 准备数据集
+            const datasets = [];
+            
+            // 训练R²数据
+            if (trainingCurves.train_r2 && trainingCurves.train_r2.length > 0) {
+                datasets.push({
+                    label: '训练集 R²',
+                    data: trainingCurves.train_r2,
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                });
+            }
+            
+            // 验证R²数据
+            if (trainingCurves.val_r2 && trainingCurves.val_r2.length > 0) {
+                datasets.push({
+                    label: '验证集 R²',
+                    data: trainingCurves.val_r2,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                });
+            }
+            
+            // 训练MSE数据（备用）
+            if (datasets.length === 0 && trainingCurves.train_loss && trainingCurves.train_loss.length > 0) {
+                datasets.push({
+                    label: '训练MSE',
+                    data: trainingCurves.train_loss,
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                });
+                
+                if (trainingCurves.val_loss && trainingCurves.val_loss.length > 0) {
+                    datasets.push({
+                        label: '验证MSE',
+                        data: trainingCurves.val_loss,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    });
+                }
+            }
+            
+            if (datasets.length === 0) {
+                console.error('⚠️ 没有可用的训练数据');
+                const container = ctx.parentElement;
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: #dc3545;">没有可用的训练数据</div>';
+                return;
+            }
+            
+            // 使用try-catch包装Chart创建
+            try {
+                console.log('📊 创建Chart实例...');
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: trainingCurves.epochs,
+                        datasets: datasets
                     },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: `${getModelTypeDisplayName(modelType)} - 训练过程曲线`,
-                            font: {
-                                size: 16,
-                                weight: 'bold'
-                            },
-                            padding: 20
-                        },
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `${getModelTypeDisplayName(modelType)} - 训练过程曲线`,
                                 font: {
-                                    size: 13
+                                    size: 16
                                 }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
                             }
                         },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleColor: 'white',
-                            bodyColor: 'white',
-                            borderColor: '#007bff',
-                            borderWidth: 1,
-                            cornerRadius: 6,
-                            padding: 10,
-                            callbacks: {
-                                title: function(context) {
-                                    return `${xAxisLabel}: ${context[0].label}`;
+                        scales: {
+                            x: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: xAxisLabel
+                                }
+                            },
+                            y: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: datasets.some(d => d.label.includes('R²')) ? 'R² 分数' : '均方误差 (MSE)'
                                 },
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(4)}`;
-                                }
+                                min: datasets.some(d => d.label.includes('R²')) ? -0.5 : undefined,
+                                max: datasets.some(d => d.label.includes('R²')) ? 1.0 : undefined
                             }
-                        }
-                    },
-                    interaction: {
-                        mode: 'nearest',
-                        axis: 'x',
-                        intersect: false
-                    },
-                    elements: {
-                        line: {
-                            borderWidth: 2
                         },
-                        point: {
-                            hoverBackgroundColor: 'white',
-                            hoverBorderWidth: 2
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
                         }
                     }
-                }
-            });
-            
-            console.log('✅ 训练曲线图表已创建', trainingCurves);
+                });
+                
+                // 保存图表引用
+                window.trainingChart = chart;
+                console.log('✅ 训练曲线图表创建成功');
+                
+            } catch (error) {
+                console.error('⚠️ 创建训练曲线图表失败:', error);
+                const container = ctx.parentElement;
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: #dc3545;">图表创建失败: ' + error.message + '</div>';
+            }
         }
 
         // 获取模型类型显示名称
@@ -3490,6 +3856,70 @@
             const modal = document.getElementById('prediction-input-modal');
             if (modal) {
                 modal.style.display = 'block';
+                // 初始化模型状态检查
+                updateModelInfo(document.getElementById('prediction-model-select').value);
+            }
+        }
+        
+        // 更新模型状态信息
+        function updateModelInfo(modelType) {
+            const statusInfo = document.getElementById('model-status-info');
+            const statusText = document.getElementById('model-status-text');
+            
+            // 发送请求检查模型状态
+            fetch('/api/validation_stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const modelStatus = data.data.model_files_status;
+                        const availableModels = data.data.available_models;
+                        
+                        if (modelStatus && modelStatus[modelType]) {
+                            statusText.textContent = '✅ 模型已训练，可用于预测';
+                            statusText.style.color = '#28a745';
+                            statusInfo.style.background = '#d4edda';
+                            statusInfo.style.border = '1px solid #c3e6cb';
+                        } else {
+                            statusText.textContent = '❌ 模型未训练，请先训练该模型';
+                            statusText.style.color = '#dc3545';
+                            statusInfo.style.background = '#f8d7da';
+                            statusInfo.style.border = '1px solid #f5c6cb';
+                        }
+                        
+                        // 更新可用模型选项
+                        updateModelOptions(availableModels);
+                    }
+                })
+                .catch(error => {
+                    console.error('检查模型状态失败:', error);
+                    statusText.textContent = '⚠️ 无法检查模型状态';
+                    statusText.style.color = '#ffc107';
+                    statusInfo.style.background = '#fff3cd';
+                    statusInfo.style.border = '1px solid #ffeaa7';
+                });
+        }
+        
+        // 更新模型选项可用性
+        function updateModelOptions(availableModels) {
+            const select = document.getElementById('prediction-model-select');
+            const options = select.querySelectorAll('option');
+            
+            options.forEach(option => {
+                const modelType = option.value;
+                if (availableModels.includes(modelType)) {
+                    option.disabled = false;
+                    option.style.color = '#333';
+                } else {
+                    option.disabled = true;
+                    option.style.color = '#999';
+                    option.textContent = option.textContent.replace(' (未训练)', '') + ' (未训练)';
+                }
+            });
+            
+            // 如果当前选择的模型不可用，选择第一个可用的模型
+            if (availableModels.length > 0 && !availableModels.includes(select.value)) {
+                select.value = availableModels[0];
+                updateModelInfo(availableModels[0]);
             }
         }
 
@@ -3505,8 +3935,24 @@
         function startPrediction() {
             // 获取用户输入
             const targetX = parseFloat(document.getElementById('target-x').value) || 0;
-            const targetY = parseFloat(document.getElementById('target-y').value) || 0;
             const targetThickness = parseFloat(document.getElementById('target-thickness').value) || 1.0;
+            const selectedModel = document.getElementById('prediction-model-select').value;
+            
+            // 根据当前厚度曲线计算对应的Y值
+            let targetY = 0;
+            
+            // 尝试访问validation.js中的全局变量
+            const globalThicknessData = window.thicknessData || currentThicknessData;
+            
+            if (typeof calculateThicknessAtPosition === 'function' && globalThicknessData) {
+                // 使用validation.js中的函数计算当前X位置的厚度值作为Y
+                targetY = calculateThicknessAtPosition(targetX, 0) || targetThickness;
+                console.log(`根据X=${targetX}计算得到Y=${targetY}，数据来源:`, globalThicknessData ? '当前厚度数据' : '默认值');
+            } else {
+                // 如果没有当前数据，使用目标厚度作为Y值
+                targetY = targetThickness;
+                console.log(`无法获取厚度数据，使用目标厚度作为Y值: ${targetY}`);
+            }
 
             // 验证输入
             if (targetThickness <= 0) {
@@ -3516,6 +3962,21 @@
 
             // 关闭弹窗
             closePredictionInputModal();
+            
+            // 隐藏其他结果区域，避免重叠显示
+            const sectionsToHide = [
+                'optimization-result-section', 
+                'training-curves-section',
+                'experience-analysis',
+                'validation-data-selector'
+            ];
+            
+            sectionsToHide.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.display = 'none';
+                }
+            });
 
             // 获取预测按钮并显示加载状态
             const predictBtn = document.getElementById('predict-parameters');
@@ -3533,7 +3994,8 @@
                 body: JSON.stringify({
                     x: targetX,
                     y: targetY,
-                    target_thickness: targetThickness
+                    target_thickness: targetThickness,
+                    model_type: selectedModel
                 })
             })
             .then(response => response.json())
@@ -3557,6 +4019,18 @@
                     
                     console.log('预测的完整参数:', predictedParams);
                     
+                    // 额外：在顶部简要结果区域也同步显示，避免用户误以为没有结果
+                    try {
+                        const exposureTime = Number(predictedParams.t_exp ?? data.data?.ml_predictions?.t_exp ?? 0);
+                        const strategyName = (predictedParams.optimization_method || '机器学习预测');
+                        const thicknessValue = Number(predictedParams.target_thickness ?? targetInfo.thickness ?? 0);
+                        if (!Number.isNaN(exposureTime) && !Number.isNaN(thicknessValue)) {
+                            showPredictionResult(exposureTime.toFixed(2), strategyName, thicknessValue.toFixed(3));
+                        }
+                    } catch (e) {
+                        console.warn('简要结果显示失败（可忽略）:', e);
+                    }
+
                     // 显示完整的参数预测结果
                     showCompletePredictionResult(predictedParams, targetInfo);
                 } else {
@@ -3903,6 +4377,21 @@
                 return;
             }
             
+            // 隐藏所有结果区域，避免重叠显示
+            const sectionsToHide = [
+                'complete-prediction-section',
+                'optimization-result-section', 
+                'training-curves-section',
+                'experience-analysis'
+            ];
+            
+            sectionsToHide.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.display = 'none';
+                }
+            });
+            
             // 获取目标参数
             const targetThickness = parseFloat(document.getElementById('target-thickness-input').value) || 1.0;
             const targetX = parseFloat(document.getElementById('target-position-x').value) || 0;
@@ -3970,10 +4459,23 @@
                     
                     if (options.length > 0) {
                         // 选择合适的结果显示
-                        const selectedOption = type === 'quick' ? options[0] : 
-                                             options.find(opt => opt.type === 'balanced') || options[1] || options[0];
+                        // 优先顺序：最优策略 > 最高置信度 > 平衡策略 > 第一项
+                        let selectedOption = options.find(opt => opt.type === 'optimal');
+                        if (!selectedOption) {
+                            const bestByConfidence = options.reduce((best, o) => {
+                                const c = (typeof o.confidence === 'number') ? o.confidence : -1;
+                                if (best == null) return { item: o, score: c };
+                                return c > best.score ? { item: o, score: c } : best;
+                            }, null);
+                            if (bestByConfidence && bestByConfidence.score >= 0) {
+                                selectedOption = bestByConfidence.item;
+                            }
+                        }
+                        if (!selectedOption) {
+                            selectedOption = options.find(opt => opt.type === 'balanced') || options[0];
+                        }
                         
-                        showExperienceBasedOptimizationResult(selectedOption, selectedRecordIndices.length);
+                        showExperienceBasedOptimizationResult(selectedOption, selectedRecordIndices.length, options);
                         
                         // 隐藏选择器
                         document.getElementById('validation-data-selector').style.display = 'none';
@@ -4005,7 +4507,48 @@
             });
         }
         
-        function showExperienceBasedOptimizationResult(option, recordCount) {
+        function renderExposureTimePills(options) {
+            const list = document.getElementById('exposure-time-multi');
+            const single = document.getElementById('exposure-time-value');
+            if (!list || !single) return;
+            list.innerHTML = '';
+            if (!options || options.length <= 1) {
+                list.style.display = 'none';
+                single.style.display = 'inline';
+                return;
+            }
+            // 显示多策略
+            list.style.display = 'flex';
+            single.style.display = 'none';
+            options.forEach((opt, idx) => {
+                const pill = document.createElement('span');
+                const isHighlight = opt.type === 'optimal' || idx === 1;
+                pill.className = 'exposure-time-pill' + (isHighlight ? ' highlight' : '');
+                pill.textContent = (opt.exposure_time ?? opt.t_exp ?? 0) + 's';
+                
+                // 添加策略信息到tooltip
+                const strategyLabel = opt.label || opt.strategy || '未知策略';
+                const strategyType = opt.type || '标准';
+                const confidence = opt.confidence ? ` (置信度: ${(opt.confidence * 100).toFixed(1)}%)` : '';
+                const tooltipText = `${strategyLabel}${confidence}`;
+                
+                pill.setAttribute('data-tooltip', tooltipText);
+                pill.setAttribute('data-strategy-type', strategyType);
+                pill.setAttribute('title', tooltipText); // 备用tooltip
+                
+                // 添加动画效果
+                pill.style.transform = 'scale(0.9)';
+                pill.style.opacity = '0';
+                setTimeout(() => {
+                    pill.style.transform = 'scale(1)';
+                    pill.style.opacity = '1';
+                }, idx * 100);
+                
+                list.appendChild(pill);
+            });
+        }
+
+        function showExperienceBasedOptimizationResult(option, recordCount, allOptions) {
             // 显示结果区域
             const resultSection = document.getElementById('optimization-result-section');
             if (resultSection) {
@@ -4013,21 +4556,19 @@
                 
                 // 更新基本结果
                 document.getElementById('exposure-time-value').textContent = option.exposure_time + 's';
-                document.getElementById('strategy-value').textContent = option.label;
+                // 优化策略文案：带上置信度（若有）
+                const strategyText = option.confidence != null
+                    ? `${option.label}（置信度 ${(Number(option.confidence) * 100).toFixed(1)}%${option.confidence_text ? '·' + option.confidence_text : ''}）`
+                    : option.label;
+                document.getElementById('strategy-value').textContent = strategyText;
                 document.getElementById('thickness-value').textContent = option.predicted_thickness + 'μm';
-                document.getElementById('confidence-value').textContent = option.confidence;
-                document.getElementById('reference-records-value').textContent = recordCount + '条';
+                // 若提供多策略，渲染胶囊显示
+                renderExposureTimePills(allOptions);
                 
-                // 显示经验分析
-                if (option.experience_summary) {
-                    const analysisSection = document.getElementById('experience-analysis');
-                    if (analysisSection) {
-                        analysisSection.style.display = 'block';
-                        
-                        document.getElementById('trend-analysis').textContent = option.experience_summary.trend;
-                        document.getElementById('adjustment-recommendation').textContent = option.experience_summary.recommendation;
-                        document.getElementById('weighted-deviation').textContent = option.analysis.weighted_deviation;
-                    }
+                // 经验分析报告不再展示
+                const analysisSection = document.getElementById('experience-analysis');
+                if (analysisSection) {
+                    analysisSection.style.display = 'none';
                 }
                 
                 // 滚动到结果区域，但不要滚动到页面底部

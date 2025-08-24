@@ -8321,3 +8321,191 @@ input:checked + .toggle-slider:hover {
         margin: 0 !important;
     }
 }
+
+/* Y坐标字段控制样式 */
+.y-coord-field {
+    transition: opacity 0.3s ease, height 0.3s ease, margin 0.3s ease;
+}
+
+.y-coord-field.hidden-1d {
+    display: none !important;
+}
+
+/* 为1D模式添加提示信息 */
+.data-mode-info {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border-left: 3px solid #20c997;
+    border-radius: 4px;
+}
+
+/* 自定义优化参数选择框样式 */
+.custom-settings select,
+#custom-sensitivity,
+#custom-confidence-threshold,
+#custom-strategy-count {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background: #fff url('data:image/svg+xml;utf8,<svg fill="%23666" height="16" viewBox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>') no-repeat right 1rem center/1em !important;
+    border: 2px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 2.5rem 0.75rem 1rem !important;
+    font-size: 1rem !important;
+    color: #2c3e50 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    min-width: 180px !important;
+    font-weight: 500 !important;
+}
+
+.custom-settings select:hover,
+#custom-sensitivity:hover,
+#custom-confidence-threshold:hover,
+#custom-strategy-count:hover {
+    border-color: #3498db !important;
+    background-color: #f8f9fa !important;
+}
+
+.custom-settings select:focus,
+#custom-sensitivity:focus,
+#custom-confidence-threshold:focus,
+#custom-strategy-count:focus {
+    outline: none !important;
+    border-color: #3498db !important;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1) !important;
+    background-color: #fff !important;
+}
+
+/* 优化setting-row中的布局 */
+.custom-settings .setting-row {
+    display: block !important;
+    margin-bottom: 16px !important;
+    padding: 8px 0 !important;
+}
+
+.custom-settings .setting-row label {
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    font-size: 0.95rem !important;
+    min-width: 120px !important;
+    margin-right: 15px !important;
+    display: inline-block !important;
+}
+
+/* 参数说明小字 */
+.custom-settings .param-hint {
+    font-size: 12px !important;
+    color: #6c757d !important;
+    margin-top: 6px !important;
+    line-height: 1.5 !important;
+}
+
+/* 多策略推荐时间列表样式 */
+.exposure-time-list {
+    margin-top: 8px !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.exposure-time-pill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid #e0e0e0;
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-origin: center;
+}
+
+.exposure-time-pill:hover {
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 8px 20px rgba(60, 60, 60, 0.15);
+    border-color: #3498db;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e8f4ff 100%);
+}
+
+.exposure-time-pill.highlight {
+    background: linear-gradient(135deg, #e8f4ff 0%, #d4edfa 100%);
+    border-color: #3498db;
+    color: #0b6ab3;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+}
+
+.exposure-time-pill.highlight:hover {
+    background: linear-gradient(135deg, #d4edfa 0%, #bee5f7 100%);
+    box-shadow: 0 10px 25px rgba(52, 152, 219, 0.3);
+    transform: scale(1.15) translateY(-3px);
+}
+
+/* Tooltip样式 */
+.exposure-time-pill::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 1000;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.exposure-time-pill::after {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 1000;
+}
+
+.exposure-time-pill:hover::before,
+.exposure-time-pill:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+/* 根据策略类型添加不同的强调色 */
+.exposure-time-pill[data-strategy-type="optimal"] {
+    border-color: #27ae60;
+    background: linear-gradient(135deg, #d5f4e6 0%, #a8e6cf 100%);
+    color: #27ae60;
+}
+
+.exposure-time-pill[data-strategy-type="optimal"]:hover {
+    background: linear-gradient(135deg, #a8e6cf 0%, #82dd9f 100%);
+    box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
+}
+
+.exposure-time-pill[data-strategy-type="conservative"] {
+    border-color: #f39c12;
+    background: linear-gradient(135deg, #fef9e7 0%, #fcf3cf 100%);
+    color: #d68910;
+}
+
+.exposure-time-pill[data-strategy-type="conservative"]:hover {
+    background: linear-gradient(135deg, #fcf3cf 0%, #f9e79f 100%);
+    box-shadow: 0 10px 25px rgba(243, 156, 18, 0.3);
+}

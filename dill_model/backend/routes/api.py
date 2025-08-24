@@ -2832,6 +2832,7 @@ def train_model():
         from sklearn.ensemble import RandomForestRegressor
         from sklearn.linear_model import LinearRegression
         from sklearn.svm import SVR
+        from sklearn.multioutput import MultiOutputRegressor
         from sklearn.model_selection import train_test_split, cross_val_score
         from sklearn.metrics import mean_squared_error, r2_score
         import joblib
@@ -2847,34 +2848,44 @@ def train_model():
         if len(df) < 5:
             return jsonify(format_response(False, message=f"数据量不足，至少需要5条数据，当前仅有{len(df)}条")), 400
         
-        # 准备特征和目标变量
-        # 特征：位置坐标和实际测量值
-        feature_columns = ['annotation_x', 'annotation_y', 'actual_value']
+        # 修复训练逻辑：从工艺参数预测厚度，而不是反向预测
+        # 这样更符合物理逻辑和实际需求
         
-        # 根据数据中的模型类型确定目标列
         # 检查数据中主要使用的模型类型
         model_types = df['model_type'].value_counts()
         primary_model = model_types.index[0] if not model_types.empty else 'dill'
         
         print(f"🔍 检测到主要模型类型: {primary_model}")
         
-        # 根据模型类型选择相应的目标列
+        # 根据模型类型选择相应的特征列（工艺参数）
         if 'car' in primary_model.lower():
-            # CAR模型参数
-            target_columns = ['I_avg', 'V', 'K', 't_exp', 'acid_gen_efficiency', 
-                             'diffusion_length', 'reaction_rate', 'amplification', 'contrast']
+            # CAR模型参数作为特征
+            feature_columns = ['I_avg', 'V', 'K', 't_exp', 'acid_gen_efficiency', 
+                             'diffusion_length', 'reaction_rate', 'amplification', 'contrast', 
+                             'annotation_x', 'annotation_y']
         else:
-            # Dill模型参数（默认）
-            target_columns = ['I_avg', 'V', 'K', 't_exp']
+            # Dill模型参数作为特征（默认）
+            feature_columns = ['I_avg', 'V', 'K', 't_exp', 'annotation_x', 'annotation_y']
+            
+        # 目标变量：厚度预测
+        target_columns = ['actual_value']  # 预测实际厚度值
         
         print(f"🎯 使用的目标列: {target_columns}")
         
-        # 检查必需列是否存在
+        # 检查必需列是否存在，并过滤掉不存在的列
+        available_feature_cols = [col for col in feature_columns if col in df.columns]
         missing_feature_cols = [col for col in feature_columns if col not in df.columns]
-        missing_target_cols = [col for col in target_columns if col not in df.columns]
         
         if missing_feature_cols:
-            return jsonify(format_response(False, message=f"缺少必需的特征列: {missing_feature_cols}")), 400
+            print(f"⚠️  警告：缺少特征列 {missing_feature_cols}，将使用可用列进行训练")
+            
+        if len(available_feature_cols) < 2:
+            return jsonify(format_response(False, message=f"可用特征列不足，需要至少2个特征列，当前仅有: {available_feature_cols}")), 400
+            
+        # 更新特征列为实际可用的列
+        feature_columns = available_feature_cols
+        
+        missing_target_cols = [col for col in target_columns if col not in df.columns]
         if missing_target_cols:
             return jsonify(format_response(False, message=f"缺少必需的目标列: {missing_target_cols}")), 400
         
@@ -2886,8 +2897,73 @@ def train_model():
         if len(valid_rows) < 3:
             return jsonify(format_response(False, message=f"有效数据不足，无法训练模型。原始数据: {len(df)}条，有效数据: {len(valid_rows)}条，至少需要3条有效数据")), 400
         
-        X = valid_rows[feature_columns].values
-        y = valid_rows[target_columns].values
+        # 检查特征和目标变量的变化性
+        print("📊 检查特征变量变化性:")
+        feature_variation_check = {}
+        for col in feature_columns:
+            std_val = valid_rows[col].std()
+            feature_variation_check[col] = std_val
+            print(f"   特征 {col}: 标准差 = {std_val:.6f}")
+        
+        # 过滤掉没有变化的特征变量
+        varying_features = [col for col in feature_columns if feature_variation_check[col] > 1e-6]
+        constant_features = [col for col in feature_columns if feature_variation_check[col] <= 1e-6]
+        
+        if constant_features:
+            print(f"⚠️  发现常数特征变量: {constant_features}，将从训练中排除")
+            
+        if len(varying_features) < 2:
+            return jsonify(format_response(False, message="有效特征变量不足，需要至少2个变化的特征进行训练。请添加更多不同参数的验证数据。")), 400
+        
+        # 检查目标变量的变化性
+        target_variation_check = {}
+        for col in target_columns:
+            std_val = valid_rows[col].std()
+            target_variation_check[col] = std_val
+            print(f"📊 目标变量 {col}: 标准差 = {std_val:.6f}")
+        
+        # 过滤掉没有变化的目标变量
+        varying_targets = [col for col in target_columns if target_variation_check[col] > 1e-6]
+        
+        if len(varying_targets) == 0:
+            return jsonify(format_response(False, message="目标变量没有变化，无法进行机器学习训练。请确保实际测量值有足够的差异性。")), 400
+        
+        print(f"🎯 使用有变化的特征列: {varying_features}")
+        print(f"🎯 使用有变化的目标列: {varying_targets}")
+        
+        # 更新特征列为有变化的列
+        actual_feature_columns = varying_features
+        
+        X = valid_rows[actual_feature_columns].values
+        y = valid_rows[varying_targets].values
+        
+        # 更新列信息为实际使用的列
+        actual_target_columns = varying_targets
+        
+        # 检查数据质量和特征相关性
+        print("🔍 数据质量检查:")
+        print(f"   特征矩阵形状: {X.shape}")
+        print(f"   目标矩阵形状: {y.shape}")
+        
+        # 简单的相关性检查
+        try:
+            import pandas as pd
+            combined_data = pd.DataFrame(X, columns=actual_feature_columns)
+            combined_data['target'] = y.flatten() if y.shape[1] == 1 else y.mean(axis=1)
+            
+            # 计算特征与目标的相关性
+            correlations = []
+            for i, feature_col in enumerate(actual_feature_columns):
+                corr = combined_data[feature_col].corr(combined_data['target'])
+                correlations.append(abs(corr))
+                print(f"   {feature_col} 与目标相关性: {corr:.4f}")
+            
+            max_corr = max(correlations) if correlations else 0
+            if max_corr < 0.1:
+                print(f"   ⚠️  警告：所有特征与目标的相关性都很低（最高: {max_corr:.4f}），模型效果可能不佳")
+                
+        except Exception as e:
+            print(f"   相关性检查失败: {e}")
         
         # 分割训练和测试集
         if len(valid_rows) >= 10:
@@ -2917,7 +2993,11 @@ def train_model():
         elif model_type == 'linear_regression':
             model = LinearRegression()
         elif model_type == 'svm':
-            model = SVR(kernel='rbf', C=1.0, gamma='scale')
+            # SVM不支持多输出回归，需要使用MultiOutputRegressor包装
+            if len(varying_targets) > 1:
+                model = MultiOutputRegressor(SVR(kernel='rbf', C=1.0, gamma='scale'))
+            else:
+                model = SVR(kernel='rbf', C=1.0, gamma='scale')
         else:
             # 默认使用随机森林
             model = RandomForestRegressor(n_estimators=50, random_state=42, max_depth=5)
@@ -3003,7 +3083,10 @@ def train_model():
             C_values = [0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0][:min(10, epochs // 10 + 3)]
             
             for i, C_val in enumerate(C_values):
-                temp_model = SVR(kernel='rbf', C=C_val, gamma='scale')
+                if len(varying_targets) > 1:
+                    temp_model = MultiOutputRegressor(SVR(kernel='rbf', C=C_val, gamma='scale'))
+                else:
+                    temp_model = SVR(kernel='rbf', C=C_val, gamma='scale')
                 temp_model.fit(X_train, y_train)
                 
                 train_pred = temp_model.predict(X_train)
@@ -3071,17 +3154,28 @@ def train_model():
         elif r2 < 0.3:
             print("⚠️  警告: R²分数较低，建议增加更多训练数据")
         
-        # 保存模型和目标列信息
-        model_file = os.path.join(os.getcwd(), 'validation_model.pkl')
+        # 根据模型类型保存到不同的文件
+        model_file_name = f'validation_model_{model_type}.pkl'
+        model_file = os.path.join(os.getcwd(), model_file_name)
         model_info = {
             'model': model,
-            'target_columns': target_columns,
-            'feature_columns': feature_columns,
+            'target_columns': actual_target_columns,  # 实际训练的目标列
+            'feature_columns': actual_feature_columns,  # 实际训练的特征列
+            'original_feature_columns': feature_columns,  # 原始特征列
+            'original_target_columns': target_columns,  # 原始目标列
+            'constant_features': constant_features if 'constant_features' in locals() else [],
             'training_params': {
                 'epochs': epochs,
                 'test_size': test_size,
                 'model_type': model_type,
-                'enable_cross_validation': enable_cross_validation
+                'enable_cross_validation': enable_cross_validation,
+                'training_logic': 'params_to_thickness'  # 标记新的训练逻辑
+            },
+            'data_stats': {
+                'training_samples': len(X_train),
+                'test_samples': len(X_test),
+                'feature_correlations': correlations if 'correlations' in locals() else [],
+                'max_correlation': max_corr if 'max_corr' in locals() else 0.0
             }
         }
         joblib.dump(model_info, model_file)
@@ -3147,16 +3241,20 @@ def predict_parameters():
         y = data.get('y', 0)
         target_thickness = data.get('target_thickness', 1.0)
         
-        print(f"🎯 收到参数预测请求: 位置({x}, {y}), 目标厚度: {target_thickness}")
+        # 获取选择的模型类型，默认使用线性回归
+        model_type = data.get('model_type', 'linear_regression')
+        
+        print(f"🎯 收到参数预测请求: 位置({x}, {y}), 目标厚度: {target_thickness}, 模型类型: {model_type}")
         
         import os
         import joblib
         import numpy as np
         
-        # 检查模型文件是否存在
-        model_file = os.path.join(os.getcwd(), 'validation_model.pkl')
+        # 根据模型类型检查对应的模型文件
+        model_file_name = f'validation_model_{model_type}.pkl'
+        model_file = os.path.join(os.getcwd(), model_file_name)
         if not os.path.exists(model_file):
-            return jsonify(format_response(False, message="预测模型不存在，请先训练模型")), 404
+            return jsonify(format_response(False, message=f"选择的{model_type}模型不存在，请先训练该模型")), 404
         
         # 加载模型信息
         model_info = joblib.load(model_file)
@@ -3165,22 +3263,99 @@ def predict_parameters():
         if isinstance(model_info, dict) and 'model' in model_info:
             model = model_info['model']
             target_columns = model_info.get('target_columns', ['I_avg', 'V', 'K', 't_exp'])
+            original_target_columns = model_info.get('original_target_columns', target_columns)
+            constant_targets = model_info.get('constant_targets', [])
+            constant_values = model_info.get('constant_values', {})
             feature_columns = model_info.get('feature_columns', ['annotation_x', 'annotation_y', 'actual_value'])
         else:
             # 旧版本模型文件，直接是模型对象
             model = model_info
             target_columns = ['I_avg', 'V', 'K', 't_exp']  # 默认Dill参数
+            original_target_columns = target_columns
+            constant_targets = []
+            constant_values = {}
             feature_columns = ['annotation_x', 'annotation_y', 'actual_value']
         
-        print(f"🔍 加载的模型目标列: {target_columns}")
+        print(f"🔍 加载的模型信息:")
+        print(f"   目标列: {target_columns}")
+        print(f"   特征列: {feature_columns}")
         
-        # 准备预测数据
-        X_pred = np.array([[x, y, target_thickness]])
+        # 检查模型的训练逻辑
+        training_logic = model_info.get('training_params', {}).get('training_logic', 'unknown')
+        print(f"   训练逻辑: {training_logic}")
         
-        # 进行预测
-        predictions = model.predict(X_pred)[0]
-        
-        print(f"📊 预测结果: {predictions}")
+        if training_logic == 'params_to_thickness':
+            # 新的训练逻辑：从工艺参数预测厚度
+            # 预测时需要反向求解：给定厚度和坐标，找到合适的工艺参数
+            print("🔄 使用反向预测逻辑...")
+            
+            # 由于这是一个反向问题，我们使用优化方法找到最佳参数
+            from scipy.optimize import minimize
+            import pandas as pd
+            
+            # 加载训练数据以获取参数范围
+            excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
+            if os.path.exists(excel_file):
+                df = pd.read_excel(excel_file)
+                
+                # 获取工艺参数的合理范围
+                param_ranges = {}
+                for param in ['I_avg', 'V', 'K', 't_exp']:
+                    if param in df.columns:
+                        param_ranges[param] = (df[param].min(), df[param].max())
+                    else:
+                        # 默认范围
+                        if param == 'I_avg':
+                            param_ranges[param] = (0.1, 10.0)
+                        elif param == 'V':
+                            param_ranges[param] = (1.0, 50.0)
+                        elif param == 'K':
+                            param_ranges[param] = (0.01, 1.0)
+                        elif param == 't_exp':
+                            param_ranges[param] = (0.1, 10.0)
+                
+                print(f"   参数范围: {param_ranges}")
+                
+                # 定义目标函数：最小化预测厚度与目标厚度的差异
+                def objective(params):
+                    # 构造特征向量 [I_avg, V, K, t_exp, annotation_x, annotation_y]
+                    features = np.array([list(params) + [x, y]])
+                    predicted_thickness = model.predict(features)[0]
+                    return (predicted_thickness - target_thickness) ** 2
+                
+                # 初始猜测（使用参数范围的中点）
+                initial_guess = [(param_ranges[param][0] + param_ranges[param][1]) / 2 
+                               for param in ['I_avg', 'V', 'K', 't_exp']]
+                
+                # 设置边界
+                bounds = [param_ranges[param] for param in ['I_avg', 'V', 'K', 't_exp']]
+                
+                # 优化求解
+                result = minimize(objective, initial_guess, bounds=bounds, method='L-BFGS-B')
+                
+                if result.success:
+                    predictions = result.x
+                    print(f"📊 优化预测结果: {predictions}")
+                else:
+                    # 如果优化失败，使用初始猜测
+                    predictions = np.array(initial_guess)
+                    print(f"⚠️ 优化失败，使用初始猜测: {predictions}")
+            else:
+                # 如果无法加载数据，使用默认值
+                predictions = np.array([1.0, 10.0, 0.1, 1.0])  # 默认工艺参数
+                print(f"⚠️ 无法加载训练数据，使用默认值: {predictions}")
+                
+        else:
+            # 兼容旧的训练逻辑
+            X_pred = np.array([[x, y, target_thickness]])
+            if len(target_columns) > 0:
+                predictions = model.predict(X_pred)
+                if len(predictions.shape) > 1:
+                    predictions = predictions[0]
+                print(f"📊 预测结果: {predictions}")
+            else:
+                predictions = []
+                print(f"📊 无需预测，所有参数均为常数")
         
         # 定义安全浮点数转换函数
         import math
@@ -3192,9 +3367,15 @@ def predict_parameters():
         
         # 构建基础预测参数（机器学习模型预测的参数）
         ml_predicted_params = {}
+        
+        # 添加预测的参数
         for i, param_name in enumerate(target_columns):
             if i < len(predictions):
                 ml_predicted_params[param_name] = safe_float_predict(float(predictions[i]), 0.0)
+        
+        # 添加常数参数
+        for param_name, param_value in constant_values.items():
+            ml_predicted_params[param_name] = safe_float_predict(param_value, 0.0)
         
         # 根据预测的基础参数，推导出完整的Dill模型参数集
         def derive_complete_dill_parameters(ml_params, target_thickness):
@@ -3300,11 +3481,19 @@ def get_validation_stats():
         import os
         
         excel_file = os.path.join(os.getcwd(), 'validation_data.xlsx')
-        model_file = os.path.join(os.getcwd(), 'validation_model.pkl')
+        
+        # 检查三种不同模型文件的存在状态
+        model_types = ['linear_regression', 'random_forest', 'svm']
+        model_files_status = {}
+        
+        for model_type in model_types:
+            model_file = os.path.join(os.getcwd(), f'validation_model_{model_type}.pkl')
+            model_files_status[model_type] = os.path.exists(model_file)
         
         stats = {
             'data_file_exists': os.path.exists(excel_file),
-            'model_file_exists': os.path.exists(model_file),
+            'model_files_status': model_files_status,
+            'available_models': [k for k, v in model_files_status.items() if v],
             'total_records': 0,
             'unique_sessions': 0
         }
@@ -3878,11 +4067,6 @@ def calculate_experience_based_exposure_times(target_x, target_y, target_thickne
         # 加权平均偏差
         weighted_deviation = np.average(deviations, weights=position_weights)
         
-        print(f"📈 经验分析结果:")
-        print(f"   - 平均偏差: {avg_deviation:.4f}")
-        print(f"   - 偏差标准差: {deviation_std:.4f}")
-        print(f"   - 加权偏差: {weighted_deviation:.4f}")
-        
         # 获取当前基础曝光时间
         base_t_exp = current_params.get('t_exp', 10.0)
         
@@ -3903,8 +4087,8 @@ def calculate_experience_based_exposure_times(target_x, target_y, target_thickne
         # 基于加权偏差计算主要调整系数
         primary_adjustment = sigmoid_adjustment(weighted_deviation)
         
-        # 置信度计算
-        confidence_score = max(confidence_threshold, 1.0 - deviation_std / 0.5)  # 标准差越小置信度越高
+        # 基础置信度计算
+        base_confidence = max(confidence_threshold, 1.0 - deviation_std / 0.5)  # 标准差越小置信度越高
         
         # 生成优化建议
         strategies = []
@@ -3914,18 +4098,22 @@ def calculate_experience_based_exposure_times(target_x, target_y, target_thickne
             conservative_factor = primary_adjustment * 0.9  # 更保守
             exposure_time = base_t_exp * conservative_factor
             
+            # 保守策略置信度稍高（因为更安全）
+            conservative_confidence = min(0.95, base_confidence * 1.1)
+            
             strategies.append({
                 "type": "conservative",
                 "label": "保守策略",
                 "exposure_time": round(exposure_time, 3),
                 "description": f"基于{len(selected_records)}条记录的保守建议",
-                "confidence": f"{'高' if confidence_score > 0.7 else '中等' if confidence_score > 0.5 else '低'}",
+                "confidence": round(conservative_confidence, 3),
+                "confidence_text": f"{'高' if conservative_confidence > 0.7 else '中等' if conservative_confidence > 0.5 else '低'}",
                 "predicted_thickness": round(target_thickness * (2.0 - conservative_factor), 4),
                 "adjustment_factor": round(conservative_factor, 4),
                 "analysis": {
                     "avg_deviation": round(avg_deviation, 4),
                     "weighted_deviation": round(weighted_deviation, 4),
-                    "confidence_score": round(confidence_score, 3),
+                    "confidence_score": round(conservative_confidence, 3),
                     "reference_records": len(selected_records)
                 }
             })
@@ -3959,18 +4147,32 @@ def calculate_experience_based_exposure_times(target_x, target_y, target_thickne
             
             for strategy_type, factor in factors.items():
                 exposure_time = base_t_exp * factor
+                
+                # 根据策略类型计算不同的置信度
+                if strategy_type == "optimal":
+                    strategy_confidence = min(0.98, base_confidence * 1.2)  # 最优策略置信度最高
+                elif strategy_type in ["conservative", "very_conservative"]:
+                    strategy_confidence = min(0.95, base_confidence * 1.1)  # 保守策略置信度较高
+                elif strategy_type == "balanced":
+                    strategy_confidence = base_confidence  # 平衡策略使用基础置信度
+                elif strategy_type in ["aggressive", "very_aggressive"]:
+                    strategy_confidence = max(0.3, base_confidence * 0.8)  # 激进策略置信度较低
+                else:
+                    strategy_confidence = base_confidence
+                
                 strategies.append({
                     "type": strategy_type,
                     "label": strategy_labels.get(strategy_type, f"{strategy_type}策略"),
                     "exposure_time": round(exposure_time, 3),
                     "description": f"基于{len(selected_records)}条记录的{strategy_type}建议",
-                    "confidence": f"{'高' if confidence_score > 0.7 else '中等' if confidence_score > 0.5 else '低'}",
+                    "confidence": round(strategy_confidence, 3),
+                    "confidence_text": f"{'高' if strategy_confidence > 0.7 else '中等' if strategy_confidence > 0.5 else '低'}",
                     "predicted_thickness": round(target_thickness * (2.0 - factor), 4),
                     "adjustment_factor": round(factor, 4),
                     "analysis": {
                         "avg_deviation": round(avg_deviation, 4),
                         "weighted_deviation": round(weighted_deviation, 4),
-                        "confidence_score": round(confidence_score, 3),
+                        "confidence_score": round(strategy_confidence, 3),
                         "reference_records": len(selected_records),
                         "sensitivity": sensitivity,
                         "confidence_threshold": confidence_threshold

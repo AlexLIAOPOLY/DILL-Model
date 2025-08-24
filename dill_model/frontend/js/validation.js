@@ -7,6 +7,7 @@ let currentParameters = null;
 let thicknessData = null;
 let annotations = [];
 let isAnnotationMode = false;
+let currentXUnit = 'μm';
 
 // 标注弹窗相关变量
 let currentAnnotationData = {
@@ -14,6 +15,84 @@ let currentAnnotationData = {
     y: 0,
     simulatedValue: 0
 };
+
+// 判断当前厚度数据是否为1D（用于坐标显示）
+function isThicknessData1D() {
+    try {
+        if (!thicknessData) return true;
+        let td = null;
+        if (Array.isArray(thicknessData)) {
+            td = thicknessData;
+        } else if (Array.isArray(thicknessData?.H_values)) {
+            td = thicknessData.H_values;
+        } else if (Array.isArray(thicknessData?.original_thickness)) {
+            td = thicknessData.original_thickness;
+        } else if (Array.isArray(thicknessData?.thickness)) {
+            td = thicknessData.thickness;
+        }
+        if (!td) return true;
+        return Array.isArray(td) && !Array.isArray(td[0]);
+    } catch (e) {
+        return true;
+    }
+}
+
+/**
+ * 更新Y坐标字段的显示状态
+ */
+function updateYCoordFieldsVisibility() {
+    const is1D = isThicknessData1D();
+    const yCoordFields = document.querySelectorAll('.y-coord-field');
+    
+    console.log(`更新Y坐标字段显示状态: 1D模式=${is1D}`);
+    
+    yCoordFields.forEach(field => {
+        if (is1D) {
+            field.classList.add('hidden-1d');
+            // 在1D模式下将Y坐标值设为0
+            const yInput = field.querySelector('input[type="number"]');
+            if (yInput) {
+                yInput.value = '0';
+            }
+        } else {
+            field.classList.remove('hidden-1d');
+        }
+    });
+    
+    // 更新数据模式提示信息
+    updateDataModeInfo(is1D);
+}
+
+/**
+ * 更新数据模式提示信息
+ */
+function updateDataModeInfo(is1D) {
+    // 检查是否已存在提示信息
+    let existingInfo = document.querySelector('.data-mode-info');
+    
+    if (is1D) {
+        if (!existingInfo) {
+            // 创建1D模式提示信息
+            const modeInfo = document.createElement('div');
+            modeInfo.className = 'data-mode-info';
+            modeInfo.innerHTML = `
+                <i class="fas fa-info-circle" style="margin-right: 6px;"></i>
+                当前为1D数据模式，Y坐标已自动设为0。如需2D标注，请使用2D计算数据。
+            `;
+            
+            // 在参数容器顶部插入提示信息
+            const paramContainer = document.getElementById('parameters-container');
+            if (paramContainer) {
+                paramContainer.insertBefore(modeInfo, paramContainer.firstChild);
+            }
+        }
+    } else {
+        // 移除1D模式提示信息
+        if (existingInfo) {
+            existingInfo.remove();
+        }
+    }
+}
 
 // 页面初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -128,6 +207,9 @@ function loadParametersFromStorage() {
                 // 然后显示参数和图表
                 displayParameters(currentParameters);
                 displayThicknessPlot(thicknessData);
+                
+                // 更新Y坐标字段的显示状态
+                updateYCoordFieldsVisibility();
                 
                 showStatusMessage('success', `成功加载计算结果 (${data.model_type}模型)`);
             } else {
@@ -473,6 +555,9 @@ function displayThicknessPlot(data) {
             }
         };
         
+        // 记录当前X轴单位供其他界面使用
+        currentXUnit = xUnit;
+
         // 清除之前的图表
         const plotDiv = document.getElementById('thickness-plot');
         Plotly.purge(plotDiv);
@@ -503,6 +588,9 @@ function displayThicknessPlot(data) {
         });
         
         console.log('厚度图显示成功');
+        
+        // 更新Y坐标字段的显示状态
+        updateYCoordFieldsVisibility();
         
     } catch (error) {
         console.error('显示厚度图失败:', error);
@@ -646,7 +734,11 @@ function updateAnnotationsList() {
         
         const coords = document.createElement('span');
         coords.className = 'annotation-coords';
-        coords.textContent = `(${annotation.x.toFixed(2)}, ${annotation.y.toFixed(2)})`;
+        // 1D 数据仅展示 X 坐标，避免 Y 一直为 0 的误导
+        const is1D = isThicknessData1D();
+        coords.textContent = is1D
+            ? `X=${annotation.x.toFixed(2)}${currentXUnit}`
+            : `(${annotation.x.toFixed(2)}, ${annotation.y.toFixed(2)})`;
         
         const values = document.createElement('span');
         values.innerHTML = `模拟: ${annotation.simulatedValue.toFixed(3)} | 实测: <span class="annotation-value">${annotation.actualValue.toFixed(3)}</span>`;
@@ -692,7 +784,7 @@ function updatePlotAnnotations() {
                 symbol: 'circle',
                 line: { color: 'white', width: 2 }
             },
-            hovertemplate: 'X: %{x:.2f}μm<br>模拟值: %{y:.3f}μm<extra></extra>'
+            hovertemplate: `X: %{x:.2f}${currentXUnit}<br>模拟值: %{y:.3f}μm<extra></extra>`
         };
         
         const actualPoints = {
@@ -707,7 +799,7 @@ function updatePlotAnnotations() {
                 symbol: 'diamond',
                 line: { color: 'white', width: 2 }
             },
-            hovertemplate: 'X: %{x:.2f}μm<br>实测值: %{y:.3f}μm<extra></extra>'
+            hovertemplate: `X: %{x:.2f}${currentXUnit}<br>实测值: %{y:.3f}μm<extra></extra>`
         };
         
         // 连接线数据
@@ -916,24 +1008,139 @@ async function trainPredictionModel() {
     try {
         showStatusMessage('info', '正在训练模型，请稍候...');
         
+        // 使用默认训练参数（可以根据需要扩展）
+        const trainParams = {
+            epochs: 100,
+            test_size: 0.2,
+            model_type: 'random_forest',  // 默认使用随机森林
+            enable_cross_validation: true
+        };
+        
         const response = await fetch('/api/train_model', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify(trainParams)
         });
         
         const result = await response.json();
         
         if (result.success) {
-            showStatusMessage('success', `模型训练完成！准确率: ${(result.accuracy * 100).toFixed(2)}%`);
+            const accuracy = result.data?.accuracy || 0;
+            const r2Score = result.data?.r2_score || 0;
+            const modelType = result.data?.model_type || 'unknown';
+            const trainingSamples = result.data?.training_samples || 0;
+            const trainingCurves = result.data?.training_curves || null;
+            
+            console.log('🔍 训练结果数据:', {
+                accuracy,
+                r2Score,
+                modelType,
+                trainingSamples,
+                trainingCurves
+            });
+            
+            let statusMessage = `模型训练完成！`;
+            statusMessage += `\n- 模型类型: ${getModelTypeDisplayName(modelType)}`;
+            statusMessage += `\n- 训练样本: ${trainingSamples}个`;
+            statusMessage += `\n- R²分数: ${(r2Score * 100).toFixed(2)}%`;
+            
+            // 检查训练曲线数据
+            if (trainingCurves && trainingCurves.epochs) {
+                statusMessage += `\n- 训练曲线: ${trainingCurves.epochs.length}个数据点`;
+            }
+            
+            // 根据R²分数给出建议
+            if (r2Score < 0) {
+                statusMessage += `\n⚠️ 模型性能较差，建议增加更多高质量的验证数据`;
+                showStatusMessage('warning', statusMessage);
+            } else if (r2Score < 0.3) {
+                statusMessage += `\n⚠️ 模型准确率较低，建议收集更多样的训练数据`;
+                showStatusMessage('warning', statusMessage);
+            } else {
+                statusMessage += `\n✅ 模型训练成功`;
+                showStatusMessage('success', statusMessage);
+            }
+            
+            // 尝试显示训练曲线
+            console.log('📈 检查训练曲线显示条件...');
+            if (trainingCurves && trainingCurves.epochs && trainingCurves.epochs.length > 1) {
+                console.log('✅ 训练曲线数据充足，尝试显示');
+                // 这里需要调用显示训练曲线的函数
+                showTrainingResults({
+                    training_curves: trainingCurves,
+                    model_type: modelType,
+                    accuracy: accuracy,
+                    r2_score: r2Score,
+                    training_samples: trainingSamples,
+                    epochs: 100  // 默认值
+                });
+            } else {
+                console.log('⚠️ 训练曲线数据不足或不存在');
+                console.log('trainingCurves:', trainingCurves);
+            }
+            
             document.getElementById('predict-parameters').disabled = false;
         } else {
-            showStatusMessage('error', result.message || '模型训练失败');
+            let errorMessage = result.message || '模型训练失败';
+            
+            // 针对常见错误提供更友好的提示
+            if (errorMessage.includes('数据量不足')) {
+                errorMessage += '\n建议：至少需要5条以上的标注数据才能进行训练。';
+            } else if (errorMessage.includes('有效数据不足')) {
+                errorMessage += '\n建议：检查标注数据是否完整，确保所有必要字段都有值。';
+            } else if (errorMessage.includes('常数')) {
+                errorMessage += '\n建议：使用不同的参数设置进行多次标注，增加数据的多样性。';
+            } else if (errorMessage.includes('Excel')) {
+                errorMessage += '\n建议：确保已安装Excel支持库，或联系管理员。';
+            }
+            
+            showStatusMessage('error', errorMessage);
         }
     } catch (error) {
         console.error('训练模型失败:', error);
-        showStatusMessage('error', '网络错误，请稍后重试');
+        let errorMessage = '网络错误，请稍后重试';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = '无法连接到服务器，请检查网络连接或联系管理员';
+        }
+        
+        showStatusMessage('error', errorMessage);
+    }
+}
+
+// 获取模型类型的显示名称
+function getModelTypeDisplayName(modelType) {
+    const typeNames = {
+        'random_forest': '随机森林',
+        'linear_regression': '线性回归',
+        'svm': '支持向量机'
+    };
+    return typeNames[modelType] || modelType;
+}
+
+/**
+ * 显示训练结果（包括训练曲线）
+ */
+function showTrainingResults(details) {
+    console.log('📊 显示训练结果:', details);
+    
+    // 显示训练曲线（如果有数据）
+    if (details.training_curves && details.training_curves.epochs && details.training_curves.epochs.length > 1) {
+        console.log('📈 调用 showTrainingCurves');
+        if (typeof showTrainingCurves === 'function') {
+            showTrainingCurves(details.training_curves, details.model_type);
+        } else {
+            console.error('⚠️ showTrainingCurves 函数不存在');
+        }
+    } else {
+        console.log('⚠️ 训练曲线数据不足，显示警告');
+        if (typeof showDataInsufficiencyWarning === 'function') {
+            showDataInsufficiencyWarning();
+        } else {
+            console.error('⚠️ showDataInsufficiencyWarning 函数不存在');
+        }
     }
 }
 
@@ -941,8 +1148,81 @@ async function trainPredictionModel() {
  * 预测参数
  */
 async function predictParameters() {
-    // 这里实现参数预测功能
-    showStatusMessage('info', '参数预测功能开发中...');
+    try {
+        // 检查是否有训练好的模型
+        showStatusMessage('info', '正在预测厚度...');
+        
+        // 从当前参数配置中获取工艺参数
+        if (!currentParameters) {
+            showStatusMessage('error', '无当前参数配置，请先在单一计算页面完成一次计算');
+            return;
+        }
+        
+        // 准备预测数据（使用当前参数和默认位置）
+        const predictionData = {
+            I_avg: currentParameters.I_avg || 0.5,
+            V: currentParameters.V || 0.8,
+            K: currentParameters.K || 0.1,
+            t_exp: currentParameters.t_exp || 100.0,
+            x: 0,  // 默认位置
+            y: 0   // 默认位置
+        };
+        
+        console.log('使用参数进行预测:', predictionData);
+        
+        const response = await fetch('/api/predict_parameters', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(predictionData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const predictionResults = result.data.predicted_results;
+            const confidence = result.data.confidence;
+            const modelInfo = result.data.model_info;
+            
+            // 显示预测结果
+            let message = `厚度预测完成！\n`;
+            
+            if (predictionResults.actual_value !== undefined) {
+                message += `预测厚度: ${predictionResults.actual_value.toFixed(4)} μm\n`;
+            }
+            
+            message += `置信度: ${confidence.level} (${(confidence.score * 100).toFixed(1)}%)\n`;
+            message += `建议: ${confidence.suggestion}`;
+            
+            if (modelInfo.training_samples) {
+                message += `\n训练样本: ${modelInfo.training_samples}个`;
+            }
+            
+            if (confidence.level === '高') {
+                showStatusMessage('success', message);
+            } else {
+                showStatusMessage('warning', message);
+            }
+            
+            console.log('预测结果:', predictionResults);
+            console.log('模型信息:', modelInfo);
+            
+        } else {
+            let errorMessage = result.message || '预测失败';
+            
+            // 针对常见错误提供更友好的提示
+            if (errorMessage.includes('模型不存在')) {
+                errorMessage += '\n请先点击\u201c训练模型\u201d按钮进行模型训练。';
+            }
+            
+            showStatusMessage('error', errorMessage);
+        }
+        
+    } catch (error) {
+        console.error('预测参数失败:', error);
+        showStatusMessage('error', '网络错误，请稍后重试');
+    }
 }
 
 /**
@@ -999,7 +1279,7 @@ function showAnnotationModal(x, y, simulatedValue) {
     const simulatedValueElement = document.getElementById('modal-simulated-value');
     
     if (xCoordElement) {
-        xCoordElement.textContent = `${x.toFixed(2)} μm`;
+        xCoordElement.textContent = `${x.toFixed(2)} ${currentXUnit}`;
     }
     if (simulatedValueElement) {
         simulatedValueElement.textContent = `${simulatedValue.toFixed(3)} μm`;
@@ -1094,7 +1374,11 @@ function confirmAnnotation() {
     );
     
     console.log('添加标注成功');
-    showStatusMessage('success', `标注添加成功: (${currentAnnotationData.x.toFixed(2)}, ${currentAnnotationData.y.toFixed(2)})`);
+    const is1D = isThicknessData1D();
+    const coordText = is1D
+        ? `X=${currentAnnotationData.x.toFixed(2)}${currentXUnit}`
+        : `(${currentAnnotationData.x.toFixed(2)}, ${currentAnnotationData.y.toFixed(2)})`;
+    showStatusMessage('success', `标注添加成功: ${coordText}`);
     
     // 关闭弹窗
     closeAnnotationModal();
@@ -1312,7 +1596,9 @@ function confirmManualAnnotation() {
     addAnnotation(xValue, 0, simulatedValue, actualValue);
     
     console.log('手动添加标注成功');
-    showStatusMessage('success', `手动标注添加成功: X=${xValue.toFixed(2)}μm`);
+    const is1D = isThicknessData1D();
+    const coordText = is1D ? `X=${xValue.toFixed(2)}${currentXUnit}` : `(${xValue.toFixed(2)}, 0.00)`;
+    showStatusMessage('success', `手动标注添加成功: ${coordText}`);
     
     // 关闭弹窗
     closeManualAnnotationModal();
@@ -1875,6 +2161,29 @@ window.deleteRecord = deleteRecord;
 let selectedExposureOption = null;
 
 /**
+ * 显示参数预测输入弹窗
+ */
+function showPredictionInputModal() {
+    const modal = document.getElementById('prediction-input-modal');
+    if (modal) {
+        // 更新单位显示
+        updatePredictionModalUnits();
+        modal.style.display = 'block';
+    }
+}
+
+/**
+ * 更新参数预测弹窗中的单位显示
+ */
+function updatePredictionModalUnits() {
+    const xUnitSpan = document.getElementById('target-x-unit');
+    
+    if (xUnitSpan) {
+        xUnitSpan.textContent = `单位：${currentXUnit}`;
+    }
+}
+
+/**
  * 显示智能优化输入弹窗
  */
 function showOptimizationModal() {
@@ -2268,6 +2577,7 @@ function updateSimulatedThickness() {
 }
 
 // 导出智能优化相关的全局函数
+window.showPredictionInputModal = showPredictionInputModal;
 window.showOptimizationModal = showOptimizationModal;
 window.closeOptimizationModal = closeOptimizationModal;
 window.performSmartOptimization = performSmartOptimization;
