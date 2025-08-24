@@ -15,13 +15,36 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
 ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=flat&logo=plotly&logoColor=white)
 
+[快速开始](#快速开始) •
+[功能特性](#功能特性) •
+[在线演示](#在线演示) •
+[API文档](#api接口) •
+[贡献指南](#贡献指南)
+
 </div>
+
+---
+
+## 📋 目录
+
+- [项目简介](#项目简介)
+- [功能特性](#功能特性)  
+- [在线演示](#在线演示)
+- [快速开始](#快速开始)
+- [项目架构](#项目架构)
+- [核心功能](#核心功能)
+- [API接口](#api接口)
+- [配置参数](#配置参数)
+- [开发指南](#开发指南)
+- [常见问题](#常见问题)
+- [贡献指南](#贡献指南)
+- [许可证](#许可证)
 
 ## 项目简介
 
 DILL模型计算工具是一款专业的光刻工艺仿真软件，实现了从光强分布到光刻胶厚度的完整计算链路，并集成了基于历史验证数据的智能曝光时间优化算法。
 
-### 核心特性
+## 功能特性
 
 - **多维度DILL模型计算**：支持1D/2D/3D光强分布和厚度计算
 - **智能曝光优化**：基于验证数据的多策略曝光时间推荐
@@ -29,6 +52,21 @@ DILL模型计算工具是一款专业的光刻工艺仿真软件，实现了从�
 - **实时可视化**：基于Plotly的交互式图表和动画效果
 - **多段曝光累积**：支持分段曝光时间的累积剂量计算
 - **验证数据管理**：Excel数据导入、筛选和机器学习优化
+
+## 在线演示
+
+```bash
+# 本地快速体验
+git clone https://github.com/AlexLIAOPOLY/DILL-Model.git
+cd DILL-Model/Dill/DILL/dill_model  
+python run.py
+# 浏览器访问 http://localhost:8080
+```
+
+**主要页面：**
+- `/` - DILL模型参数计算
+- `/validation.html` - 智能曝光优化（推荐）
+- `/compare.html` - 参数对比分析
 
 ## 项目架构
 
@@ -94,235 +132,125 @@ python run.py
 - **`/compare.html`** - 参数对比页面：多组参数并行计算对比
 - **`/matrix_visualization/`** - 矩阵可视化：3D数据的高级可视化
 
-## 核心功能详解
+## 核心功能
 
-### 1. DILL模型计算
+### DILL模型计算
+- **数学模型**：`I(x) = I_avg × (1 + V × cos(K×x + φ))` → `D(x) = I(x) × t_exp` → `M(x) = exp(-C × D(x))`
+- **多维支持**：1D/2D/3D光强分布 + 4D时间演化动画
+- **实时计算**：参数调整即时更新图表
 
-实现基于Dill参数的光刻胶曝光计算：
+### 智能曝光优化
+- **多策略推荐**：保守/平衡/激进/最优策略，含置信度评估
+- **数据驱动**：基于Excel验证记录的机器学习算法
+- **目标导向**：按位置和目标厚度精准优化
 
-**数学模型**：
-- 光强分布：`I(x) = I_avg × (1 + V × cos(K×x + φ))`
-- 曝光剂量：`D(x) = I(x) × t_exp`
-- 厚度分布：`M(x) = exp(-C × D(x))` (含阈值处理)
-
-**支持模式**：
-- **1D模式**：一维正弦光强分布
-- **2D模式**：二维光强场计算
-- **3D模式**：完整三维空间建模
-- **4D动画**：时间演化可视化
-
-### 2. 智能曝光优化
-
-基于历史验证数据的机器学习优化：
-
-**算法特性**：
-- 多策略推荐：保守/平衡/激进/最优策略
-- 置信度评估：算法可靠性量化
-- 目标导向：按位置和目标厚度精准优化
-- 数据驱动：利用Excel验证记录训练模型
-
-**优化流程**：
-1. 导入验证数据 → 2. 设置目标参数 → 3. 算法优化计算 → 4. 多策略结果展示 → 5. 置信度评估
-
-### 3. 自定义光强分布
-
-支持多种光强输入方式：
-
-**数据格式**：
-- CSV文件：`x,intensity` 格式
-- JSON数据：`{"x": [...], "intensity": [...]}`
-- 在线绘制：交互式光强曲线编辑
-
-**处理能力**：
-- 智能单位转换 (nm/μm/mm)
-- 数据插值与平滑
-- 边界外值处理 (零值/边界值/自定义值)
-
-### 4. 多段曝光累积
-
-模拟实际工艺的分段曝光：
-
-```python
-# 示例：5段曝光，每段10秒，光强递增
-segments = {
-    "count": 5,
-    "duration": 10,  # 每段时间(秒)
-    "intensities": [50, 60, 70, 80, 90]  # 各段光强
-}
-```
+### 灵活数据输入
+- **格式支持**：CSV、JSON、在线绘制
+- **智能处理**：单位转换(nm/μm/mm)、插值平滑、边界处理
+- **多段曝光**：支持工艺级分段曝光累积计算
 
 ## API接口
 
-### 主要端点
+### 核心端点
 
-#### 1. DILL模型计算
-```http
-POST /api/calculate_data
-Content-Type: application/json
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/calculate_data` | POST | DILL模型计算 |
+| `/api/smart_optimize_exposure` | POST | 智能曝光优化 |
+| `/api/get_validation_data_for_optimization` | GET | 获取验证数据 |
+| `/api/upload_data` | POST | 上传验证数据 |
 
+### 请求示例
+
+**DILL模型计算：**
+```json
 {
   "model_type": "dill",
-  "sine_type": "single",
-  "I_avg": 0.5,
-  "V": 0.8,
-  "K": 0.1,
-  "t_exp": 100,
-  "C": 0.022,
-  "angle_a": 11.7,
-  "wavelength": 405,
-  "exposure_calculation_method": "cumulative",
-  "segment_count": 5,
-  "segment_intensities": [50,50,50,50,50]
+  "I_avg": 0.5, "V": 0.8, "K": 0.1,
+  "t_exp": 100, "C": 0.022,
+  "angle_a": 11.7, "wavelength": 405
 }
 ```
 
-#### 2. 智能优化
-```http
-POST /api/smart_optimize_exposure
-Content-Type: application/json
-
+**智能优化：**
+```json
 {
-  "target_x": 0,
-  "target_y": 0,
+  "target_x": 0, "target_y": 0,
   "target_thickness": 1.0,
-  "selected_records": [0,1,2],
-  "optimization_type": "custom",
-  "sensitivity": 2.0,
-  "confidence_threshold": 0.5,
   "strategy_count": 3
 }
 ```
 
-返回示例：
-```json
-{
-  "success": true,
-  "data": {
-    "exposure_options": [
-      {
-        "label": "保守策略",
-        "type": "conservative", 
-        "exposure_time": 99.6,
-        "confidence": 0.796,
-        "predicted_thickness": 1.1534
-      }
-    ]
-  }
-}
-```
-
-#### 3. 验证数据管理
-```http
-GET /api/get_validation_data_for_optimization    # 获取验证记录
-GET /api/latest_calculation                      # 最近计算结果
-POST /api/upload_data                           # 上传验证数据
-```
-
 ## 配置参数
 
-### DILL模型参数
-- `I_avg`: 平均光强
-- `V`: 干涉条纹可见度 (0-1)
-- `K`: 空间频率 (rad/μm)
-- `t_exp`: 曝光时间 (秒)
-- `C`: Dill模型速率常数
-- `angle_a`: 入射角 (度)
-- `wavelength`: 波长 (nm)
+**DILL模型：** `I_avg`(光强) • `V`(可见度) • `K`(空间频率) • `t_exp`(时间) • `C`(速率常数)
 
-### 优化算法参数
-- `sensitivity`: 算法敏感度 (1.0/2.0/3.0)
-- `confidence_threshold`: 最低置信度 (0-1)
-- `strategy_count`: 策略数量 (1/3/5)
+**优化算法：** `sensitivity`(敏感度) • `confidence_threshold`(置信度) • `strategy_count`(策略数)
 
-## 开发与扩展
+## 开发指南
 
 ### 本地开发
-
-1. **启用调试模式**：
 ```bash
+# 调试模式
 python run.py --debug
-```
 
-2. **查看详细日志**：
-```bash
+# 详细日志  
 DILL_ENABLE_LOG_FILTER=false python run.py --verbose-logs
-```
 
-3. **自定义端口**：
-```bash
+# 自定义端口
 python run.py --port 5000
 ```
 
 ### 二次开发
+- **新模型**：扩展 `backend/models/`
+- **API修改**：编辑 `backend/routes/api.py` 
+- **前端定制**：修改 `frontend/` 下文件
+- **多语言**：扩展 `frontend/js/lang.js`
 
-- **添加新模型**：在`backend/models/`目录扩展
-- **自定义API**：修改`backend/routes/api.py`
-- **界面定制**：编辑`frontend/`下的HTML/CSS/JS文件
-- **多语言支持**：扩展`frontend/js/lang.js`
-
-### 部署建议
-
-**生产环境**：
+### 生产部署
 ```bash
-# 使用Gunicorn部署
+# Gunicorn
 gunicorn -w 4 -b 0.0.0.0:8080 wsgi:app
 
-# 或使用Docker
+# Docker  
 docker build -t dill-model .
 docker run -p 8080:8080 dill-model
 ```
 
-**环境变量**：
-- `FLASK_ENV=production` - 生产模式
-- `DILL_ENABLE_LOG_FILTER=true` - 日志过滤
-- `PORT=8080` - 服务端口
-
-## 依赖说明
-
-### 核心依赖
-- `flask>=3.0.0` - Web框架
-- `numpy>=1.24.0` - 数值计算
-- `scipy>=1.10.0` - 科学计算
-- `pandas>=2.0.0` - 数据处理
-- `scikit-learn>=1.3.0` - 机器学习
-- `matplotlib>=3.6.0` - 图像生成
-- `openpyxl>=3.1.0` - Excel支持
-
-### 可选依赖
-- `gunicorn>=21.0.0` - 生产服务器
-- `pytest>=7.4.0` - 单元测试
+### 主要依赖
+**后端：** Flask • NumPy • Pandas • scikit-learn • Matplotlib
+**前端：** HTML5 • CSS3 • JavaScript • Plotly.js
 
 ## 常见问题
 
-**Q: 端口被占用怎么办？**
-A: 启动脚本会自动切换到8081端口，或使用`--port`参数指定其他端口。
-
-**Q: 验证数据格式要求？**
-A: 支持Excel (.xlsx) 格式，需包含位置、厚度、曝光参数等列，具体格式参考`validation_data.xlsx`样本。
-
-**Q: 如何提高计算性能？**
-A: 
-- 减少网格点数 (如2001→1001)
-- 关闭不必要的动画效果
-- 使用多进程部署 (`gunicorn -w 4`)
-
-**Q: 自定义光强数据格式？**
-A: 支持CSV格式 (`x,intensity`) 或JSON格式，自动检测单位并智能转换。
+| 问题 | 解决方案 |
+|------|----------|
+| 端口被占用 | 自动切换8081端口，或用 `--port` 指定 |
+| 验证数据格式 | Excel格式，参考 `validation_data.xlsx` 样本 |
+| 提高性能 | 减少网格点数、关闭动画、多进程部署 |
+| 自定义光强 | 支持CSV/JSON，自动单位转换 |
 
 ## 贡献指南
 
-欢迎提交Issue和Pull Request：
+1. **Fork** 项目并创建功能分支
+2. **提交** 清晰的commit信息  
+3. **测试** 确保代码质量
+4. **发起** Pull Request
 
-1. Fork项目并创建功能分支
-2. 遵循现有代码风格
-3. 添加适当的测试用例
-4. 提交清晰的commit信息
-5. 发起Pull Request
+欢迎提交Issue反馈问题和建议！
 
 ## 许可证
 
-MIT License - 详见 [LICENSE](LICENSE) 文件
+本项目采用 **MIT License** 开源协议 - 查看 [LICENSE](LICENSE) 了解详情
 
 ---
 
-**技术支持**: 如有问题，请在GitHub仓库提交Issue或联系开发团队。
+<div align="center">
+
+**⭐ 如果这个项目对你有帮助，请给个Star支持一下！**
+
+[提交问题](https://github.com/AlexLIAOPOLY/DILL-Model/issues) •
+[功能建议](https://github.com/AlexLIAOPOLY/DILL-Model/issues/new) •
+[技术支持](https://github.com/AlexLIAOPOLY/DILL-Model/discussions)
+
+</div>
