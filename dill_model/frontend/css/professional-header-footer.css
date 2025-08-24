@@ -1203,6 +1203,149 @@ body[data-lang="en"] .lang-select {
     height: 100%; /* 确保充满父容器高度 */
 }
 
+/* GitHub链接容器样式 */
+.github-link-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+/* GitHub链接样式 */
+.github-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    color: white;
+    text-decoration: none;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.github-link:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #ffd700;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.github-link:hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 0.5s ease;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* GitHub工具提示 */
+.github-tooltip {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.github-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid rgba(0, 0, 0, 0.8);
+}
+
+.github-link:hover .github-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-5px);
+}
+
+/* 页脚GitHub链接样式增强 */
+.footer-section .contact-item a[href*="github"] {
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.footer-section .contact-item a[href*="github"]:hover {
+    color: #ffd700 !important;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+.footer-section .contact-item a[href*="github"]:hover::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 4px;
+    background: #ffd700;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #ffd700;
+}
+
+/* 移动端响应式适配 */
+@media (max-width: 768px) {
+    .github-link {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+    
+    .github-tooltip {
+        font-size: 11px;
+        padding: 4px 8px;
+        top: 45px;
+    }
+    
+    .header-utilities {
+        gap: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .github-link {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+    
+    .github-tooltip {
+        display: none; /* 移动端隐藏工具提示 */
+    }
+    
+    .header-utilities {
+        gap: 0.5rem;
+    }
+}
+
 /* 已删除 company-info 相关样式，因为该元素已从页眉移除 */
 
 /* 语言选择下拉框样式 */
