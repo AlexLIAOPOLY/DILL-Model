@@ -1305,7 +1305,35 @@ intensity3
                                             </div>
                                             <div class="image-column">
                                                 <h5>灰度预览</h5>
-                                                <canvas id="grayscale-photo-canvas"></canvas>
+                                                <div id="grayscale-canvas-container" class="canvas-container">
+                                                    <canvas id="grayscale-photo-canvas"></canvas>
+                                                    <!-- 裁剪控件容器，只在选择手动裁剪时显示 -->
+                                                    <div id="crop-overlay" class="crop-overlay" style="display: none;">
+                                                        <!-- 裁剪区域框 -->
+                                                        <div id="crop-area" class="crop-area">
+                                                            <!-- 八个拖拽控制点 -->
+                                                            <div class="crop-handle crop-handle-nw" data-position="nw"></div>
+                                                            <div class="crop-handle crop-handle-n" data-position="n"></div>
+                                                            <div class="crop-handle crop-handle-ne" data-position="ne"></div>
+                                                            <div class="crop-handle crop-handle-e" data-position="e"></div>
+                                                            <div class="crop-handle crop-handle-se" data-position="se"></div>
+                                                            <div class="crop-handle crop-handle-s" data-position="s"></div>
+                                                            <div class="crop-handle crop-handle-sw" data-position="sw"></div>
+                                                            <div class="crop-handle crop-handle-w" data-position="w"></div>
+                                                        </div>
+                                                        <!-- 裁剪遮罩层 -->
+                                                        <div class="crop-mask crop-mask-top"></div>
+                                                        <div class="crop-mask crop-mask-left"></div>
+                                                        <div class="crop-mask crop-mask-right"></div>
+                                                        <div class="crop-mask crop-mask-bottom"></div>
+                                                    </div>
+                                                </div>
+                                                <!-- 确认裁剪按钮，只在手动裁剪模式时显示 -->
+                                                <div id="crop-confirm-container" class="crop-confirm-container" style="display: none;">
+                                                    <button id="confirm-crop-btn" class="crop-confirm-btn">
+                                                        <i class="fas fa-check"></i> 确认裁剪
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1338,6 +1366,7 @@ intensity3
                                                 <select id="crop-mode" class="form-control">
                                                     <option value="none">不裁剪</option>
                                                     <option value="center">中心裁剪</option>
+                                                    <option value="manual">手动裁剪</option>
                                                 </select>
                                             </div>
                                             <div class="param-item">
@@ -1362,8 +1391,43 @@ intensity3
                                                 </select>
                                             </div>
                                             <div class="param-item">
-                                                <label for="max-intensity-value">最亮点光强值: <span class="tooltip-icon" data-title="设定光斑最亮处的实际光强数值">ⓘ</span></label>
+                                                <label for="intensity-value-type">光强值设置: <span class="tooltip-icon" data-title="选择光强值的设置方式">ⓘ</span></label>
+                                                <select id="intensity-value-type" class="form-control">
+                                                    <option value="max">最大光强值</option>
+                                                    <option value="center">中心点光强值</option>
+                                                    <option value="custom">自定义位置光强值</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <!-- 最大光强值输入区域 -->
+                                            <div id="max-intensity-input" class="param-item intensity-input-area">
+                                                <label for="max-intensity-value">最大光强值: <span class="tooltip-icon" data-title="设定光斑最亮处的实际光强数值">ⓘ</span></label>
                                                 <input type="number" id="max-intensity-value" value="1.0" min="0.001" step="0.01" class="form-control" placeholder="输入最大光强值">
+                                            </div>
+                                            
+                                            <!-- 中心点光强值输入区域 -->
+                                            <div id="center-intensity-input" class="param-item intensity-input-area" style="display: none;">
+                                                <label for="center-intensity-value">中心点光强值: <span class="tooltip-icon" data-title="设定图像中心位置的光强数值">ⓘ</span></label>
+                                                <input type="number" id="center-intensity-value" value="1.0" min="0.001" step="0.01" class="form-control" placeholder="输入中心点光强值">
+                                            </div>
+                                            
+                                            <!-- 自定义位置光强值输入区域 -->
+                                            <div id="custom-intensity-input" class="param-item intensity-input-area" style="display: none;">
+                                                <label>自定义位置光强值: <span class="tooltip-icon" data-title="设定指定位置的光强数值。坐标原点(0,0)位于图像左上角，其他位置的光强值将按比例自动计算">ⓘ</span></label>
+                                                <div class="custom-intensity-grid">
+                                                    <div class="grid-item">
+                                                        <label for="custom-position-x">X坐标:</label>
+                                                        <input type="number" id="custom-position-x" value="0" step="1" class="form-control" placeholder="像素坐标">
+                                                    </div>
+                                                    <div class="grid-item">
+                                                        <label for="custom-position-y">Y坐标:</label>
+                                                        <input type="number" id="custom-position-y" value="0" step="1" class="form-control" placeholder="像素坐标">
+                                                    </div>
+                                                    <div class="grid-item">
+                                                        <label for="custom-intensity-value">光强值:</label>
+                                                        <input type="number" id="custom-intensity-value" value="1.0" min="0.001" step="0.01" class="form-control" placeholder="光强数值">
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="processing-actions">
@@ -1374,13 +1438,16 @@ intensity3
                                     <!-- 向量预览区域 -->
                                     <div id="vector-preview-section" class="vector-preview-section" style="display:none;">
                                         <div class="params-header">
-                                            <h4>生成的向量数据</h4>
+                                            <h4>
+                                                <i class="fas fa-chart-line" style="color: #3498db;"></i>
+                                                生成的向量数据
+                                            </h4>
                                             <div class="data-stats">
-                                                <span id="vector-data-count">0 个数据点</span>
+                                                <span id="vector-data-count">数据点: 0</span>
                                             </div>
                                         </div>
                                         <div class="vector-preview-container">
-                                            <canvas id="vector-preview-canvas"></canvas>
+                                            <canvas id="vector-preview-canvas" title="点击放大图表查看详细信息"></canvas>
                                         </div>
                                         <div class="vector-actions">
                                             <button id="apply-vector-data-btn" class="camera-btn start-btn">应用到模型</button>

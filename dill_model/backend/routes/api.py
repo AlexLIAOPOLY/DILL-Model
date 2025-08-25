@@ -4583,6 +4583,14 @@ def process_photo():
         smoothing_method = data.get('smoothing_method', 'none')
         crop_mode = data.get('crop_mode', 'none')
         max_intensity_value = float(data.get('max_intensity_value', 1.0))
+        crop_params = data.get('crop_params', None)
+        
+        # 获取光强值类型设置（新增）
+        intensity_value_type = data.get('intensity_value_type', 'max')
+        custom_position_x = data.get('custom_position_x', 0)
+        custom_position_y = data.get('custom_position_y', 0)
+        center_intensity_value = float(data.get('center_intensity_value', 1.0))
+        custom_intensity_value = float(data.get('custom_intensity_value', 1.0))
         
         add_progress_log('system', f'处理参数: 灰度方法={grayscale_method}, 方向={vector_direction}')
         
@@ -4619,6 +4627,24 @@ def process_photo():
             bottom = top + crop_size
             image = image.crop((left, top, right, bottom))
             add_progress_log('system', f'中心裁剪完成: {crop_size}x{crop_size}')
+        elif crop_mode == 'manual' and crop_params:
+            # 手动裁剪处理
+            crop_x = int(crop_params.get('x', 0))
+            crop_y = int(crop_params.get('y', 0))
+            crop_width = int(crop_params.get('width', image.size[0]))
+            crop_height = int(crop_params.get('height', image.size[1]))
+            
+            # 确保裁剪区域在图像范围内
+            crop_x = max(0, min(crop_x, image.size[0]))
+            crop_y = max(0, min(crop_y, image.size[1]))
+            crop_width = min(crop_width, image.size[0] - crop_x)
+            crop_height = min(crop_height, image.size[1] - crop_y)
+            
+            # 执行裁剪
+            right = crop_x + crop_width
+            bottom = crop_y + crop_height
+            image = image.crop((crop_x, crop_y, right, bottom))
+            add_progress_log('system', f'手动裁剪完成: 区域({crop_x}, {crop_y}, {right}, {bottom}), 尺寸{crop_width}x{crop_height}')
         
         # 转换为numpy数组
         image_array = np.array(image)
@@ -4657,6 +4683,14 @@ def process_photo():
         coord_range = max(vector_data['x']) - min(vector_data['x'])
         validation_result = validate_coordinate_range(coord_range, coordinate_unit, len(vector_data['x']))
         
+        # 计算用户光强设置的相关信息（新增）
+        intensity_marker_info = calculate_intensity_marker_info(
+            vector_data, intensity_value_type, 
+            max_intensity_value, center_intensity_value, custom_intensity_value,
+            custom_position_x, custom_position_y, scale_factor
+        )
+        add_progress_log('system', f'光强标记信息计算完成: {intensity_value_type}')
+        
         # 生成响应数据
         response_data = {
             'success': True,
@@ -4676,12 +4710,14 @@ def process_photo():
                 'intensity_range': [float(min(vector_data['intensity'])), float(max(vector_data['intensity']))],
                 'coordinate_range': float(coord_range),
                 'unit_validation': validation_result,
+                'intensity_marker': intensity_marker_info,  # 新增光强标记信息
                 'processing_info': {
                     'pixel_to_unit_ratio': f'1px = {scale_factor}{coordinate_unit}',
                     'total_pixels_processed': width * height,
                     'vector_extraction_direction': vector_direction,
                     'max_intensity_value': max_intensity_value,
-                    'intensity_scaling_applied': max_intensity_value != 1.0
+                    'intensity_scaling_applied': max_intensity_value != 1.0,
+                    'intensity_value_type': intensity_value_type  # 新增
                 }
             }
         }
@@ -4698,6 +4734,80 @@ def process_photo():
         add_error_log('system', f'照片处理过程中发生错误: {str(e)}')
         traceback.print_exc()
         return jsonify(format_response(False, message=f"照片处理失败: {str(e)}")), 500
+
+
+def calculate_intensity_marker_info(vector_data, intensity_value_type, 
+                                  max_intensity_value, center_intensity_value, custom_intensity_value,
+                                  custom_position_x, custom_position_y, scale_factor):
+    """
+    计算用户光强设置的标记信息
+    """
+    try:
+        x_data = vector_data['x']
+        intensity_data = vector_data['intensity']
+        
+        marker_info = {
+            'type': intensity_value_type,
+            'user_value': 0.0,
+            'actual_value': 0.0,
+            'position': {'x': 0.0, 'index': 0},
+            'coordinates_description': '未知',
+            'is_valid': True
+        }
+        
+        if intensity_value_type == 'max':
+            # 最大光强值模式
+            max_index = intensity_data.index(max(intensity_data))
+            marker_info.update({
+                'user_value': max_intensity_value,
+                'actual_value': intensity_data[max_index],
+                'position': {'x': x_data[max_index], 'index': max_index},
+                'coordinates_description': f'最大光强位置 X={x_data[max_index]:.3f}'
+            })
+            
+        elif intensity_value_type == 'center':
+            # 中心点光强值模式
+            center_index = len(x_data) // 2
+            marker_info.update({
+                'user_value': center_intensity_value,
+                'actual_value': intensity_data[center_index],
+                'position': {'x': x_data[center_index], 'index': center_index},
+                'coordinates_description': f'数据中心点 X={x_data[center_index]:.3f}'
+            })
+            
+        elif intensity_value_type == 'custom':
+            # 自定义位置模式
+            # 将像素坐标转换为实际坐标单位
+            custom_x_coord = custom_position_x * scale_factor
+            
+            # 找到最接近的数据点
+            closest_index = 0
+            min_distance = float('inf')
+            for i, x_val in enumerate(x_data):
+                distance = abs(x_val - custom_x_coord)
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_index = i
+            
+            marker_info.update({
+                'user_value': custom_intensity_value,
+                'actual_value': intensity_data[closest_index],
+                'position': {'x': x_data[closest_index], 'index': closest_index},
+                'coordinates_description': f'自定义位置 X={x_data[closest_index]:.3f} (原像素坐标: {custom_position_x}, {custom_position_y})',
+                'custom_pixel_coords': {'x': custom_position_x, 'y': custom_position_y}
+            })
+        
+        return marker_info
+        
+    except Exception as e:
+        return {
+            'type': intensity_value_type,
+            'user_value': 1.0,
+            'actual_value': 0.0,
+            'position': {'x': 0.0, 'index': 0},
+            'coordinates_description': f'计算失败: {str(e)}',
+            'is_valid': False
+        }
 
 
 def convert_to_grayscale_numpy(image_array, method='weighted'):
