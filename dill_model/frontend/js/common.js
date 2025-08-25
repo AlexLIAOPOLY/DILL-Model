@@ -1,6 +1,136 @@
 // 通用功能JavaScript
 
 /**
+ * 设置单个元素的自定义工具提示
+ */
+function setupCustomTooltip(icon) {
+    // 彻底移除和禁用title属性
+    icon.removeAttribute('title');
+    icon.title = '';
+    
+    // 移除已有的事件监听器（如果有）
+    icon.removeEventListener('mouseenter', icon._customTooltipEnter);
+    icon.removeEventListener('mouseleave', icon._customTooltipLeave);
+    icon.removeEventListener('mouseover', icon._customTooltipOver);
+    icon.removeEventListener('mouseout', icon._customTooltipOut);
+    
+    // 创建阻止默认工具提示的事件监听器
+    icon._preventDefaultTooltip = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        // 强制清空title属性
+        if (e.target.title) {
+            e.target.title = '';
+            e.target.removeAttribute('title');
+        }
+        return false;
+    };
+    
+    // 创建新的事件监听器
+    icon._customTooltipEnter = function(e) {
+        // 确保title属性为空
+        e.target.title = '';
+        e.target.removeAttribute('title');
+        console.log('显示自定义工具提示:', e.target.getAttribute('data-title'));
+        showCustomTooltip(e.target);
+    };
+    
+    icon._customTooltipLeave = function(e) {
+        console.log('隐藏自定义工具提示');
+        hideCustomTooltip();
+    };
+    
+    // 只添加必要的事件监听器，不过度阻止
+    icon.addEventListener('mouseenter', icon._customTooltipEnter, false);
+    icon.addEventListener('mouseleave', icon._customTooltipLeave, false);
+    
+    // 简化的定时器，只在需要时清理title属性
+    if (icon.hasAttribute('title')) {
+        const titleWatcher = setInterval(() => {
+            if (icon.hasAttribute('title')) {
+                icon.title = '';
+                icon.removeAttribute('title');
+            }
+        }, 100);
+        
+        // 存储定时器引用以便清理
+        icon._titleWatcher = titleWatcher;
+    }
+}
+
+/**
+ * 全局禁用浏览器默认工具提示
+ */
+function disableDefaultTooltips() {
+    // 禁用所有工具提示图标的默认行为
+    const tooltipIcons = document.querySelectorAll('.tooltip-icon[data-title]');
+    tooltipIcons.forEach(setupCustomTooltip);
+}
+
+/**
+ * 显示自定义工具提示
+ */
+function showCustomTooltip(element) {
+    const tooltipText = element.getAttribute('data-title');
+    if (!tooltipText) return;
+    
+    // 移除现有的工具提示
+    hideCustomTooltip();
+    
+    // 创建工具提示元素
+    const tooltip = document.createElement('div');
+    tooltip.className = 'custom-tooltip-popup';
+    tooltip.textContent = tooltipText;
+    tooltip.style.cssText = `
+        position: fixed;
+        z-index: 10000;
+        background: #333;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: normal;
+        white-space: normal;
+        max-width: 300px;
+        line-height: 1.4;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        pointer-events: none;
+        opacity: 1;
+    `;
+    
+    // 计算位置
+    const rect = element.getBoundingClientRect();
+    tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+    tooltip.style.top = (rect.top - 8) + 'px';
+    tooltip.style.transform = 'translate(-50%, -100%)';
+    
+    // 添加小箭头
+    const arrow = document.createElement('div');
+    arrow.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border: 5px solid transparent;
+        border-top-color: #333;
+    `;
+    tooltip.appendChild(arrow);
+    
+    document.body.appendChild(tooltip);
+}
+
+/**
+ * 隐藏自定义工具提示
+ */
+function hideCustomTooltip() {
+    const existingTooltip = document.querySelector('.custom-tooltip-popup');
+    if (existingTooltip) {
+        existingTooltip.remove();
+    }
+}
+
+/**
  * 初始化回到顶部按钮
  */
 function initBackToTop() {
@@ -74,6 +204,48 @@ function initBackToTop() {
  * 页面加载完成后初始化
  */
 document.addEventListener('DOMContentLoaded', function() {
+    // 全局清理tooltip-icon元素的title属性，但不阻止事件
+    document.addEventListener('mouseover', function(e) {
+        if (e.target.classList.contains('tooltip-icon') && e.target.hasAttribute('title')) {
+            e.target.title = '';
+            e.target.removeAttribute('title');
+        }
+    }, false);
+    
+    // 立即强制调用工具提示禁用
+    disableDefaultTooltips();
+    
+    // 延迟再次调用，确保动态加载的内容也被处理
+    setTimeout(function() {
+        disableDefaultTooltips();
+    }, 100);
+    
+    setTimeout(function() {
+        disableDefaultTooltips();
+    }, 500);
+    
+    // 使用MutationObserver监听动态添加的元素
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    // 检查新添加的元素及其子元素中的tooltip-icon
+                    const tooltipIcons = node.querySelectorAll ? node.querySelectorAll('.tooltip-icon[data-title]') : [];
+                    if (node.classList && node.classList.contains('tooltip-icon') && node.hasAttribute('data-title')) {
+                        setupCustomTooltip(node);
+                    }
+                    tooltipIcons.forEach(setupCustomTooltip);
+                }
+            });
+        });
+    });
+    
+    // 开始观察DOM变化
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
     initBackToTop();
     initProfessionalHeader();
     initProfessionalFooter();
@@ -373,5 +545,15 @@ window.CommonUtils = {
     initNavigationActiveState: initNavigationActiveState,
     showTooltipMessage: showTooltipMessage,
     copyToClipboard: copyToClipboard,
-    debounce: debounce
-}; 
+    debounce: debounce,
+    disableDefaultTooltips: disableDefaultTooltips,
+    setupCustomTooltip: setupCustomTooltip,
+    showCustomTooltip: showCustomTooltip,
+    hideCustomTooltip: hideCustomTooltip
+};
+
+// 同时将工具提示相关函数暴露到全局
+window.disableDefaultTooltips = disableDefaultTooltips;
+window.setupCustomTooltip = setupCustomTooltip;
+window.showCustomTooltip = showCustomTooltip;
+window.hideCustomTooltip = hideCustomTooltip; 

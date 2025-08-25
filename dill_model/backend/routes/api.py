@@ -4582,6 +4582,7 @@ def process_photo():
         scale_factor = float(data.get('scale_factor', 0.1))
         smoothing_method = data.get('smoothing_method', 'none')
         crop_mode = data.get('crop_mode', 'none')
+        max_intensity_value = float(data.get('max_intensity_value', 1.0))
         
         add_progress_log('system', f'处理参数: 灰度方法={grayscale_method}, 方向={vector_direction}')
         
@@ -4643,6 +4644,15 @@ def process_photo():
             vector_data['intensity'] = apply_smoothing(vector_data['intensity'], smoothing_method)
             add_progress_log('system', f'数据平滑完成，方法: {smoothing_method}')
         
+        # 应用光强缩放：将归一化的强度值(0-1)缩放到用户指定的最大光强值
+        if max_intensity_value != 1.0:
+            # 找到当前最大强度值（应该是1.0或接近1.0）
+            current_max = max(vector_data['intensity'])
+            if current_max > 0:
+                # 按比例缩放到用户指定的最大值
+                vector_data['intensity'] = [intensity * max_intensity_value / current_max for intensity in vector_data['intensity']]
+                add_progress_log('system', f'光强缩放完成: 最大值从 {current_max:.3f} 缩放到 {max_intensity_value}')
+        
         # 获取坐标验证结果
         coord_range = max(vector_data['x']) - min(vector_data['x'])
         validation_result = validate_coordinate_range(coord_range, coordinate_unit, len(vector_data['x']))
@@ -4669,7 +4679,9 @@ def process_photo():
                 'processing_info': {
                     'pixel_to_unit_ratio': f'1px = {scale_factor}{coordinate_unit}',
                     'total_pixels_processed': width * height,
-                    'vector_extraction_direction': vector_direction
+                    'vector_extraction_direction': vector_direction,
+                    'max_intensity_value': max_intensity_value,
+                    'intensity_scaling_applied': max_intensity_value != 1.0
                 }
             }
         }

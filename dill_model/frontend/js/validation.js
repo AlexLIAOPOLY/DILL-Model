@@ -216,8 +216,15 @@ function loadParametersFromStorage() {
                 // 没有计算结果
                 console.log('后端没有计算结果:', result.message);
                 
-                document.getElementById('no-parameters-message').style.display = 'block';
-                document.getElementById('parameters-container').style.display = 'none';
+                const noParamsElement = document.getElementById('no-parameters-message');
+                const paramsContainer = document.getElementById('parameters-container');
+                
+                if (noParamsElement) {
+                    noParamsElement.style.display = 'block';
+                }
+                if (paramsContainer) {
+                    paramsContainer.style.display = 'none';
+                }
                 
                 // 显示占位符图表
                 displayPlaceholderPlot();
@@ -229,8 +236,15 @@ function loadParametersFromStorage() {
             console.error('从后端加载计算结果失败:', error);
             
             // 网络错误，显示错误信息
-            document.getElementById('no-parameters-message').style.display = 'block';
-            document.getElementById('parameters-container').style.display = 'none';
+            const noParamsElement = document.getElementById('no-parameters-message');
+            const paramsContainer = document.getElementById('parameters-container');
+            
+            if (noParamsElement) {
+                noParamsElement.style.display = 'block';
+            }
+            if (paramsContainer) {
+                paramsContainer.style.display = 'none';
+            }
             
             displayPlaceholderPlot();
             showStatusMessage('error', '无法连接到后端服务，请检查网络连接');

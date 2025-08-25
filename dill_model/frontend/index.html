@@ -1317,7 +1317,7 @@ intensity3
                                         </div>
                                         <div class="param-grid">
                                             <div class="param-item">
-                                                <label for="grayscale-method">灰度转换方法:</label>
+                                                <label for="grayscale-method">灰度转换方法: <span class="tooltip-icon" data-title="选择将彩色图像转换为灰度图像的算法">ⓘ</span></label>
                                                 <select id="grayscale-method" class="form-control">
                                                     <option value="weighted">加权平均 (推荐)</option>
                                                     <option value="average">简单平均</option>
@@ -1326,7 +1326,7 @@ intensity3
                                                 </select>
                                             </div>
                                             <div class="param-item">
-                                                <label for="vector-direction">向量提取方向:</label>
+                                                <label for="vector-direction">向量提取方向: <span class="tooltip-icon" data-title="选择从图像的哪个方向提取光强度数据">ⓘ</span></label>
                                                 <select id="vector-direction" class="form-control">
                                                     <option value="horizontal">水平方向</option>
                                                     <option value="vertical">垂直方向</option>
@@ -1334,14 +1334,14 @@ intensity3
                                                 </select>
                                             </div>
                                             <div class="param-item">
-                                                <label for="crop-mode">图像裁剪:</label>
+                                                <label for="crop-mode">图像裁剪: <span class="tooltip-icon" data-title="选择是否对图像进行预处理裁剪">ⓘ</span></label>
                                                 <select id="crop-mode" class="form-control">
                                                     <option value="none">不裁剪</option>
                                                     <option value="center">中心裁剪</option>
                                                 </select>
                                             </div>
                                             <div class="param-item">
-                                                <label for="coordinate-unit">坐标单位:</label>
+                                                <label for="coordinate-unit">坐标单位: <span class="tooltip-icon" data-title="选择生成的坐标轴使用的物理单位。坐标以图像中心为0点对称分布，单位换算：1像素=缩放因子×物理单位">ⓘ</span></label>
                                                 <select id="coordinate-unit" class="form-control">
                                                     <option value="pixels">像素</option>
                                                     <option value="mm">毫米</option>
@@ -1350,16 +1350,20 @@ intensity3
                                                 </select>
                                             </div>
                                             <div class="param-item">
-                                                <label for="scale-factor">缩放因子:</label>
+                                                <label for="scale-factor">缩放因子: <span class="tooltip-icon" data-title="定义1个像素对应多少个物理单位。系统默认：毫米=0.1，微米=100，像素=1">ⓘ</span></label>
                                                 <input type="number" id="scale-factor" value="1" min="0.001" step="0.1" class="form-control">
                                             </div>
                                             <div class="param-item">
-                                                <label for="smoothing-method">数据平滑:</label>
+                                                <label for="smoothing-method">数据平滑: <span class="tooltip-icon" data-title="选择对提取的强度数据进行平滑处理的方法">ⓘ</span></label>
                                                 <select id="smoothing-method" class="form-control">
                                                     <option value="none">无</option>
                                                     <option value="gaussian">高斯平滑</option>
                                                     <option value="moving_average">移动平均</option>
                                                 </select>
+                                            </div>
+                                            <div class="param-item">
+                                                <label for="max-intensity-value">最亮点光强值: <span class="tooltip-icon" data-title="设定光斑最亮处的实际光强数值">ⓘ</span></label>
+                                                <input type="number" id="max-intensity-value" value="1.0" min="0.001" step="0.01" class="form-control" placeholder="输入最大光强值">
                                             </div>
                                         </div>
                                         <div class="processing-actions">

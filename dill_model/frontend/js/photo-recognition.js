@@ -19,6 +19,7 @@ class PhotoRecognition {
     init() {
         this.bindEvents();
         this.initializeElements();
+        this.disableDefaultTooltips();
     }
 
     /**
@@ -479,6 +480,7 @@ class PhotoRecognition {
             const coordinateUnit = document.getElementById('coordinate-unit')?.value || 'pixels';
             const smoothingMethod = document.getElementById('smoothing-method')?.value || 'none';
             const cropMode = document.getElementById('crop-mode')?.value || 'none';
+            const maxIntensityValue = parseFloat(document.getElementById('max-intensity-value')?.value) || 1.0;
             
             // 单位转换逻辑：定义1像素对应的物理长度
             let scaleFactor = 0.1; // 默认：1像素 = 0.1毫米
@@ -504,7 +506,8 @@ class PhotoRecognition {
                 coordinateUnit,
                 smoothingMethod,
                 cropMode,
-                scaleFactor
+                scaleFactor,
+                maxIntensityValue
             });
             
             // 将图像数据转换为base64
@@ -518,14 +521,16 @@ class PhotoRecognition {
                 coordinate_unit: coordinateUnit,
                 scale_factor: scaleFactor,
                 smoothing_method: smoothingMethod,
-                crop_mode: cropMode
+                crop_mode: cropMode,
+                max_intensity_value: maxIntensityValue
             };
             
             console.log('🔄 发送处理请求到后端...', {
                 grayscale_method: grayscaleMethod,
                 vector_direction: vectorDirection,
                 coordinate_unit: coordinateUnit,
-                scale_factor: scaleFactor
+                scale_factor: scaleFactor,
+                max_intensity_value: maxIntensityValue
             });
             
             // 发送到后端处理
@@ -969,6 +974,24 @@ class PhotoRecognition {
         ctx.rotate(-Math.PI / 2);
         ctx.fillText('光强度', 0, 0);
         ctx.restore();
+        
+        // 添加数值标签
+        ctx.textAlign = 'right';
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#666';
+        
+        // Y轴刻度标签（显示最小值和最大值）
+        const yMinLabel = yMin.toFixed(3);
+        const yMaxLabel = yMax.toFixed(3);
+        ctx.fillText(yMinLabel, padding - 5, height - padding + 5);
+        ctx.fillText(yMaxLabel, padding - 5, padding + 15);
+        
+        // X轴刻度标签（显示坐标范围）
+        ctx.textAlign = 'center';
+        const xMinLabel = xMin.toFixed(2);
+        const xMaxLabel = xMax.toFixed(2);
+        ctx.fillText(xMinLabel, padding, height - padding + 20);
+        ctx.fillText(xMaxLabel, width - padding, height - padding + 20);
     }
 
     /**
@@ -989,11 +1012,14 @@ class PhotoRecognition {
         });
 
         // 显示详细信息弹窗
+        const intensityMin = Math.min(...this.vectorData.intensity);
+        const intensityMax = Math.max(...this.vectorData.intensity);
         const info = `
 向量数据信息：
 • 数据点数：${this.vectorData.x.length}
 • X坐标范围：${Math.min(...this.vectorData.x).toFixed(3)} 到 ${Math.max(...this.vectorData.x).toFixed(3)}
-• 强度范围：${Math.min(...this.vectorData.intensity).toFixed(3)} 到 ${Math.max(...this.vectorData.intensity).toFixed(3)}
+• 光强度范围：${intensityMin.toFixed(3)} 到 ${intensityMax.toFixed(3)}
+• 最亮点光强：${intensityMax.toFixed(3)}
 • 灰度方法：${this.vectorData.parameters.grayscaleMethod}
 • 提取方向：${this.vectorData.parameters.vectorDirection}
 • 坐标单位：${this.vectorData.parameters.coordinateUnit}
@@ -1296,6 +1322,93 @@ class PhotoRecognition {
     }
 
     /**
+     * 禁用浏览器默认的工具提示
+     */
+    disableDefaultTooltips() {
+        // 使用全局的工具提示禁用方法
+        if (typeof disableDefaultTooltips === 'function') {
+            disableDefaultTooltips();
+        } else {
+            // 备用方法
+            const tooltipIcons = document.querySelectorAll('.tooltip-icon[data-title]');
+            tooltipIcons.forEach(icon => {
+                icon.removeAttribute('title');
+                icon.addEventListener('mouseenter', (e) => {
+                    e.target.removeAttribute('title');
+                    this.showCustomTooltip(e.target);
+                });
+                icon.addEventListener('mouseleave', () => {
+                    this.hideCustomTooltip();
+                });
+            });
+        }
+    }
+
+    /**
+     * 显示自定义工具提示
+     */
+    showCustomTooltip(element) {
+        const tooltipText = element.getAttribute('data-title');
+        if (!tooltipText) return;
+        
+        // 移除现有的工具提示
+        this.hideCustomTooltip();
+        
+        // 创建工具提示元素
+        const tooltip = document.createElement('div');
+        tooltip.className = 'custom-tooltip-popup';
+        tooltip.textContent = tooltipText;
+        tooltip.style.cssText = `
+            position: absolute;
+            z-index: 10000;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: normal;
+            white-space: normal;
+            max-width: 300px;
+            line-height: 1.4;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            pointer-events: none;
+            opacity: 1;
+            transform: translateX(-50%);
+        `;
+        
+        // 计算位置
+        const rect = element.getBoundingClientRect();
+        tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+        tooltip.style.top = (rect.top - 8) + 'px';
+        tooltip.style.transform = 'translate(-50%, -100%)';
+        
+        // 添加小箭头
+        const arrow = document.createElement('div');
+        arrow.style.cssText = `
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border: 5px solid transparent;
+            border-top-color: #333;
+        `;
+        tooltip.appendChild(arrow);
+        
+        document.body.appendChild(tooltip);
+    }
+
+    /**
+     * 隐藏自定义工具提示
+     */
+    hideCustomTooltip() {
+        const existingTooltip = document.querySelector('.custom-tooltip-popup');
+        if (existingTooltip) {
+            existingTooltip.remove();
+        }
+    }
+
+    /**
      * 清理资源
      */
     cleanup() {
@@ -1303,6 +1416,7 @@ class PhotoRecognition {
             this.stream.getTracks().forEach(track => track.stop());
         }
         
+        this.hideCustomTooltip();
         this.originalImageData = null;
         this.grayscaleImageData = null;
         this.vectorData = null;
