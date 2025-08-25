@@ -123,12 +123,28 @@ def calculate():
             wavelength = float(data.get('wavelength', 405))
             contrast_ctr = float(data.get('contrast_ctr', 1))
             
+            # 新增: 基底材料和ARC材料参数
+            substrate_material = data.get('substrate_material', 'silicon')
+            arc_material = data.get('arc_material', 'sion')
+            
             # 检查是否使用自定义光强分布
             custom_intensity_data = data.get('custom_intensity_data', None)
             
             # 🔸 调试波长参数
             print(f"🌈 波长参数调试: wavelength = {wavelength} nm (来源: {data.get('wavelength', '默认值')})")
             add_progress_log('dill', f"波长参数设置: λ = {wavelength} nm", dimension=sine_type)
+            
+            # 🔸 计算ARC设计参数
+            arc_params = model.calculate_arc_parameters(substrate_material, arc_material, wavelength)
+            print(f"🔬 ARC设计计算完成:")
+            print(f"   - 基底: {arc_params['materials']['substrate']['name']} (n={arc_params['materials']['substrate']['n']:.3f}, k={arc_params['materials']['substrate']['k']:.3f})")
+            print(f"   - ARC: {arc_params['materials']['arc']['name']} - {arc_params['materials']['arc']['type']} (n={arc_params['materials']['arc']['n']:.3f}, k={arc_params['materials']['arc']['k']:.3f})")
+            print(f"   - 理想ARC折射率: {arc_params['n_arc_ideal']:.3f}")
+            print(f"   - 理想ARC厚度: {arc_params['d_arc_ideal']:.1f} nm")
+            print(f"   - 反射率抑制: {arc_params['suppression_ratio']:.1f}x ({arc_params['reflectance_no_arc']*100:.2f}% → {arc_params['reflectance_with_arc']*100:.4f}%)")
+            
+            add_progress_log('dill', f"基底材料: {arc_params['materials']['substrate']['name']}, ARC: {arc_params['materials']['arc']['name']}", dimension=sine_type)
+            add_progress_log('dill', f"ARC设计: 理想n={arc_params['n_arc_ideal']:.3f}, 厚度={arc_params['d_arc_ideal']:.1f}nm, 抑制{arc_params['suppression_ratio']:.1f}x", dimension=sine_type)
             
             if sine_type == 'multi':
                 Kx = float(data.get('Kx', 0))
@@ -149,7 +165,9 @@ def calculate():
                 y_range = np.linspace(y_min, y_max, y_points).tolist()
                 plot_data = model.generate_plots(I_avg, V, None, t_exp, C, sine_type=sine_type, 
                                                Kx=Kx, Ky=Ky, phi_expr=phi_expr, y_range=y_range,
-                                               custom_intensity_data=custom_intensity_data)
+                                               custom_intensity_data=custom_intensity_data,
+                                               substrate_material=substrate_material,
+                                               arc_material=arc_material)
             elif sine_type == '2d_exposure_pattern':
                 # 处理2D曝光图案参数 (基于MATLAB latent_image2d.m逻辑)
                 add_progress_log('dill', "开始2D曝光图案计算", dimension='2d')
@@ -186,7 +204,9 @@ def calculate():
                         step_size=step_size_2d,
                         exposure_calculation_method='cumulative',
                         segment_intensities=segment_intensities,
-                        custom_intensity_data=custom_intensity_data
+                        custom_intensity_data=custom_intensity_data,
+                        substrate_material=substrate_material,
+                        arc_material=arc_material
                     )
                     
                     add_success_log('dill', f"2D曝光图案计算完成 (累积模式, 总时间: {total_exposure_time}s)", dimension='2d')
@@ -203,7 +223,9 @@ def calculate():
                         x_min=x_min_2d, x_max=x_max_2d,
                         y_min=y_min_2d, y_max=y_max_2d,
                         step_size=step_size_2d,
-                        custom_intensity_data=custom_intensity_data
+                        custom_intensity_data=custom_intensity_data,
+                        substrate_material=substrate_material,
+                        arc_material=arc_material
                     )
                     
                     add_success_log('dill', f"2D曝光图案计算完成 (曝光时间: {t_exp}s)", dimension='2d')
@@ -229,7 +251,9 @@ def calculate():
                 plots = model.generate_plots(I_avg, V, None, t_exp, C, sine_type=sine_type,
                                            Kx=Kx, Ky=Ky, Kz=Kz, phi_expr=phi_expr,
                                            y_range=y_range, z_range=z_range,
-                                           custom_intensity_data=custom_intensity_data)
+                                           custom_intensity_data=custom_intensity_data,
+                                           substrate_material=substrate_material,
+                                           arc_material=arc_material)
             else:
                 K = float(data['K'])
                 
@@ -262,7 +286,9 @@ def calculate():
                                                exposure_calculation_method='cumulative',
                                                segment_duration=segment_duration,
                                                segment_count=segment_count, 
-                                               segment_intensities=segment_intensities)
+                                               segment_intensities=segment_intensities,
+                                               substrate_material=substrate_material,
+                                               arc_material=arc_material)
                     
                     add_success_log('dill', f"多段曝光时间累积模式计算完成 (总时间: {segment_duration * segment_count}s)", dimension='1d')
                     
@@ -277,7 +303,9 @@ def calculate():
                                                    angle_a=angle_a, exposure_threshold=exposure_threshold, 
                                                    contrast_ctr=contrast_ctr, wavelength=wavelength, 
                                                    custom_exposure_times=custom_exposure_times,
-                                                   custom_intensity_data=custom_intensity_data)
+                                                   custom_intensity_data=custom_intensity_data,
+                                                   substrate_material=substrate_material,
+                                                   arc_material=arc_material)
                         add_success_log('dill', f"曝光时间窗口数据生成完成 ({len(custom_exposure_times)}组时间)", dimension='1d')
                     else:
                         # 未提供有效的自定义时间
@@ -289,7 +317,9 @@ def calculate():
                     plots = model.generate_plots(I_avg, V, K, t_exp, C, sine_type=sine_type, 
                                             angle_a=angle_a, exposure_threshold=exposure_threshold, 
                                             contrast_ctr=contrast_ctr, wavelength=wavelength,
-                                            custom_intensity_data=custom_intensity_data)
+                                            custom_intensity_data=custom_intensity_data,
+                                            substrate_material=substrate_material,
+                                            arc_material=arc_material)
                     add_success_log('dill', f"标准曝光模式计算完成 (t_exp: {t_exp}s)", dimension='1d')
                 
                 # 检查是否启用1D动画
@@ -438,7 +468,13 @@ def calculate():
                                          sine_type=sine_type)
         else:
             return jsonify(format_response(False, message="未知模型类型")), 400
-        return jsonify(format_response(True, data=plots)), 200
+        
+        # 在返回数据中添加ARC参数信息 (仅对dill模型)
+        response_data = plots
+        if model_type == 'dill' and 'arc_params' in locals():
+            response_data['arc_parameters'] = arc_params
+            
+        return jsonify(format_response(True, data=response_data)), 200
     except Exception as e:
         # 记录异常参数和错误信息到日志
         with open('dill_backend.log', 'a', encoding='utf-8') as f:
@@ -543,7 +579,9 @@ def calculate_data():
                     plot_data = model.generate_data(I_avg, V, None, t_exp, C, sine_type=sine_type, 
                                                     Kx=Kx, Ky=Ky, phi_expr=phi_expr, y_range=y_range,
                                                     enable_4d_animation=enable_4d_animation,
-                                                    t_start=t_start, t_end=t_end, time_steps=time_steps)
+                                                    t_start=t_start, t_end=t_end, time_steps=time_steps,
+                                                    substrate_material=substrate_material,
+                                                    arc_material=arc_material)
                     calc_time = time.time() - calc_start
                     
                     if enable_4d_animation:
@@ -572,6 +610,19 @@ def calculate_data():
                 exposure_threshold = float(data.get('exposure_threshold', 25))
                 contrast_ctr = float(data.get('V', 0.9))  # V参数就是对比度
                 wavelength = float(data.get('wavelength', 405))
+                
+                # 新增: 基底材料和ARC材料参数（2D曝光图案也需要）
+                substrate_material = data.get('substrate_material', 'silicon')
+                arc_material = data.get('arc_material', 'sion')
+                
+                # 🔸 计算ARC设计参数（2D曝光图案）
+                arc_params = model.calculate_arc_parameters(substrate_material, arc_material, wavelength)
+                print(f"🔬 2D曝光图案ARC设计计算完成:")
+                print(f"   - 基底: {arc_params['materials']['substrate']['name']} (n={arc_params['materials']['substrate']['n']:.3f}, k={arc_params['materials']['substrate']['k']:.3f})")
+                print(f"   - ARC: {arc_params['materials']['arc']['name']} - {arc_params['materials']['arc']['type']} (n={arc_params['materials']['arc']['n']:.3f}, k={arc_params['materials']['arc']['k']:.3f})")
+                print(f"   - 理想ARC折射率: {arc_params['n_arc_ideal']:.3f}")
+                print(f"   - 理想ARC厚度: {arc_params['d_arc_ideal']:.1f} nm")
+                print(f"   - 反射率抑制: {arc_params['suppression_ratio']:.1f}x ({arc_params['reflectance_no_arc']*100:.2f}% → {arc_params['reflectance_with_arc']*100:.4f}%)")
                 
                 x_min_2d = float(data.get('x_min_2d', -1000))
                 x_max_2d = float(data.get('x_max_2d', 1000))
@@ -611,7 +662,9 @@ def calculate_data():
                             step_size=step_size_2d,
                             exposure_calculation_method='cumulative',
                             segment_intensities=segment_intensities,
-                            custom_intensity_data=custom_intensity_data
+                            custom_intensity_data=custom_intensity_data,
+                            substrate_material=substrate_material,
+                            arc_material=arc_material
                         )
                         
                         calc_time = time.time() - calc_start
@@ -620,6 +673,13 @@ def calculate_data():
                         print(f"  ⏱️  计算时间: {calc_time:.3f}s")
                         print(f"  💾 数据字段: {list(plot_data.keys())}")
                         print(f"  📊 总曝光时间: {total_exposure_time}s")
+                        
+                        # 确保ARC参数在返回数据中（累积模式）
+                        if 'arc_parameters' not in plot_data:
+                            plot_data['arc_parameters'] = arc_params
+                            print(f"  🔬 ARC参数已添加到2D曝光图案返回数据中（累积模式）")
+                        else:
+                            print(f"  🔬 ARC参数已存在于2D曝光图案返回数据中（累积模式）")
                         
                         add_success_log('dill', f"2D曝光图案计算完成 (累积模式, 总时间={total_exposure_time}s), 用时{calc_time:.3f}s", dimension='2d')
                         
@@ -643,7 +703,9 @@ def calculate_data():
                             x_min=x_min_2d, x_max=x_max_2d,
                             y_min=y_min_2d, y_max=y_max_2d,
                             step_size=step_size_2d,
-                            custom_intensity_data=custom_intensity_data
+                            custom_intensity_data=custom_intensity_data,
+                            substrate_material=substrate_material,
+                            arc_material=arc_material
                         )
                         
                         calc_time = time.time() - calc_start
@@ -652,6 +714,13 @@ def calculate_data():
                         print(f"  ⏱️  计算时间: {calc_time:.3f}s")
                         print(f"  💾 数据字段: {list(plot_data.keys())}")
                         print(f"  📊 曝光时间: {t_exp}")
+                        
+                        # 确保ARC参数在返回数据中
+                        if 'arc_parameters' not in plot_data:
+                            plot_data['arc_parameters'] = arc_params
+                            print(f"  🔬 ARC参数已添加到2D曝光图案返回数据中")
+                        else:
+                            print(f"  🔬 ARC参数已存在于2D曝光图案返回数据中")
                         
                         add_success_log('dill', f"2D曝光图案计算完成 (t={t_exp}), 用时{calc_time:.3f}s", dimension='2d')
                     
@@ -701,7 +770,9 @@ def calculate_data():
                                                  y_range=y_range, z_range=z_range,
                                                  enable_4d_animation=enable_4d_animation,
                                                  t_start=t_start, t_end=t_end, time_steps=time_steps,
-                                                 x_min=x_min, x_max=x_max)
+                                                 x_min=x_min, x_max=x_max,
+                                                 substrate_material=substrate_material,
+                                                 arc_material=arc_material)
                     calc_time = time.time() - calc_start
                     
                     print(f"[Dill-3D] 🎯 三维计算完成统计:")
@@ -757,6 +828,10 @@ def calculate_data():
                 contrast_ctr = float(data.get('contrast_ctr', 1))
                 wavelength = float(data.get('wavelength', 405))
                 
+                # 新增: 基底材料和ARC材料参数
+                substrate_material = data.get('substrate_material', 'silicon')
+                arc_material = data.get('arc_material', 'sion')
+                
                 # 检查是否使用自定义光强分布
                 custom_intensity_data = data.get('custom_intensity_data', None)
                 
@@ -766,6 +841,18 @@ def calculate_data():
                 
                 print(f"🔥 calculate_data端点: enable_exposure_time_window = {enable_exposure_time_window}")
                 print(f"🔥 calculate_data端点: custom_exposure_times = {custom_exposure_times}")
+                
+                # 🔸 计算ARC设计参数
+                arc_params = model.calculate_arc_parameters(substrate_material, arc_material, wavelength)
+                print(f"🔬 ARC设计计算完成:")
+                print(f"   - 基底: {arc_params['materials']['substrate']['name']} (n={arc_params['materials']['substrate']['n']:.3f}, k={arc_params['materials']['substrate']['k']:.3f})")
+                print(f"   - ARC: {arc_params['materials']['arc']['name']} - {arc_params['materials']['arc']['type']} (n={arc_params['materials']['arc']['n']:.3f}, k={arc_params['materials']['arc']['k']:.3f})")
+                print(f"   - 理想ARC折射率: {arc_params['n_arc_ideal']:.3f}")
+                print(f"   - 理想ARC厚度: {arc_params['d_arc_ideal']:.1f} nm")
+                print(f"   - 反射率抑制: {arc_params['suppression_ratio']:.1f}x ({arc_params['reflectance_no_arc']*100:.2f}% → {arc_params['reflectance_with_arc']*100:.4f}%)")
+                
+                add_progress_log('dill', f"基底材料: {arc_params['materials']['substrate']['name']}, ARC: {arc_params['materials']['arc']['name']}", dimension='1d')
+                add_progress_log('dill', f"ARC设计: 理想n={arc_params['n_arc_ideal']:.3f}, 厚度={arc_params['d_arc_ideal']:.1f}nm, 抑制{arc_params['suppression_ratio']:.1f}x", dimension='1d')
                 
                 # 首先生成基于用户当前参数的静态数据（这是所有模式的基础）
                 print(f"Dill模型参数: I_avg={I_avg}, V={V}, K={K}, t_exp={t_exp}, C={C}")
@@ -797,7 +884,10 @@ def calculate_data():
                                                    exposure_calculation_method='cumulative',
                                                    segment_duration=segment_duration,
                                                    segment_count=segment_count,
-                                                   segment_intensities=segment_intensities)
+                                                   segment_intensities=segment_intensities,
+                                                   substrate_material=substrate_material,
+                                                   arc_material=arc_material,
+                                                   arc_params=arc_params)
                 # 根据曝光时间窗口开关状态选择计算模式
                 elif enable_exposure_time_window and custom_exposure_times is not None and len(custom_exposure_times) > 0:
                     print(f"🎯 calculate_data端点: 启用曝光时间窗口，使用自定义曝光时间 {custom_exposure_times}")
@@ -805,14 +895,20 @@ def calculate_data():
                     plot_data = model.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type, 
                                                    angle_a=angle_a, exposure_threshold=exposure_threshold, 
                                                    contrast_ctr=contrast_ctr, wavelength=wavelength, custom_exposure_times=custom_exposure_times,
-                                                   custom_intensity_data=custom_intensity_data)
+                                                   custom_intensity_data=custom_intensity_data,
+                                                   substrate_material=substrate_material,
+                                                   arc_material=arc_material,
+                                                   arc_params=arc_params)
                 else:
                     print(f"🎯 calculate_data端点: 使用标准曝光模式，单一曝光时间 {t_exp}s")
                     # 标准模式：使用单一曝光时间生成数据
                     plot_data = model.generate_data(I_avg, V, K, t_exp, C, sine_type=sine_type,
                                                    angle_a=angle_a, exposure_threshold=exposure_threshold, 
                                                    contrast_ctr=contrast_ctr, wavelength=wavelength,
-                                                   custom_intensity_data=custom_intensity_data)
+                                                   custom_intensity_data=custom_intensity_data,
+                                                   substrate_material=substrate_material,
+                                                   arc_material=arc_material,
+                                                   arc_params=arc_params)
                 
                 static_calc_time = time.time() - calc_start
                 total_calc_time = static_calc_time
@@ -1278,7 +1374,13 @@ def calculate_data():
         })
         print(f"✅ 已保存最近计算结果到全局存储，模型类型: {data.get('model_type')}")
         
-        return jsonify(format_response(True, data=plot_data)), 200
+        # 在返回数据中添加ARC参数信息 (仅对dill模型)
+        response_data = plot_data
+        if data.get('model_type') == 'dill' and 'arc_params' in locals():
+            response_data['arc_parameters'] = arc_params
+            print(f"✅ ARC参数已添加到返回数据中")
+        
+        return jsonify(format_response(True, data=response_data)), 200
     except Exception as e:
         # 记录异常参数和错误信息到日志
         with open('dill_backend.log', 'a', encoding='utf-8') as f:
@@ -2744,23 +2846,101 @@ def save_validation_data():
         rows_data = []
         for annotation in annotations:
             row_data = {
+                # 基础信息
                 'timestamp': timestamp,
                 'model_type': parameters.get('model_type', ''),
                 'sine_type': parameters.get('sine_type', ''),
+                'is_ideal_exposure_model': parameters.get('is_ideal_exposure_model', ''),
+                
+                # 基底材料参数
+                'substrate_material': parameters.get('substrate_material', ''),
+                'substrate_refractive_index': parameters.get('substrate_refractive_index', ''),
+                'substrate_extinction_coefficient': parameters.get('substrate_extinction_coefficient', ''),
+                'substrate_thickness': parameters.get('substrate_thickness', ''),
+                'substrate_thermal_conductivity': parameters.get('substrate_thermal_conductivity', ''),
+                'substrate_optical_density': parameters.get('substrate_optical_density', ''),
+                'substrate_bandgap': parameters.get('substrate_bandgap', ''),
+                'substrate_surface_roughness': parameters.get('substrate_surface_roughness', ''),
+                
+                # 抗反射薄膜参数
+                'arc_material': parameters.get('arc_material', ''),
+                'arc_refractive_index': parameters.get('arc_refractive_index', ''),
+                'arc_extinction_coefficient': parameters.get('arc_extinction_coefficient', ''),
+                'arc_thickness': parameters.get('arc_thickness', ''),
+                'arc_deposition_method': parameters.get('arc_deposition_method', ''),
+                'arc_uniformity': parameters.get('arc_uniformity', ''),
+                'arc_reflectance': parameters.get('arc_reflectance', ''),
+                'arc_anti_reflective_efficiency': parameters.get('arc_anti_reflective_efficiency', ''),
+                'arc_thermal_stability': parameters.get('arc_thermal_stability', ''),
+                
+                # 光学参数
                 'I_avg': parameters.get('I_avg', ''),
                 'V': parameters.get('V', ''),
                 'K': parameters.get('K', ''),
+                'wavelength': parameters.get('wavelength', ''),
+                'angle_a': parameters.get('angle_a', ''),
+                'numerical_aperture': parameters.get('numerical_aperture', ''),
+                'polarization': parameters.get('polarization', ''),
+                'coherence_factor': parameters.get('coherence_factor', ''),
+                
+                # 曝光参数
                 't_exp': parameters.get('t_exp', ''),
+                'C': parameters.get('C', ''),
+                'exposure_threshold': parameters.get('exposure_threshold', ''),
+                'exposure_calculation_method': parameters.get('exposure_calculation_method', ''),
+                'dose_uniformity': parameters.get('dose_uniformity', ''),
+                'focus_offset': parameters.get('focus_offset', ''),
+                'aberration_correction': parameters.get('aberration_correction', ''),
+                
+                # 高级计算参数
+                'enable_exposure_time_window': parameters.get('enable_exposure_time_window', ''),
+                'time_mode': parameters.get('time_mode', ''),
+                'segment_count': parameters.get('segment_count', ''),
+                'segment_duration': parameters.get('segment_duration', ''),
+                'segment_intensities': parameters.get('segment_intensities', ''),
+                'total_exposure_dose': parameters.get('total_exposure_dose', ''),
+                'simulation_resolution': parameters.get('simulation_resolution', ''),
+                'boundary_conditions': parameters.get('boundary_conditions', ''),
+                'mesh_density': parameters.get('mesh_density', ''),
+                'convergence_criteria': parameters.get('convergence_criteria', ''),
+                
+                # 机器学习参数
+                'ml_model_type': parameters.get('ml_model_type', ''),
+                'training_algorithm': parameters.get('training_algorithm', ''),
+                'learning_rate': parameters.get('learning_rate', ''),
+                'epochs': parameters.get('epochs', ''),
+                'batch_size': parameters.get('batch_size', ''),
+                'validation_split': parameters.get('validation_split', ''),
+                'feature_scaling': parameters.get('feature_scaling', ''),
+                'regularization_factor': parameters.get('regularization_factor', ''),
+                'early_stopping': parameters.get('early_stopping', ''),
+                'cross_validation_folds': parameters.get('cross_validation_folds', ''),
+                
+                # 经验学习参数
+                'historical_data_weight': parameters.get('historical_data_weight', ''),
+                'expert_knowledge_factor': parameters.get('expert_knowledge_factor', ''),
+                'pattern_recognition_threshold': parameters.get('pattern_recognition_threshold', ''),
+                'adaptive_learning_rate': parameters.get('adaptive_learning_rate', ''),
+                'experience_decay_factor': parameters.get('experience_decay_factor', ''),
+                'confidence_threshold': parameters.get('confidence_threshold', ''),
+                'uncertainty_estimation': parameters.get('uncertainty_estimation', ''),
+                'knowledge_base_size': parameters.get('knowledge_base_size', ''),
+                'learning_curve_analysis': parameters.get('learning_curve_analysis', ''),
+                
+                # 化学放大参数
                 'acid_gen_efficiency': parameters.get('acid_gen_efficiency', ''),
                 'diffusion_length': parameters.get('diffusion_length', ''),
                 'reaction_rate': parameters.get('reaction_rate', ''),
                 'amplification': parameters.get('amplification', ''),
                 'contrast': parameters.get('contrast', ''),
+                
+                # 三维空间频率参数
                 'Kx': parameters.get('Kx', ''),
                 'Ky': parameters.get('Ky', ''),
                 'Kz': parameters.get('Kz', ''),
                 'phi_expr': parameters.get('phi_expr', ''),
-                'exposure_calculation_method': parameters.get('exposure_calculation_method', ''),
+                
+                # 标注数据
                 'annotation_x': annotation.get('x', ''),
                 'annotation_y': annotation.get('y', ''),
                 'simulated_value': annotation.get('simulatedValue', ''),
@@ -2866,6 +3046,32 @@ def train_model():
         else:
             # Dill模型参数作为特征（默认）
             feature_columns = ['I_avg', 'V', 'K', 't_exp', 'annotation_x', 'annotation_y']
+            
+        # 添加基底材料和抗反射薄膜参数作为潜在特征
+        additional_features = [
+            # 基底材料参数
+            'substrate_refractive_index', 'substrate_extinction_coefficient', 
+            'substrate_thickness', 'substrate_thermal_conductivity',
+            
+            # 抗反射薄膜参数
+            'arc_refractive_index', 'arc_extinction_coefficient', 'arc_thickness', 
+            'arc_reflectance', 'arc_anti_reflective_efficiency',
+            
+            # 高级光学参数
+            'wavelength', 'numerical_aperture', 'coherence_factor',
+            
+            # 曝光高级参数
+            'exposure_threshold', 'dose_uniformity', 'focus_offset',
+            
+            # 机器学习参数
+            'learning_rate', 'batch_size', 'validation_split', 'regularization_factor',
+            
+            # 经验学习参数
+            'historical_data_weight', 'expert_knowledge_factor', 'confidence_threshold'
+        ]
+        
+        # 将附加特征添加到特征列表中
+        feature_columns.extend(additional_features)
             
         # 目标变量：厚度预测
         target_columns = ['actual_value']  # 预测实际厚度值
@@ -3228,6 +3434,102 @@ def train_model():
         return jsonify(format_response(False, message=error_msg)), 500
 
 
+def build_complete_feature_vector(base_params, x, y, training_df=None):
+    """构建与训练时一致的完整特征向量"""
+    
+    # 获取基础参数
+    I_avg = base_params[0] if len(base_params) > 0 else 0.5
+    V = base_params[1] if len(base_params) > 1 else 0.8  
+    K = base_params[2] if len(base_params) > 2 else 0.1
+    t_exp = base_params[3] if len(base_params) > 3 else 100.0
+    
+    # 如果有训练数据，使用训练数据的统计信息来填充其他特征
+    # 否则使用合理的默认值
+    if training_df is not None and not training_df.empty:
+        # 从训练数据中获取典型值
+        substrate_ri = training_df['substrate_refractive_index'].mean() if 'substrate_refractive_index' in training_df.columns else 3.42
+        substrate_k = training_df['substrate_extinction_coefficient'].mean() if 'substrate_extinction_coefficient' in training_df.columns else 0.02  
+        substrate_thickness = training_df['substrate_thickness'].mean() if 'substrate_thickness' in training_df.columns else 525.0
+        substrate_thermal = training_df['substrate_thermal_conductivity'].mean() if 'substrate_thermal_conductivity' in training_df.columns else 150.0
+        
+        arc_ri = training_df['arc_refractive_index'].mean() if 'arc_refractive_index' in training_df.columns else 1.85
+        arc_k = training_df['arc_extinction_coefficient'].mean() if 'arc_extinction_coefficient' in training_df.columns else 0.001
+        arc_thickness = training_df['arc_thickness'].mean() if 'arc_thickness' in training_df.columns else 75.0
+        arc_reflectance = training_df['arc_reflectance'].mean() if 'arc_reflectance' in training_df.columns else 2.1
+        arc_efficiency = training_df['arc_anti_reflective_efficiency'].mean() if 'arc_anti_reflective_efficiency' in training_df.columns else 97.9
+        
+        wavelength = training_df['wavelength'].mean() if 'wavelength' in training_df.columns else 193.0
+        numerical_aperture = training_df['numerical_aperture'].mean() if 'numerical_aperture' in training_df.columns else 1.35
+        coherence_factor = training_df['coherence_factor'].mean() if 'coherence_factor' in training_df.columns else 0.7
+        
+        exposure_threshold = training_df['exposure_threshold'].mean() if 'exposure_threshold' in training_df.columns else 0.5
+        dose_uniformity = training_df['dose_uniformity'].mean() if 'dose_uniformity' in training_df.columns else 95.0
+        focus_offset = training_df['focus_offset'].mean() if 'focus_offset' in training_df.columns else 0.0
+        
+        learning_rate = training_df['learning_rate'].mean() if 'learning_rate' in training_df.columns else 0.01
+        batch_size = training_df['batch_size'].mean() if 'batch_size' in training_df.columns else 32
+        validation_split = training_df['validation_split'].mean() if 'validation_split' in training_df.columns else 0.2
+        regularization_factor = training_df['regularization_factor'].mean() if 'regularization_factor' in training_df.columns else 0.001
+        
+        historical_data_weight = training_df['historical_data_weight'].mean() if 'historical_data_weight' in training_df.columns else 0.8
+        expert_knowledge_factor = training_df['expert_knowledge_factor'].mean() if 'expert_knowledge_factor' in training_df.columns else 0.3
+        confidence_threshold = training_df['confidence_threshold'].mean() if 'confidence_threshold' in training_df.columns else 0.7
+    else:
+        # 使用默认值
+        substrate_ri = 3.42
+        substrate_k = 0.02
+        substrate_thickness = 525.0
+        substrate_thermal = 150.0
+        
+        arc_ri = 1.85
+        arc_k = 0.001
+        arc_thickness = 75.0
+        arc_reflectance = 2.1
+        arc_efficiency = 97.9
+        
+        wavelength = 193.0
+        numerical_aperture = 1.35
+        coherence_factor = 0.7
+        
+        exposure_threshold = 0.5
+        dose_uniformity = 95.0
+        focus_offset = 0.0
+        
+        learning_rate = 0.01
+        batch_size = 32
+        validation_split = 0.2
+        regularization_factor = 0.001
+        
+        historical_data_weight = 0.8
+        expert_knowledge_factor = 0.3
+        confidence_threshold = 0.7
+    
+    # 构建完整的特征向量，顺序要与训练时的特征列一致
+    features = [
+        # 基础光学参数
+        I_avg, V, K, t_exp, x, y,
+        
+        # 基底材料参数
+        substrate_ri, substrate_k, substrate_thickness, substrate_thermal,
+        
+        # 抗反射薄膜参数  
+        arc_ri, arc_k, arc_thickness, arc_reflectance, arc_efficiency,
+        
+        # 高级光学参数
+        wavelength, numerical_aperture, coherence_factor,
+        
+        # 曝光高级参数
+        exposure_threshold, dose_uniformity, focus_offset,
+        
+        # 机器学习参数
+        learning_rate, batch_size, validation_split, regularization_factor,
+        
+        # 经验学习参数
+        historical_data_weight, expert_knowledge_factor, confidence_threshold
+    ]
+    
+    return np.array([features])
+
 @api_bp.route('/predict_parameters', methods=['POST'])
 def predict_parameters():
     """预测最优参数 - 支持预测所有Dill模型参数"""
@@ -3318,8 +3620,8 @@ def predict_parameters():
                 
                 # 定义目标函数：最小化预测厚度与目标厚度的差异
                 def objective(params):
-                    # 构造特征向量 [I_avg, V, K, t_exp, annotation_x, annotation_y]
-                    features = np.array([list(params) + [x, y]])
+                    # 构造完整的特征向量，与训练时一致
+                    features = build_complete_feature_vector(params, x, y, df)
                     predicted_thickness = model.predict(features)[0]
                     return (predicted_thickness - target_thickness) ** 2
                 
@@ -3346,16 +3648,36 @@ def predict_parameters():
                 print(f"⚠️ 无法加载训练数据，使用默认值: {predictions}")
                 
         else:
-            # 兼容旧的训练逻辑
-            X_pred = np.array([[x, y, target_thickness]])
-            if len(target_columns) > 0:
-                predictions = model.predict(X_pred)
-                if len(predictions.shape) > 1:
-                    predictions = predictions[0]
-                print(f"📊 预测结果: {predictions}")
-            else:
-                predictions = []
-                print(f"📊 无需预测，所有参数均为常数")
+            # 兼容旧的训练逻辑 - 但也需要构建完整特征向量
+            try:
+                # 尝试使用完整特征向量
+                default_params = [0.5, 0.8, 0.1, 100.0]  # 默认基础参数
+                X_pred = build_complete_feature_vector(default_params, x, y, None)
+                
+                print(f"🔧 构建的特征向量维度: {X_pred.shape}")
+                print(f"🔧 模型期望的特征数: {model.n_features_in_ if hasattr(model, 'n_features_in_') else '未知'}")
+                
+                if len(target_columns) > 0:
+                    predictions = model.predict(X_pred)
+                    if len(predictions.shape) > 1:
+                        predictions = predictions[0]
+                    print(f"📊 预测结果: {predictions}")
+                else:
+                    predictions = []
+                    print(f"📊 无需预测，所有参数均为常数")
+                    
+            except Exception as e:
+                print(f"⚠️ 完整特征向量预测失败，尝试简化: {e}")
+                # 回退到简单特征向量
+                X_pred = np.array([[x, y, target_thickness]])
+                if len(target_columns) > 0:
+                    predictions = model.predict(X_pred)
+                    if len(predictions.shape) > 1:
+                        predictions = predictions[0]
+                    print(f"📊 简化预测结果: {predictions}")
+                else:
+                    predictions = []
+                    print(f"📊 无需预测，所有参数均为常数")
         
         # 定义安全浮点数转换函数
         import math
@@ -4321,6 +4643,10 @@ def process_photo():
             vector_data['intensity'] = apply_smoothing(vector_data['intensity'], smoothing_method)
             add_progress_log('system', f'数据平滑完成，方法: {smoothing_method}')
         
+        # 获取坐标验证结果
+        coord_range = max(vector_data['x']) - min(vector_data['x'])
+        validation_result = validate_coordinate_range(coord_range, coordinate_unit, len(vector_data['x']))
+        
         # 生成响应数据
         response_data = {
             'success': True,
@@ -4337,7 +4663,14 @@ def process_photo():
                 'smoothing_method': smoothing_method,
                 'data_points': len(vector_data['x']),
                 'x_range': [float(min(vector_data['x'])), float(max(vector_data['x']))],
-                'intensity_range': [float(min(vector_data['intensity'])), float(max(vector_data['intensity']))]
+                'intensity_range': [float(min(vector_data['intensity'])), float(max(vector_data['intensity']))],
+                'coordinate_range': float(coord_range),
+                'unit_validation': validation_result,
+                'processing_info': {
+                    'pixel_to_unit_ratio': f'1px = {scale_factor}{coordinate_unit}',
+                    'total_pixels_processed': width * height,
+                    'vector_extraction_direction': vector_direction
+                }
             }
         }
         
@@ -4422,22 +4755,112 @@ def extract_vector_from_grayscale(grayscale_array, direction, coordinate_unit, s
 def generate_coordinates(length, unit, scale_factor):
     """
     生成坐标数组
+    
+    前端已经根据单位计算好了scale_factor，表示1像素对应的物理长度：
+    - mm单位: scale_factor = 0.1 (1像素 = 0.1毫米)
+    - um单位: scale_factor = 100 (1像素 = 100微米)
+    - pixels单位: scale_factor = 1 (1像素 = 1像素)
+    - custom单位: scale_factor = 用户自定义值
+    
+    后端直接使用前端计算好的scale_factor，不再进行单位转换
     """
-    # 根据单位设置缩放因子
-    if unit == 'mm':
-        final_scale = scale_factor
-    elif unit == 'um':
-        final_scale = scale_factor * 1000  # 毫米转微米
-    elif unit == 'pixels':
-        final_scale = 1
-    else:  # custom
-        final_scale = scale_factor
+    # 前端已处理单位转换，后端直接使用scale_factor
+    final_scale = scale_factor
     
     # 生成对称的坐标（以0为中心）
     center = (length - 1) / 2
     coordinates = np.array([(i - center) * final_scale for i in range(length)])
     
+    # 添加坐标合理性检查和验证
+    coord_range = coordinates.max() - coordinates.min()
+    coord_min = coordinates.min()
+    coord_max = coordinates.max()
+    
+    # 验证坐标范围的合理性
+    validation_result = validate_coordinate_range(coord_range, unit, length)
+    
+    add_progress_log('system', f'生成坐标: {length}个点, 范围={coord_range:.4f}{unit} [{coord_min:.4f}, {coord_max:.4f}], scale_factor={scale_factor}')
+    
+    if not validation_result['valid']:
+        add_progress_log('system', f'⚠️ 坐标范围警告: {validation_result["message"]}')
+    
     return coordinates
+
+
+def validate_coordinate_range(coord_range, unit, data_points):
+    """
+    验证坐标范围的合理性
+    
+    Args:
+        coord_range: 坐标范围
+        unit: 单位
+        data_points: 数据点数
+    
+    Returns:
+        dict: {'valid': bool, 'message': str, 'severity': str}
+    """
+    validation = {'valid': True, 'message': '', 'severity': 'info'}
+    
+    if unit == 'mm':
+        if coord_range < 0.01:
+            validation = {
+                'valid': False,
+                'message': f'毫米单位坐标范围过小 ({coord_range:.6f}mm)，建议增大缩放因子',
+                'severity': 'warning'
+            }
+        elif coord_range > 1000:
+            validation = {
+                'valid': False,
+                'message': f'毫米单位坐标范围过大 ({coord_range:.2f}mm)，建议减小缩放因子',
+                'severity': 'warning'
+            }
+        elif 0.1 <= coord_range <= 100:
+            validation['message'] = f'毫米单位坐标范围合理 ({coord_range:.3f}mm)'
+            
+    elif unit == 'um':
+        if coord_range < 1:
+            validation = {
+                'valid': False,
+                'message': f'微米单位坐标范围过小 ({coord_range:.6f}μm)，建议增大缩放因子',
+                'severity': 'warning'
+            }
+        elif coord_range > 1000000:
+            validation = {
+                'valid': False,
+                'message': f'微米单位坐标范围过大 ({coord_range:.0f}μm)，建议减小缩放因子',
+                'severity': 'warning'
+            }
+        elif 10 <= coord_range <= 100000:
+            validation['message'] = f'微米单位坐标范围合理 ({coord_range:.1f}μm)'
+            
+    elif unit == 'pixels':
+        if coord_range < 10:
+            validation = {
+                'valid': False,
+                'message': f'像素单位坐标范围较小 ({coord_range:.0f}px)，可能影响精度',
+                'severity': 'info'
+            }
+        elif coord_range > 10000:
+            validation = {
+                'valid': False,
+                'message': f'像素单位坐标范围过大 ({coord_range:.0f}px)，建议检查图像尺寸',
+                'severity': 'info'
+            }
+        else:
+            validation['message'] = f'像素单位坐标范围正常 ({coord_range:.0f}px)'
+            
+    elif unit == 'custom':
+        validation['message'] = f'自定义单位坐标范围: {coord_range:.6f}'
+        
+    # 检查数据点密度
+    if data_points > 0:
+        point_density = coord_range / data_points
+        if point_density < 1e-6:
+            validation['valid'] = False
+            validation['message'] += f' (点密度过高: {point_density:.2e})'
+            validation['severity'] = 'error'
+    
+    return validation
 
 
 def apply_smoothing(data, method):

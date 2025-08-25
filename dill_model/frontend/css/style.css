@@ -716,21 +716,7 @@ body:not([data-page="validation"]) .parameter-value {
     transform: scale(1.01);
 }
 
-/* 加载动画 - 主要样式已移至loading-animation.css */
-.loading {
-    /* 保留基本样式以确保兼容性 */
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1000;
-}
-
-.loading.active {
-    display: flex;
-}
+/* 加载动画 - 主要样式已移至loading-animation.css，这里的样式已移除以避免冲突 */
 
 /* .spinner已在loading-animation.css中重新定义为更复杂的动画 */
 

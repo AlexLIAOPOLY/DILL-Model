@@ -45,10 +45,12 @@ class PhotoRecognition {
         // 安全地绑定向量生成按钮
         const generateVectorBtn = document.getElementById('generate-vector-btn');
         const applyVectorDataBtn = document.getElementById('apply-vector-data-btn');
+        const previewVectorDataBtn = document.getElementById('preview-vector-data-btn');
         const exportVectorDataBtn = document.getElementById('export-vector-data-btn');
         
         if (generateVectorBtn) generateVectorBtn.addEventListener('click', () => this.generateVector());
         if (applyVectorDataBtn) applyVectorDataBtn.addEventListener('click', () => this.applyVectorData());
+        if (previewVectorDataBtn) previewVectorDataBtn.addEventListener('click', () => this.previewVectorDataDetailed());
         if (exportVectorDataBtn) exportVectorDataBtn.addEventListener('click', () => this.exportVectorData());
         
         // 参数变化监听
@@ -478,16 +480,23 @@ class PhotoRecognition {
             const smoothingMethod = document.getElementById('smoothing-method')?.value || 'none';
             const cropMode = document.getElementById('crop-mode')?.value || 'none';
             
-            let scaleFactor = 0.1; // 默认缩放因子
+            // 单位转换逻辑：定义1像素对应的物理长度
+            let scaleFactor = 0.1; // 默认：1像素 = 0.1毫米
+            
             if (coordinateUnit === 'custom') {
                 scaleFactor = parseFloat(document.getElementById('scale-factor')?.value) || 0.1;
             } else if (coordinateUnit === 'mm') {
+                // 1像素 = 0.1毫米（可根据实际设备调整）
                 scaleFactor = 0.1;
             } else if (coordinateUnit === 'um') {
-                scaleFactor = 0.0001; // 微米更小的缩放因子
+                // 1像素 = 100微米（0.1毫米 = 100微米）
+                scaleFactor = 100;
             } else if (coordinateUnit === 'pixels') {
+                // 保持像素单位
                 scaleFactor = 1;
             }
+            
+            console.log(`📏 单位转换设置: ${coordinateUnit}, scaleFactor=${scaleFactor}`);
             
             console.log('📊 处理参数:', {
                 grayscaleMethod,
@@ -553,6 +562,9 @@ class PhotoRecognition {
                 },
                 metadata: result.metadata
             };
+            
+            // 验证坐标范围的合理性
+            this.validateCoordinateRange(result.vector_data.x, coordinateUnit);
             
             console.log('✅ 后端处理完成:', result.metadata);
             
@@ -643,38 +655,110 @@ class PhotoRecognition {
     }
 
     /**
-     * 生成坐标数组
+     * 验证坐标范围的合理性
      */
-    generateCoordinates(length, unit) {
-        const coordinates = [];
-        let scaleFactor = 1; // 默认像素单位
+    validateCoordinateRange(coordinates, unit) {
+        if (!coordinates || coordinates.length === 0) {
+            console.warn('⚠️ 坐标数据为空');
+            return false;
+        }
         
-        // 根据单位设置缩放因子
+        const range = Math.max(...coordinates) - Math.min(...coordinates);
+        const dataPoints = coordinates.length;
+        let isValid = true;
+        let warningMessage = '';
+        
+        // 根据不同单位设定合理范围
         switch (unit) {
             case 'mm':
-                scaleFactor = parseFloat(document.getElementById('photo-scale-factor')?.value) || 0.1;
+                if (range < 0.01) {
+                    warningMessage = `毫米单位坐标范围过小: ${range.toFixed(4)}mm，可能缩放因子设置过小`;
+                    isValid = false;
+                } else if (range > 1000) {
+                    warningMessage = `毫米单位坐标范围过大: ${range.toFixed(2)}mm，可能缩放因子设置过大`;
+                    isValid = false;
+                }
                 break;
+                
             case 'um':
-                scaleFactor = (parseFloat(document.getElementById('photo-scale-factor')?.value) || 0.1) * 1000;
+                if (range < 1) {
+                    warningMessage = `微米单位坐标范围过小: ${range.toFixed(4)}μm，可能缩放因子设置过小`;
+                    isValid = false;
+                } else if (range > 1000000) {
+                    warningMessage = `微米单位坐标范围过大: ${range.toFixed(0)}μm，可能缩放因子设置过大`;
+                    isValid = false;
+                }
                 break;
-            case 'custom':
-                scaleFactor = parseFloat(document.getElementById('photo-scale-factor').value) || 1;
-                break;
+                
             case 'pixels':
-            default:
-                scaleFactor = 1;
+                if (range < 10) {
+                    warningMessage = `像素单位坐标范围过小: ${range.toFixed(0)}像素`;
+                } else if (range > 10000) {
+                    warningMessage = `像素单位坐标范围过大: ${range.toFixed(0)}像素`;
+                }
                 break;
+                
+            case 'custom':
+                // 自定义单位不做严格验证，只提供信息
+                console.log(`📏 自定义单位坐标范围: ${range.toFixed(4)}, 数据点: ${dataPoints}`);
+                return true;
         }
         
-        // 生成对称的坐标
-        const center = (length - 1) / 2;
-        for (let i = 0; i < length; i++) {
-            const coord = (i - center) * scaleFactor;
-            coordinates.push(coord);
+        if (!isValid) {
+            console.warn(`⚠️ ${warningMessage}`);
+            // 可以选择是否向用户显示警告
+            this.showUnitWarning(warningMessage, unit, range);
+        } else {
+            console.log(`✅ 单位验证通过: ${unit}, 范围=${range.toFixed(3)}, 数据点=${dataPoints}`);
         }
         
-        return coordinates;
+        return isValid;
     }
+    
+    /**
+     * 显示单位警告信息
+     */
+    showUnitWarning(message, unit, range) {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'unit-warning';
+        warningDiv.style.cssText = `
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        `;
+        warningDiv.innerHTML = `
+            <strong>⚠️ 单位转换警告:</strong><br>
+            ${message}<br>
+            <small>建议检查图像比例设置或选择合适的单位</small>
+        `;
+        
+        // 在向量预览区域显示警告
+        const previewSection = document.getElementById('vector-preview-section');
+        if (previewSection) {
+            // 移除之前的警告
+            const existingWarning = previewSection.querySelector('.unit-warning');
+            if (existingWarning) {
+                existingWarning.remove();
+            }
+            previewSection.insertBefore(warningDiv, previewSection.firstChild);
+            
+            // 5秒后自动隐藏警告
+            setTimeout(() => {
+                if (warningDiv.parentNode) {
+                    warningDiv.remove();
+                }
+            }, 8000);
+        }
+    }
+    
+    /**
+     * 注意：坐标生成现在统一在后端处理，前端只负责设置scaleFactor参数
+     * 这样确保前后端逻辑一致，避免重复计算和潜在的不一致问题
+     */
 
     /**
      * 应用数据平滑
@@ -920,6 +1004,87 @@ class PhotoRecognition {
     }
 
     /**
+     * 详细预览向量数据（新增功能）
+     */
+    previewVectorDataDetailed() {
+        if (!this.vectorData) {
+            alert('请先生成向量数据');
+            return;
+        }
+
+        console.log('📊 显示详细向量数据预览...');
+
+        try {
+            // 显示预览区域
+            const previewSection = document.getElementById('vector-data-preview-section');
+            if (!previewSection) {
+                console.error('❌ 向量数据预览区域元素未找到');
+                return;
+            }
+
+            // 更新数据统计
+            const dataCountElement = document.getElementById('preview-data-count');
+            if (dataCountElement) {
+                dataCountElement.textContent = `${this.vectorData.x.length} 个数据点`;
+            }
+
+            // 填充数据表格
+            this.populateDataTable();
+
+            // 显示预览区域
+            previewSection.style.display = 'block';
+
+            // 滚动到预览区域
+            previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            console.log('✅ 详细向量数据预览显示完成');
+
+        } catch (error) {
+            console.error('❌ 显示向量数据预览失败:', error);
+            alert('预览数据失败：' + error.message);
+        }
+    }
+
+
+    /**
+     * 填充数据表格
+     */
+    populateDataTable() {
+        if (!this.vectorData) return;
+
+        const tbody = document.getElementById('vector-data-tbody');
+        if (!tbody) {
+            console.error('❌ 数据表格元素未找到');
+            return;
+        }
+
+        // 清空现有内容
+        tbody.innerHTML = '';
+
+        const xData = this.vectorData.x;
+        const intensityData = this.vectorData.intensity;
+
+        // 显示所有数据，不再省略
+        const dataLength = xData.length;
+
+        // 生成所有数据行
+        for (let i = 0; i < dataLength; i++) {
+            const row = document.createElement('tr');
+            row.className = 'data-row';
+            
+            row.innerHTML = `
+                <td>${i + 1}</td>
+                <td>${xData[i].toFixed(6)}</td>
+                <td>${intensityData[i].toFixed(6)}</td>
+            `;
+            
+            tbody.appendChild(row);
+        }
+
+        console.log(`📊 数据表格填充完成，显示 ${dataLength} 行数据`);
+    }
+
+    /**
      * 应用向量数据到系统
      */
     applyVectorData() {
@@ -1027,6 +1192,7 @@ class PhotoRecognition {
         document.getElementById('photo-preview-section').style.display = 'none';
         document.getElementById('photo-processing-params').style.display = 'none';
         document.getElementById('vector-preview-section').style.display = 'none';
+        document.getElementById('vector-data-preview-section').style.display = 'none';
         
         // 清空文件输入
         const fileInput = document.getElementById('photo-file-input');

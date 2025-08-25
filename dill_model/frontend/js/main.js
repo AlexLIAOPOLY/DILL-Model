@@ -172,6 +172,73 @@ window.showSmartError = showSmartError;
 window.showConnectionError = showConnectionError;
 window.testTopError = testTopError;
 
+/**
+ * 测试加载动画功能
+ */
+function testLoadingAnimation() {
+    const loading = document.getElementById('loading');
+    console.log('🧪 测试加载动画...');
+    
+    if (!loading) {
+        console.error('❌ Loading元素未找到!');
+        return false;
+    }
+    
+    console.log('🎬 显示测试动画...');
+    loading.classList.add('active');
+    
+    setTimeout(() => {
+        console.log('🎬 隐藏测试动画...');
+        loading.classList.remove('active');
+    }, 3000);
+    
+    return true;
+}
+
+/**
+ * 强制显示动画测试（忽略所有样式冲突）
+ */
+function forceShowLoadingAnimation() {
+    const loading = document.getElementById('loading');
+    console.log('🔧 强制显示加载动画...');
+    
+    if (!loading) {
+        console.error('❌ Loading元素未找到!');
+        return false;
+    }
+    
+    // 强制设置样式，忽略CSS冲突
+    loading.style.cssText = `
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background-color: rgba(255, 255, 255, 0.65) !important;
+        z-index: 10000 !important;
+        justify-content: center !important;
+        align-items: center !important;
+        flex-direction: column !important;
+        backdrop-filter: blur(3px) !important;
+        opacity: 1 !important;
+    `;
+    
+    console.log('🎬 强制动画已显示，3秒后隐藏...');
+    
+    setTimeout(() => {
+        console.log('🎬 隐藏强制动画...');
+        loading.style.cssText = '';
+        loading.classList.remove('active');
+    }, 3000);
+    
+    return true;
+}
+
+// 暴露测试函数到全局作用域
+window.testLoadingAnimation = testLoadingAnimation;
+window.forceShowLoadingAnimation = forceShowLoadingAnimation;
+
 // === 加载期间日志相关状态 ===
 let loadingLogsPanel = null;
 let loadingLogsContainer = null;
@@ -454,6 +521,9 @@ function initApp() {
     bindSliderEvents();
     bindPhiExprUI();
     
+    // 初始化基底材料和ARC材料选择框
+    initMaterialSelectors();
+    
     // 🔧 强制清除任何可能的错误消息显示
     forceHideErrorMessage();
     
@@ -487,6 +557,14 @@ function initApp() {
     const resultsSection = document.getElementById('results-section');
     const errorMessage = document.getElementById('error-message');
     const loading = document.getElementById('loading');
+    
+    // 🎬 调试：检查loading元素是否正确获取
+    console.log('🎬 Loading元素检查:', {
+        loading: loading,
+        loadingExists: !!loading,
+        loadingClasses: loading ? loading.className : 'N/A',
+        loadingStyle: loading ? window.getComputedStyle(loading).display : 'N/A'
+    });
     const modelSelect = document.getElementById('model-select'); // 获取模型选择下拉框
     const modelSelectionSection = document.getElementById('model-selection-section'); // 获取模型选择区域
     
@@ -535,7 +613,9 @@ function initApp() {
         };
 
         // 显示加载动画
+        console.log('🎬 开始显示加载动画...');
         loading.classList.add('active');
+        console.log('🎬 加载动画class已添加:', loading.className);
         // 修复：只修改动画里的文字部分，不覆盖整个动画结构
         const loadingText = loading.querySelector('.loading-text');
         if (loadingText) {
@@ -566,6 +646,7 @@ function initApp() {
         calculateDillModelData(postData)
             .then(data => {
                 // 隐藏加载动画
+                console.log('🎬 隐藏加载动画（成功）...');
                 loading.classList.remove('active');
                 
                 // 主图始终渲染
@@ -592,6 +673,7 @@ function initApp() {
             })
             .catch(error => {
                 // 隐藏加载动画
+                console.log('🎬 隐藏加载动画（出错）...');
                 loading.classList.remove('active');
                 
                 // 停止加载期间日志更新
@@ -1179,6 +1261,87 @@ function updateKInputState() {
 }
 
 /**
+ * 初始化基底材料和ARC材料选择框
+ */
+function initMaterialSelectors() {
+    console.log('🔧 初始化基底材料和ARC材料选择框');
+    
+    // 基底材料选择框
+    const substrateSelect = document.getElementById('substrate_material');
+    const substrateDisplay = document.getElementById('substrate_material_display');
+    
+    if (substrateSelect && substrateDisplay) {
+        substrateSelect.addEventListener('change', function() {
+            const selectedValue = this.value;
+            let displayText = '';
+            
+            switch (selectedValue) {
+                case 'none':
+                    displayText = '无';
+                    break;
+                case 'silicon':
+                    displayText = '硅(Si)';
+                    break;
+                case 'gaas':
+                    displayText = '砷化镓(GaAs)';
+                    break;
+                case 'sio2':
+                    displayText = '石英/熔融石英(SiO₂)';
+                    break;
+                default:
+                    displayText = '硅(Si)';
+            }
+            
+            substrateDisplay.textContent = displayText;
+            console.log('🔬 基底材料选择变更:', selectedValue, '→', displayText);
+        });
+        
+        // 初始化显示
+        substrateSelect.dispatchEvent(new Event('change'));
+        console.log('✅ 基底材料选择框初始化完成');
+    } else {
+        console.warn('⚠️ 基底材料选择框元素未找到');
+    }
+    
+    // ARC材料选择框
+    const arcSelect = document.getElementById('arc_material');
+    const arcDisplay = document.getElementById('arc_material_display');
+    
+    if (arcSelect && arcDisplay) {
+        arcSelect.addEventListener('change', function() {
+            const selectedValue = this.value;
+            let displayText = '';
+            
+            switch (selectedValue) {
+                case 'none':
+                    displayText = '无';
+                    break;
+                case 'sion':
+                    displayText = '氮氧化硅(SiON)';
+                    break;
+                case 'tin':
+                    displayText = '氮化钛(TiN)';
+                    break;
+                case 'barc':
+                    displayText = '底部抗反射涂层(BARC)';
+                    break;
+                default:
+                    displayText = '氮氧化硅(SiON)';
+            }
+            
+            arcDisplay.textContent = displayText;
+            console.log('🔬 ARC材料选择变更:', selectedValue, '→', displayText);
+        });
+        
+        // 初始化显示
+        arcSelect.dispatchEvent(new Event('change'));
+        console.log('✅ ARC材料选择框初始化完成');
+    } else {
+        console.warn('⚠️ ARC材料选择框元素未找到');
+    }
+}
+
+/**
  * 绑定滑块事件
  */
 /**
@@ -1517,6 +1680,13 @@ function getParameterValues() {
             }
         }
         params.wavelength = wavelengthValue;
+        
+        // 新增: 基底材料和ARC材料参数
+        const substrate_material_elem = document.getElementById('substrate_material');
+        const arc_material_elem = document.getElementById('arc_material');
+        
+        params.substrate_material = substrate_material_elem ? substrate_material_elem.value || 'silicon' : 'silicon';
+        params.arc_material = arc_material_elem ? arc_material_elem.value || 'sion' : 'sion';
         
         // 检查是否使用自定义光强分布
         const intensityMethodSelect = document.getElementById('intensity_input_method');
@@ -5931,7 +6101,23 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
         valueLabel = '曝光计量分布:';
         valueUnit = '(归一化单位)';
         formulaTitle = '2D DILL模型 - 曝光计量分布计算：';
-        formulaMath = `D<sub>0</sub>(x,y) = I_avg × [1 + ctr × cos((4π × sin(a) / λ) × x)] × t<sub>exp</sub><br>D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)<br>其中 I_avg = ${I_avg_display}`;
+        formulaMath = `I<sub>base</sub>(x) = I<sub>avg</sub> × [1 + V × cos((4π × sin(a) / λ) × x)]<br>D<sub>0</sub>(x,y) = I<sub>base</sub>(x) × t<sub>exp</sub><br>D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)<br>` +
+                      (() => {
+                          let arcParams = null;
+                          if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                              arcParams = window.lastPlotData.arc_parameters;
+                          }
+                          
+                          if (arcParams && arcParams.materials) {
+                              const η_arc = (1 - 1/arcParams.suppression_ratio);
+                              const α_coupling = (1/arcParams.suppression_ratio + 1);
+                              return `<br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                                     `增强光强 I<sub>enhanced</sub>(x,y) = I<sub>avg</sub> × (1 + ${η_arc.toFixed(3)}) × ${α_coupling.toFixed(3)}<br>`;
+                          } else {
+                              return `<br><span style="color: #2196F3; font-weight: bold;">基础光强:</span><br>` +
+                                     `有效光强 = 基础光强 I<sub>avg</sub> (未启用ARC)<br>`;
+                          }
+                      })();
 
         // 计算当前点的理论值
         const D0_x = I_avg_display * (1 + contrast_ctr * Math.cos(spatial_freq * actualX * 1000)) * exposureTime; // x转换为nm  🔧 修复：使用显示值
@@ -5946,62 +6132,72 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
         })();
         
         formulaExplanation = `
-            <div>🔬 <strong>2D曝光图案参数：</strong></div>
-            <div>• <strong>模式组合: ${modeDescription}</strong></div>
-            ${exposureCalculationMethod === 'cumulative' ? `
-            <div>• 曝光计算: 多段累积 (${segmentCount}段)</div>
-            <div>• 单段时间: ${segmentDuration}s，总时间: ${exposureTime}s</div>
-            <div>• 强度序列: [${segmentIntensities.slice(0,5).map(v => v.toFixed(1)).join(', ')}${segmentIntensities.length > 5 ? '...' : ''}]%</div>
-            ` : `
-            <div>• 曝光计算: 标准模式</div>
-            <div>• 曝光时间 t<sub>exp</sub>: ${exposureTime}s</div>
-            `}
-            ${isUsingCustomData ? `
-            <div>• 光强输入: ${customIntensityData.source === 'photo-recognition' ? '照片灰度数据' : '💾 自定义向量数据'} (${customIntensityData.x ? customIntensityData.x.length : 0}点)</div>
-            ` : `
-            <div>• 光强输入: 公式计算模式</div>
-            `}
-            <div>• 周期 a: ${angle_a_deg}°</div>
-            <div>• 对比度 ctr: ${contrast_ctr}</div>
-            <div>• 光波长 λ: ${wavelength_nm} nm</div>
-            <div>• 空间频率: 4π×sin(a)/λ = ${spatial_freq.toFixed(6)} rad/nm</div>
+            <div>🔬 <strong>实际计算参数：</strong></div>
+            <div>• I<sub>avg</sub>: 平均入射光强度 (${I_avg_display} mW/cm²)</div>
+            <div>• V: 干涉条纹可见度 (${contrast_ctr})</div>
+            <div>• a: 周期 (${angle_a_deg}°)</div>
+            <div>• λ: 光波长 (${wavelength_nm} nm)</div>
+            <div>• t<sub>exp</sub>: 曝光时间 (${exposureTime}s)</div>
+            <div>• 空间频率系数: 4π×sin(a)/λ = ${spatial_freq.toFixed(6)} rad/nm</div>
             <div class="formula-separator"></div>
+            ${(() => {
+                // 获取ARC参数数据
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const substrate = arcParams.materials.substrate;
+                    const arc = arcParams.materials.arc;
+                    return `
+                    <div>🔬 <strong>基底材料与抗反射薄膜 (ARC)：</strong></div>
+                    <div>• 基底材料: ${substrate.name} (n=${substrate.n.toFixed(3)}, k=${substrate.k.toFixed(3)})</div>
+                    <div>• ARC材料: ${arc.name} - ${arc.type} (n=${arc.n.toFixed(3)}, k=${arc.k.toFixed(3)})</div>
+                    <div>• 理想ARC折射率: n<sub>ideal</sub> = √(n<sub>resist</sub>×n<sub>substrate</sub>) = ${arcParams.n_arc_ideal.toFixed(3)}</div>
+                    <div>• 理想ARC厚度: d<sub>ideal</sub> = λ/(4×n<sub>ARC</sub>) = ${arcParams.d_arc_ideal.toFixed(1)} nm</div>
+                    <div>• 反射率抑制: ${arcParams.suppression_ratio.toFixed(1)}x (${(arcParams.reflectance_no_arc*100).toFixed(2)}% → ${(arcParams.reflectance_with_arc*100).toFixed(4)}%)</div>
+                    <div class="formula-separator"></div>`;
+                } else {
+                    return `
+                    <div>🔬 <strong>基底材料与抗反射薄膜 (ARC)：</strong></div>
+                    <div>• 使用默认材料参数 (硅基底 + SiON ARC)</div>
+                    <div class="formula-separator"></div>`;
+                }
+            })()}
             <div>📍 <strong>当前位置计算：</strong></div>
-            <div>• 点击位置: (${actualX.toFixed(3)}, ${actualY.toFixed(3)}) mm</div>
+            <div>• 位置坐标: (${actualX.toFixed(3)}, ${actualY.toFixed(3)}) mm</div>
             <div>• D<sub>0</sub>(x方向): ${D0_x.toFixed(6)}</div>
             <div>• D<sub>0</sub>(y方向): ${D0_y.toFixed(6)}</div>
             <div>• 总计量 D(x,y): ${D_total.toFixed(6)}</div>
             <div>• 显示值: ${zValue.toFixed(6)}</div>
             <div class="formula-separator"></div>
-            <div>💡 <strong>计算说明：</strong></div>
+            <div>⚙️ <strong>公式说明：</strong></div>
             <div>• x和y方向分别计算曝光计量后相加</div>
+            <div>• 空间调制: 1 + V×cos(4π×sin(a)/λ×x)</div>
             <div>• 产生复杂的2D干涉图案</div>
-            ${exposureCalculationMethod === 'cumulative' ? `
-            <div>• 累积模式：D(x,y) = Σ[D<sub>0,i</sub>(x,y) × intensity<sub>i</sub>% × t<sub>segment</sub>]</div>
-            <div>• 多段累积效应：不同强度段依次叠加</div>
-            <div>• 模拟真实曝光过程的时变特性</div>
-            ` : `
-            <div>• 基于理想光刻胶曝光模型</div>
-            <div>• 单一曝光时间的标准计算</div>
-            `}
-            ${isUsingCustomData ? `
-            <div>• 自定义向量：基于用户上传的光强分布数据</div>
-            <div>• 数据范围: X ∈ [${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 'N/A'}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 'N/A'}] ${customIntensityData.source === 'photo-recognition' ? 'μm' : 'mm'}</div>
-            <div>• 插值计算: 线性插值到计算网格 [-1, 1] mm</div>
-            <div>• ⚠️ 十字架效应: 当自定义范围 < 计算范围时出现</div>
-            <div>• 边界处理: 范围外区域补零，产生十字架图案</div>
-            ` : `
-            <div>• 公式计算: 基于余弦空间调制函数</div>
-            <div>• 空间分布: 1 + ctr×cos(4π×sin(a)/λ×x)</div>
-            `}
         `;
     } else if (plotType === 'thickness') {
         valueLabel = '形貌分布:';
         valueUnit = '(归一化)';
         formulaTitle = '2D DILL模型 - 形貌分布计算：';
-        formulaMath = 'M(x,y) = e<sup>-C × D(x,y)</sup> (当 D(x,y) ≥ c<sub>d</sub>)<br>' +
-                     'H(x,y) = 1 - M(x,y)<br>' +
-                     '其中 D(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)';
+        formulaMath = 'I<sub>base</sub>(x) = I<sub>avg</sub> × [1 + V × cos((4π × sin(a) / λ) × x)]<br>D<sub>0</sub>(x,y) = I<sub>base</sub>(x) × t<sub>exp</sub><br>D<sub>eff</sub>(x,y) = D<sub>0</sub>(x,y) + D<sub>0</sub>(y,x)<br>M(x,y) = e<sup>-C × D<sub>eff</sub>(x,y)</sup> (当 D<sub>eff</sub>(x,y) ≥ c<sub>d</sub>)<br>H(x,y) = 1 - M(x,y)<br>' +
+                     (() => {
+                         let arcParams = null;
+                         if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                             arcParams = window.lastPlotData.arc_parameters;
+                         }
+                         
+                         if (arcParams && arcParams.materials) {
+                             const η_arc = (1 - 1/arcParams.suppression_ratio);
+                             const α_coupling = (1/arcParams.suppression_ratio + 1);
+                             return `<br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                                    `增强光强 I<sub>enhanced</sub>(x,y) = I<sub>avg</sub> × (1 + ${η_arc.toFixed(3)}) × ${α_coupling.toFixed(3)}<br>`;
+                         } else {
+                             return `<br><span style="color: #2196F3; font-weight: bold;">基础光强:</span><br>` +
+                                    `有效光强 = 基础光强 I<sub>avg</sub> (未启用ARC)<br>`;
+                         }
+                     })();
 
         // 计算当前点的理论厚度
         const D0_x = I_avg_display * (1 + contrast_ctr * Math.cos(spatial_freq * actualX * 1000)) * exposureTime;  // 🔧 修复：使用显示值
@@ -6029,57 +6225,52 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
         })();
         
         formulaExplanation = `
-            <div>🔬 <strong>2D光刻胶厚度参数：</strong></div>
-            <div>• <strong>模式组合: ${modeDescription}</strong></div>
-            <div>• DILL常数 C: ${C}</div>
-            <div>• 阈值 c<sub>d</sub>: ${threshold_cd}</div>
-            ${exposureCalculationMethod === 'cumulative' ? `
-            <div>• 曝光计算: 多段累积 (${segmentCount}段)</div>
-            <div>• 单段时间: ${segmentDuration}s，总时间: ${exposureTime}s</div>
-            <div>• 强度序列: [${segmentIntensities.slice(0,5).map(v => v.toFixed(1)).join(', ')}${segmentIntensities.length > 5 ? '...' : ''}]%</div>
-            ` : `
-            <div>• 曝光计算: 标准模式</div>
-            <div>• 曝光时间: ${exposureTime}s</div>
-            `}
-            ${isUsingCustomData ? `
-            <div>• 光强输入: ${customIntensityData.source === 'photo-recognition' ? '照片灰度数据' : '💾 自定义向量数据'} (${customIntensityData.x ? customIntensityData.x.length : 0}点)</div>
-            <div>• 数据范围: X ∈ [${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 'N/A'}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 'N/A'}] ${customIntensityData.source === 'photo-recognition' ? 'μm' : 'mm'}</div>
-            <div>• 插值计算: 线性插值到计算网格 [-1, 1] mm</div>
-            <div>• ⚠️ 十字架效应: 当自定义范围 < 计算范围时出现</div>
-            ` : `
-            <div>• 光强输入: 公式计算模式</div>
-            <div>• 余弦调制: 1 + ctr×cos(4π×sin(a)/λ×x)</div>
-            `}
-            <div>• 对比度: ${contrast_ctr}</div>
+            <div>🔬 <strong>实际计算参数：</strong></div>
+            <div>• I<sub>avg</sub>: 平均入射光强度 (${I_avg_display} mW/cm²)</div>
+            <div>• V: 干涉条纹可见度 (${contrast_ctr})</div>
+            <div>• a: 周期 (${angle_a_deg}°)</div>
+            <div>• λ: 光波长 (${wavelength_nm} nm)</div>
+            <div>• t<sub>exp</sub>: 曝光时间 (${exposureTime}s)</div>
+            <div>• C: DILL常数 (${C})</div>
+            <div>• c<sub>d</sub>: 阈值剂量 (${threshold_cd})</div>
             <div class="formula-separator"></div>
+            ${(() => {
+                // 获取ARC参数数据
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const substrate = arcParams.materials.substrate;
+                    const arc = arcParams.materials.arc;
+                    return `
+                    <div>🔬 <strong>基底材料与抗反射薄膜 (ARC)：</strong></div>
+                    <div>• 基底材料: ${substrate.name} (n=${substrate.n.toFixed(3)}, k=${substrate.k.toFixed(3)})</div>
+                    <div>• ARC材料: ${arc.name} - ${arc.type} (n=${arc.n.toFixed(3)}, k=${arc.k.toFixed(3)})</div>
+                    <div>• 理想ARC折射率: n<sub>ideal</sub> = √(n<sub>resist</sub>×n<sub>substrate</sub>) = ${arcParams.n_arc_ideal.toFixed(3)}</div>
+                    <div>• 理想ARC厚度: d<sub>ideal</sub> = λ/(4×n<sub>ARC</sub>) = ${arcParams.d_arc_ideal.toFixed(1)} nm</div>
+                    <div>• 反射率抑制: ${arcParams.suppression_ratio.toFixed(1)}x (${(arcParams.reflectance_no_arc*100).toFixed(2)}% → ${(arcParams.reflectance_with_arc*100).toFixed(4)}%)</div>
+                    <div class="formula-separator"></div>`;
+                } else {
+                    return `
+                    <div>🔬 <strong>基底材料与抗反射薄膜 (ARC)：</strong></div>
+                    <div>• 使用默认材料参数 (硅基底 + SiON ARC)</div>
+                    <div class="formula-separator"></div>`;
+                }
+            })()}
             <div>📍 <strong>当前位置计算：</strong></div>
-            <div>• 点击位置: (${actualX.toFixed(3)}, ${actualY.toFixed(3)}) mm</div>
+            <div>• 位置坐标: (${actualX.toFixed(3)}, ${actualY.toFixed(3)}) mm</div>
             <div>• 总曝光计量 D(x,y): ${D_total.toFixed(6)}</div>
             <div>• 阈值比较: D(x,y) ${D_total >= threshold_cd ? '≥' : '<'} c<sub>d</sub></div>
-            <div>• M值: ${M_value.toFixed(6)}</div>
-            <div>• H值（厚度）: ${H_value.toFixed(6)}</div>
+            <div>• M值（剩余浓度）: ${M_value.toFixed(6)}</div>
+            <div>• H值（蚀刻深度）: ${H_value.toFixed(6)}</div>
             <div>• 显示值: ${zValue.toFixed(6)}</div>
-            <div>• 曝光状态: ${exposureStatus}</div>
             <div class="formula-separator"></div>
-            <div>💡 <strong>物理意义：</strong></div>
-            <div>• M值：剩余抗蚀剂浓度</div>
-            <div>• H值：相对蚀刻深度</div>
-            <div>• 阈值以下：抗蚀剂完整保留</div>
-            <div>• 阈值以上：抗蚀剂指数衰减</div>
-            ${exposureCalculationMethod === 'cumulative' ? `
-            <div>• 累积模式：M(x,y) = exp(-C × D<sub>累积</sub>(x,y))</div>
-            <div>• 多段叠加：D<sub>累积</sub> = Σ[D<sub>i</sub>(x,y) × intensity<sub>i</sub>% × t<sub>segment</sub>]</div>
-            <div>• 厚度变化：H(x,y) = 1 - M(x,y)</div>
-            ` : `
-            <div>• 标准模式：基于单一曝光时间计算</div>
-            `}
-            ${isUsingCustomData ? `
-            <div>• 自定义向量：基于用户光强分布的厚度计算</div>
-            <div>• 十字架图案：自定义数据范围外补零产生</div>
-            <div>• 物理含义：局部光强分布引起的差异化蚀刻</div>
-            ` : `
-            <div>• 公式计算：基于理想干涉条纹分布</div>
-            `}
+            <div>⚙️ <strong>公式说明：</strong></div>
+            <div>• DILL模型: M(x,y) = exp(-C × D<sub>eff</sub>(x,y))</div>
+            <div>• 蚀刻深度: H(x,y) = 1 - M(x,y)</div>
+            <div>• 阈值效应: D < c<sub>d</sub> 时 M = 1 (未曝光)</div>
         `;
     }
 
@@ -6237,6 +6428,40 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
                 <div class="info-item"><span class="info-label">阈值:</span><span class="info-value">${threshold_cd}</span></div>
             </div>
         </div>
+        ${(() => {
+            // 添加ARC参数信息
+            if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                const arcParams = window.lastPlotData.arc_parameters;
+                const materials = arcParams.materials;
+                return `
+                <div class="point-info-section">
+                    <h4>🔬 基底材料与抗反射薄膜 (ARC)</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><span class="info-label">基底材料:</span><span class="info-value">${materials.substrate.name}</span></div>
+                        <div class="info-item"><span class="info-label">基底n/k:</span><span class="info-value">${materials.substrate.n.toFixed(3)}/${materials.substrate.k.toFixed(3)}</span></div>
+                        <div class="info-item"><span class="info-label">ARC材料:</span><span class="info-value">${materials.arc.name}</span></div>
+                        <div class="info-item"><span class="info-label">ARC类型:</span><span class="info-value">${materials.arc.type}</span></div>
+                        <div class="info-item"><span class="info-label">ARC n/k:</span><span class="info-value">${materials.arc.n.toFixed(3)}/${materials.arc.k.toFixed(3)}</span></div>
+                        <div class="info-item"><span class="info-label">理想ARC折射率:</span><span class="info-value">${arcParams.n_arc_ideal.toFixed(3)}</span></div>
+                        <div class="info-item"><span class="info-label">理想ARC厚度:</span><span class="info-value">${arcParams.d_arc_ideal.toFixed(1)} nm</span></div>
+                        <div class="info-item"><span class="info-label">反射率抑制:</span><span class="info-value">${arcParams.suppression_ratio.toFixed(1)}x (${(arcParams.reflectance_no_arc*100).toFixed(2)}% → ${(arcParams.reflectance_with_arc*100).toFixed(4)}%)</span></div>
+                        <div class="info-item"><span class="info-label">ARC效率:</span><span class="info-value">${(arcParams.arc_efficiency*100).toFixed(1)}%</span></div>
+                        <div class="info-item"><span class="info-label">ARC状态:</span><span class="info-value">${arcParams.status === 'enabled' ? '✅ 已启用' : '❌ 已禁用'}</span></div>
+                    </div>
+                </div>
+                `;
+            } else {
+                return `
+                <div class="point-info-section">
+                    <h4>🔬 基底材料与抗反射薄膜 (ARC)</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><span class="info-label">ARC状态:</span><span class="info-value">❌ 数据不可用</span></div>
+                        <div class="info-item"><span class="info-label">说明:</span><span class="info-value">请重新计算以获取ARC参数</span></div>
+                    </div>
+                </div>
+                `;
+            }
+        })()}
         <div class="point-info-section">
             <h4>🧮 计算公式 (2D曝光图案)</h4>
             <div class="formula-container">
@@ -6297,7 +6522,25 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             formulaTitle = '1D DILL模型 - 自定义向量 + 多段曝光时间累积模式：';
             formulaMath = '<strong>基于用户自定义数据的多段曝光时间累积</strong><br/>' +
                           'I<sub>segment</sub>(x) = 用户提供的光强向量数据 × 段落权重<br/>' +
-                          'D<sub>total</sub>(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>base</sub>(x) × w<sub>i</sub> × t<sub>i</sub>]';
+                          'D<sub>total</sub>(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>segment,i</sub>(x) × t<sub>i</sub>]<br/>' +
+                          (() => {
+                              let arcParams = null;
+                              if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                                  arcParams = window.lastPlotData.arc_parameters;
+                              }
+                              
+                              if (arcParams && arcParams.materials) {
+                                  const η_arc = 1 - 1/arcParams.suppression_ratio;
+                                  const α_coupling = 1/arcParams.suppression_ratio + 1;
+                                  return `<br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                                         `其中 I<sub>segment,i</sub>(x) = I<sub>base</sub>(x) × w<sub>i</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                         ``;
+                              } else {
+                                  return `<br><span style="color: #2196F3; font-weight: bold;">基础计算:</span><br>` +
+                                         `其中 I<sub>segment,i</sub>(x) = I<sub>base</sub>(x) × w<sub>i</sub> (未启用ARC)<br>` +
+                                         ``;
+                              }
+                          })();
             
             // 获取自定义数据的信息
             const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
@@ -6375,6 +6618,17 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                             <div class="step-detail">• 计算公式光强: I(x) = I_avg × (1 + V × cos(K × x))</div>
                             <div class="step-detail">• 计算结果: I<sub>base</sub> = ${baseIntensity.toFixed(6)}</div>
                             <div class="step-detail">• 参数: I_avg=${I_avg}, V=${V}, K=${K}</div>
+                            ${(() => {
+                                let arcParams = null;
+                                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                                    arcParams = window.lastPlotData.arc_parameters;
+                                }
+                                if (arcParams && arcParams.materials) {
+                                    return `<div class="step-detail">• ARC优化: 反射率抑制${arcParams.suppression_ratio.toFixed(1)}x，提高光强均匀性</div>`;
+                                } else {
+                                    return `<div class="step-detail">• 基底反射: 使用默认ARC设计优化光学耦合</div>`;
+                                }
+                            })()}
                             <div class="step-note">💡 系统自动选择距离点击位置最近的数据点作为基础光强</div>
                         </li>
                         <li>
@@ -6404,7 +6658,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             
             // 检查数据来源并生成相应的描述
             const isFromPhoto = customIntensityData.source === 'photo-recognition';
-            const dataSourceDesc = isFromPhoto ? '照片灰度识别数据' : '💾 用户自定义向量';
+            const dataSourceDesc = isFromPhoto ? '照片灰度识别数据' : '用户自定义向量';
             const unitDisplay = isFromPhoto ? 'μm (照片像素映射)' : (customIntensityData.x_unit || 'pixels');
             
             formulaExplanation = `
@@ -6437,6 +6691,17 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• 每段曝光剂量 = 有效光强 × 段落时长</div>
                 <div>• 总曝光剂量 = Σ(各段曝光剂量)</div>
                 <div>• 系统结合了自定义光强分布和多段时间控制</div>
+                ${(() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    if (arcParams && arcParams.materials) {
+                        return `<div>• ARC设计: ${arcParams.materials.arc.name}薄膜优化了基底反射，提高曝光均匀性</div>`;
+                    } else {
+                        return `<div>• ARC设计: 抗反射涂层减少基底反射，改善曝光质量</div>`;
+                    }
+                })()}
             `;
             
             // 为自定义向量 + 多段曝光时间累积模式添加CSS样式
@@ -6521,13 +6786,29 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             const K = params.K || 2.0;
             const baseIntensity = I_avg * (1 + V * Math.cos(K * x));
             
-            // 根据时间模式显示不同公式
+            // 根据时间模式显示不同公式，并体现ARC优化
+            const arcOptimizationHtml = (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio; // ARC效率因子
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                           `其中 I<sub>segment,i</sub>(x) = I<sub>base</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub>`;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">基础计算:</span><br>` +
+                           `其中 I<sub>segment,i</sub>(x) = I<sub>base</sub>(x) (未启用ARC)`;
+                }
+            })();
+            
             if (params.time_mode === 'fixed') {
-                formulaMath = 'D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>i</sub>(x) × Δt]';
-                formulaMath += '<br>I<sub>i</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))';
+                formulaMath = 'I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))<br>D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>base</sub>(x) × w<sub>i</sub> × Δt]';
+                formulaMath += arcOptimizationHtml;
             } else {
-                formulaMath = 'D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>i</sub>(x) × (t<sub>i+1</sub> - t<sub>i</sub>)]';
-                formulaMath += '<br>I<sub>i</sub>(x) = 各段光强值';
+                formulaMath = 'I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))<br>D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>base</sub>(x) × w<sub>i</sub> × (t<sub>i+1</sub> - t<sub>i</sub>)]';
+                formulaMath += arcOptimizationHtml;
             }
             
             // 获取多段曝光参数
@@ -6650,6 +6931,34 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 ${timeMode === 'fixed' ? `<div>• 单段时长: ${params.segment_duration || 1}s</div>` : ''}
                 <div>• 总曝光计量: ${totalDose.toFixed(2)} mJ/cm²</div>
                 <div class="formula-separator"></div>
+                ${(() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    if (arcParams && arcParams.materials) {
+                        const η_arc = 1 - 1/arcParams.suppression_ratio;
+                        const α_coupling = 1/arcParams.suppression_ratio + 1;
+                        return `
+                        <div>🔬 <strong>ARC优化机制详解：</strong></div>
+                        <div>• <strong>基础光强计算：</strong> I<sub>i</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))</div>
+                        <div>• <strong>ARC效率因子：</strong> η<sub>ARC</sub> = ${η_arc.toFixed(3)} (来自${arcParams.suppression_ratio.toFixed(1)}x反射抑制)</div>
+                        <div>• <strong>光学耦合系数：</strong> α<sub>coupling</sub> = ${α_coupling.toFixed(3)} (基底-光刻胶匹配度提升)</div>
+                        <div>• <strong>有效光强公式：</strong> I<sub>eff</sub>(x) = I<sub>i</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub></div>
+                        <div>• <strong>实际提升效果：</strong> 总光强提升约${((η_arc + α_coupling - 1)*100).toFixed(1)}%</div>
+                        <div>• <strong>材料组合：</strong> ${arcParams.materials.substrate.name} + ${arcParams.materials.arc.name} (${arcParams.materials.arc.type})</div>
+                        <div class="formula-separator"></div>`;
+                    } else {
+                        return `
+                        <div>🔬 <strong>ARC优化机制详解：</strong></div>
+                        <div>• <strong>基础光强计算：</strong> I<sub>i</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))</div>
+                        <div>• <strong>ARC效率因子：</strong> η<sub>ARC</sub> = f(反射抑制比)</div>
+                        <div>• <strong>光学耦合系数：</strong> α<sub>coupling</sub> = f(材料匹配度)</div>
+                        <div>• <strong>有效光强公式：</strong> I<sub>eff</sub>(x) = I<sub>i</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub></div>
+                        <div>• <strong>优化原理：</strong> 减少基底反射，提高光强利用率和分布均匀性</div>
+                        <div class="formula-separator"></div>`;
+                    }
+                })()}
                 <div>📊 <strong>段落信息：</strong></div>
                 ${segmentsTable}
                 <div class="formula-separator"></div>
@@ -6658,8 +6967,20 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div class="formula-separator"></div>
                 <div>💡 <strong>计算说明：</strong></div>
                 <div>• 多段曝光时间累积模式下，总曝光剂量为各段曝光剂量之和</div>
-                <div>• 每段曝光剂量 = 该段光强 × 该段时长</div>
+                <div>• 每段曝光剂量 = 该段有效光强 × 该段时长</div>
                 <div>• 各段使用不同的光强值，可模拟复杂的曝光过程</div>
+                <div>• ARC优化：通过减少反射损失和改善光学耦合来提高有效光强</div>
+                ${(() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    if (arcParams && arcParams.materials) {
+                        return `<div>• <strong>量化影响：</strong> 反射率从${(arcParams.reflectance_no_arc*100).toFixed(2)}%降至${(arcParams.reflectance_with_arc*100).toFixed(4)}%，光强利用率提升显著</div>`;
+                    } else {
+                        return `<div>• <strong>定性影响：</strong> ARC薄膜优化光刻胶表面的光学特性，改善曝光均匀性</div>`;
+                    }
+                })()}
             `;
             
             // 添加CSS样式
@@ -6701,7 +7022,25 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             // 添加缺失的变量定义
             const K = params.K || 2.0;
             const V = params.V || 0.8;
-            formulaMath = '💾 <strong>基于用户自定义数据</strong><br/>I<sub>0</sub>(x) = 用户提供的光强向量数据';
+            formulaMath = '<strong>基于用户自定义数据</strong><br/>I<sub>0</sub>(x) = 用户提供的光强向量数据<br/>' +
+                          (() => {
+                              let arcParams = null;
+                              if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                                  arcParams = window.lastPlotData.arc_parameters;
+                              }
+                              
+                              if (arcParams && arcParams.materials) {
+                                  const η_arc = 1 - 1/arcParams.suppression_ratio;
+                                  const α_coupling = 1/arcParams.suppression_ratio + 1;
+                                  return `<br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                                         `增强光强 I<sub>enhanced</sub>(x) = I<sub>0</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                         ``;
+                              } else {
+                                  return `<br><span style="color: #2196F3; font-weight: bold;">基础光强:</span><br>` +
+                                         `有效光强 = 自定义光强 I<sub>0</sub>(x) (未启用ARC)<br>` +
+                                         ``;
+                              }
+                          })();
             
             // 获取自定义数据的信息
             const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
@@ -6748,7 +7087,25 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             valueLabel = '光强分布:';
             valueUnit = '(mW/cm²)';
             formulaTitle = '1D DILL模型 - 理想曝光光强分布计算：';
-            formulaMath = 'I<sub>0</sub>(x) = I<sub>avg</sub> × [1 + V × cos((4π × sin(a) / λ) × x)]';
+            formulaMath = 'I<sub>0</sub>(x) = I<sub>avg</sub> × [1 + V × cos((4π × sin(a) / λ) × x)]<br/>' +
+                          (() => {
+                              let arcParams = null;
+                              if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                                  arcParams = window.lastPlotData.arc_parameters;
+                              }
+                              
+                              if (arcParams && arcParams.materials) {
+                                  const η_arc = 1 - 1/arcParams.suppression_ratio;
+                                  const α_coupling = 1/arcParams.suppression_ratio + 1;
+                                  return `<br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                                         `增强光强 I<sub>enhanced</sub>(x) = I<sub>0</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                         ``;
+                              } else {
+                                  return `<br><span style="color: #2196F3; font-weight: bold;">基础光强:</span><br>` +
+                                         `有效光强 = 基础光强 I<sub>0</sub>(x) (未启用ARC)<br>` +
+                                         ``;
+                              }
+                          })();
             
             // 获取实际参数值 - 优先从API返回的parameters字段获取
             const iAvg = params.I_avg || 1.0;  // 🔧 修复：使用用户输入的I_avg参数
@@ -6769,6 +7126,33 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• λ: 光波长 (${wavelength} nm)</div>
                 <div>• 空间频率系数: 4π×sin(a)/λ = ${spatialFreq} rad/μm</div>
                 <div class="formula-separator"></div>
+                ${(() => {
+                    // 获取ARC参数数据
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    } else if (params.arc_parameters) {
+                        arcParams = params.arc_parameters;
+                    }
+                    
+                    if (arcParams && arcParams.materials) {
+                        const substrate = arcParams.materials.substrate;
+                        const arc = arcParams.materials.arc;
+                        return `
+                        <div>🔬 <strong>基底材料与ARC设计：</strong></div>
+                        <div>• 基底材料: ${substrate.name} (n=${substrate.n.toFixed(3)}, k=${substrate.k.toFixed(3)})</div>
+                        <div>• ARC材料: ${arc.name} - ${arc.type} (n=${arc.n.toFixed(3)}, k=${arc.k.toFixed(3)})</div>
+                        <div>• 理想ARC折射率: n<sub>ideal</sub> = √(n<sub>resist</sub>×n<sub>substrate</sub>) = ${arcParams.n_arc_ideal.toFixed(3)}</div>
+                        <div>• 理想ARC厚度: d<sub>ideal</sub> = λ/(4×n<sub>ARC</sub>) = ${arcParams.d_arc_ideal.toFixed(1)} nm</div>
+                        <div>• 反射率抑制: ${arcParams.suppression_ratio.toFixed(1)}x (${(arcParams.reflectance_no_arc*100).toFixed(2)}% → ${(arcParams.reflectance_with_arc*100).toFixed(4)}%)</div>
+                        <div class="formula-separator"></div>`;
+                    } else {
+                        return `
+                        <div>🔬 <strong>基底材料与ARC设计：</strong></div>
+                        <div>• 使用默认材料参数 (硅基底 + SiON ARC)</div>
+                        <div class="formula-separator"></div>`;
+                    }
+                })()}
                 <div>📍 <strong>当前位置计算：</strong></div>
                 <div>• x: 位置坐标 (${x.toFixed(3)} mm = ${currentX_um.toFixed(1)} μm)</div>
                 <div>• 当前相位: ${currentPhase.toFixed(3)} rad</div>
@@ -6779,6 +7163,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• 基础强度: I<sub>avg</sub> = ${iAvg} mW/cm²</div>
                 <div>• 调制深度: V × cos(相位) = ${(visibilityParam * Math.cos(currentPhase)).toFixed(6)}</div>
                 <div>• 干涉条纹产生周期性光强分布</div>
+                <div>• ARC设计优化了光刻胶表面的光学耦合效率</div>
             `;
         } else {
             // 传统Dill模型公式
@@ -6787,8 +7172,27 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             formulaTitle = 'Dill模型曝光剂量计算：';
             
             // 根据不同的波形模式显示对应的公式
+            // 生成ARC优化公式组件
+            const arcOptimizedFormulaHtml = (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                           `增强光强 I<sub>enhanced</sub> = I<sub>avg</sub> × η<sub>opt</sub> (η<sub>opt</sub> = ${(η_arc * α_coupling).toFixed(3)})<br>` +
+                           `<span style="font-size: 11px; color: #666;">ARC优化系数：反射抑制(${η_arc.toFixed(3)}) × 耦合提升(${α_coupling.toFixed(3)})</span>`;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                           `增强光强 I<sub>enhanced</sub> = I<sub>avg</sub> × η<sub>opt</sub> (ARC光学优化系数)`;
+                }
+            })();
+
             if (params.sine_type === 'multi') {
-                formulaMath = 'D(x,y) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + φ))';
+                formulaMath = 'D(x,y) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + φ))' + arcOptimizedFormulaHtml;
                 formulaExplanation = `
                     <div>• I<sub>avg</sub>: 平均光强度 (${params.I_avg} mW<span class="fraction"><span class="numerator">1</span><span class="denominator">cm²</span></span>)</div>
                     <div>• t<sub>exp</sub>: 曝光时间 (${params.t_exp} s)</div>
@@ -6798,7 +7202,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                     <div>• φ: 相位值 (${params.phi_expr})</div>
                 `;
             } else if (params.sine_type === '3d') {
-                formulaMath = 'D(x,y,z) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ))';
+                formulaMath = 'D(x,y,z) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ))' + arcOptimizedFormulaHtml;
                 formulaExplanation = `
                     <div>• I<sub>avg</sub>: 平均光强度 (${params.I_avg} mW<span class="fraction"><span class="numerator">1</span><span class="denominator">cm²</span></span>)</div>
                     <div>• t<sub>exp</sub>: 曝光时间 (${params.t_exp} s)</div>
@@ -6809,12 +7213,40 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                     <div>• φ: 相位值 (${params.phi_expr})</div>
                 `;
             } else {
-                formulaMath = 'D(x) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(K·x))';
+                formulaMath = 'I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))<br>D(x) = I<sub>base</sub>(x) × t<sub>exp</sub>' + arcOptimizedFormulaHtml;
                 formulaExplanation = `
                     <div>• I<sub>avg</sub>: 平均光强度 (${params.I_avg} mW<span class="fraction"><span class="numerator">1</span><span class="denominator">cm²</span></span>)</div>
                     <div>• t<sub>exp</sub>: 曝光时间 (${params.t_exp} s)</div>
                     <div>• V: 干涉条纹可见度 (${params.V})</div>
                     <div>• K: 空间频率 (${params.K} rad<span class="fraction"><span class="numerator">1</span><span class="denominator">μm</span></span>)</div>
+                    ${(() => {
+                        // 获取ARC参数数据
+                        let arcParams = null;
+                        if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                            arcParams = window.lastPlotData.arc_parameters;
+                        } else if (params.arc_parameters) {
+                            arcParams = params.arc_parameters;
+                        }
+                        
+                        if (arcParams && arcParams.materials) {
+                            const substrate = arcParams.materials.substrate;
+                            const arc = arcParams.materials.arc;
+                            const η_opt = (1 - 1/arcParams.suppression_ratio) * (1/arcParams.suppression_ratio + 1);
+                            return `
+                            <div class="formula-separator"></div>
+                            <div>🔬 <strong>ARC优化系数详解：</strong></div>
+                            <div>• 基底: ${substrate.name} (n=${substrate.n.toFixed(3)}, k=${substrate.k.toFixed(3)})</div>
+                            <div>• ARC: ${arc.name} - ${arc.type}</div>
+                            <div>• 反射率抑制: ${arcParams.suppression_ratio.toFixed(1)}x → 有效光强提升 η<sub>opt</sub> = ${η_opt.toFixed(3)}</div>
+                            <div>• <strong>实际影响：</strong> I<sub>enhanced</sub> = ${params.I_avg} × ${η_opt.toFixed(3)} = ${(params.I_avg * η_opt).toFixed(3)} mW/cm²</div>`;
+                        } else {
+                            return `
+                            <div class="formula-separator"></div>
+                            <div>🔬 <strong>ARC优化系数详解：</strong></div>
+                            <div>• 使用默认材料参数进行光学计算</div>
+                            <div>• η<sub>opt</sub> = f(反射抑制, 耦合优化) → 提升有效光强</div>`;
+                        }
+                    })()}
                 `;
             }
         }
@@ -6830,11 +7262,30 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             const V = params.V || 0.8;
             const K = params.K || 2.0;
             const baseIntensity = I_avg * (1 + V * Math.cos(K * x));
-            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> D<sub>total</sub>(x) = Σ[I<sub>base</sub>(x) × w<sub>i</sub> × t<sub>i</sub>] (多段累积)</div>';
+            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))</div>';
+            formulaMath += '<div style="margin-bottom: 8px;">　　　　　D<sub>total</sub>(x) = Σ[I<sub>base</sub>(x) × w<sub>i</sub> × t<sub>i</sub>] (多段累积)</div>';
             formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>total</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>total</sub>(x) - c<sub>d</sub>)</sup></div>';
             formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
+            formulaMath += (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC光强增强:</span><br>` +
+                           `其中 I<sub>segment,i</sub>(x) = I<sub>base</sub>(x) × w<sub>i</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">基础计算:</span><br>` +
+                           `其中 I<sub>segment,i</sub>(x) = I<sub>base</sub>(x) × w<sub>i</sub> (未启用ARC)<br>` +
+                                                                    ``;
+                }
+            })();
 
             // 确保 customIntensityData 有效，如果无效则从 lastPlotData 中获取
             if (!customIntensityData || !customIntensityData.x || !customIntensityData.intensity) {
@@ -6949,6 +7400,17 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                             <div class="step-detail">• 计算公式光强: I(x) = I_avg × (1 + V × cos(K × x))</div>
                             <div class="step-detail">• 计算结果: I<sub>base</sub> = ${baseIntensity.toFixed(6)}</div>
                             <div class="step-detail">• 参数: I_avg=${I_avg}, V=${V}, K=${K}</div>
+                            ${(() => {
+                                let arcParams = null;
+                                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                                    arcParams = window.lastPlotData.arc_parameters;
+                                }
+                                if (arcParams && arcParams.materials) {
+                                    return `<div class="step-detail">• ARC优化: ${arcParams.materials.arc.name}抑制反射${arcParams.suppression_ratio.toFixed(1)}x，提升光强稳定性</div>`;
+                                } else {
+                                    return `<div class="step-detail">• ARC优化: 抗反射涂层减少光强波动，改善计算精度</div>`;
+                                }
+                            })()}
                             <div class="step-note">💡 基于标准Dill模型计算该位置的基础光强分布</div>
                         </li>
                         <li>
@@ -7029,6 +7491,17 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• 总曝光剂量 = Σ(基础光强 × 权重 × 时长)</div>
                 <div>• 系统结合了自定义光强分布和多段时间累积效应</div>
                 <div>• 每段的有效光强由基础光强和段落权重共同决定</div>
+                ${(() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    if (arcParams && arcParams.materials) {
+                        return `<div>• ARC设计: ${arcParams.materials.arc.name}优化基底光学性能，减少${((1-1/arcParams.suppression_ratio)*100).toFixed(1)}%反射损失</div>`;
+                    } else {
+                        return `<div>• ARC设计: 抗反射涂层提高光刻胶与基底的光学匹配性</div>`;
+                    }
+                })()}
                 <div>• 最终蚀刻深度基于累积总剂量计算</div>
             `;
             
@@ -7147,11 +7620,30 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             valueLabel = '蚀刻深度/厚度:';
             valueUnit = '(归一化)';
             formulaTitle = 'Dill模型 - 多段曝光时间累积模式蚀刻深度计算：';
-            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>i</sub>(x) × Δt<sub>i</sub>]</div>';
+            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))</div>';
+            formulaMath += '<div style="margin-bottom: 8px;">　　　　　D(x) = ∑<sub>i=1</sub><sup>n</sup> [I<sub>base</sub>(x) × w<sub>i</sub> × Δt<sub>i</sub>]</div>';
             formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>total</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>total</sub>(x) - c<sub>d</sub>)</sup></div>';
             formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
+            formulaMath += (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff,i</sub>(x) = I<sub>i</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff,i</sub>(x) = I<sub>i</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                }
+            })();
             
             // 多段曝光时间累积模式使用公式计算基础光强，不使用自定义数据
             // 使用标准Dill公式计算当前位置的基础光强
@@ -7244,6 +7736,17 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                             <div class="step-detail">• 计算公式光强: I(x) = I_avg × (1 + V × cos(K × x))</div>
                             <div class="step-detail">• 计算结果: I<sub>base</sub> = ${baseIntensity.toFixed(6)}</div>
                             <div class="step-detail">• 参数: I_avg=${I_avg}, V=${V}, K=${K}</div>
+                            ${(() => {
+                                let arcParams = null;
+                                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                                    arcParams = window.lastPlotData.arc_parameters;
+                                }
+                                if (arcParams && arcParams.materials) {
+                                    return `<div class="step-detail">• ARC优化: ${arcParams.materials.arc.name}抑制反射${arcParams.suppression_ratio.toFixed(1)}x，提升光强稳定性</div>`;
+                                } else {
+                                    return `<div class="step-detail">• ARC优化: 抗反射涂层减少光强波动，改善计算精度</div>`;
+                                }
+                            })()}
                             <div class="step-note">💡 基于标准Dill模型计算该位置的基础光强分布</div>
                         </li>
                         <li>
@@ -7324,6 +7827,17 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• 总曝光剂量 = Σ(基础光强 × 权重 × 时长)</div>
                 <div>• 系统结合了自定义光强分布和多段时间累积效应</div>
                 <div>• 每段的有效光强由基础光强和段落权重共同决定</div>
+                ${(() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    if (arcParams && arcParams.materials) {
+                        return `<div>• ARC设计: ${arcParams.materials.arc.name}优化基底光学性能，减少${((1-1/arcParams.suppression_ratio)*100).toFixed(1)}%反射损失</div>`;
+                    } else {
+                        return `<div>• ARC设计: 抗反射涂层提高光刻胶与基底的光学匹配性</div>`;
+                    }
+                })()}
                 <div>• 最终蚀刻深度基于累积总剂量计算</div>
             `;
             
@@ -7483,11 +7997,30 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             const V = params.V || 0.8;
             const K = params.K || 2.0;
             const baseIntensity = I_avg * (1 + V * Math.cos(K * x));
-            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> D<sub>0</sub>(x) = I<sub>0</sub>(x) × t<sub>exp</sub></div>';
+            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))</div>';
+            formulaMath += '<div style="margin-bottom: 8px;">　　　　　D<sub>0</sub>(x) = I<sub>base</sub>(x) × t<sub>exp</sub></div>';
             formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>0</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>0</sub>(x) - c<sub>d</sub>)</sup></div>';
             formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
+            formulaMath += (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff</sub>(x) = I<sub>0</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff</sub>(x) = I<sub>0</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                }
+            })();
             
             // 获取自定义数据的信息
             const totalDataPoints = customIntensityData.x ? customIntensityData.x.length : 0;
@@ -7545,17 +8078,47 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• 步骤1: 根据自定义光强计算曝光剂量</div>
                 <div>• 步骤2: 判断是否超过曝光阈值</div>
                 <div>• 步骤3: 计算最终蚀刻深度</div>
+                ${(() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    if (arcParams && arcParams.materials) {
+                        return `<div>• ARC影响: ${arcParams.materials.arc.name}薄膜改善光强分布均匀性，影响蚀刻深度精度</div>`;
+                    } else {
+                        return `<div>• ARC影响: 抗反射涂层优化光学条件，提高蚀刻质量</div>`;
+                    }
+                })()}
             `;
         } else if (isIdealExposureModel) {
             // 理想曝光模型的蚀刻深度公式
             valueLabel = '蚀刻深度:';
             valueUnit = '(归一化)';
             formulaTitle = '1D DILL模型 - 理想曝光蚀刻深度计算：';
-            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> D<sub>0</sub>(x) = I<sub>0</sub>(x) × t<sub>exp</sub></div>';
+            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))</div>';
+            formulaMath += '<div style="margin-bottom: 8px;">　　　　　D<sub>0</sub>(x) = I<sub>base</sub>(x) × t<sub>exp</sub></div>';
             formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>0</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
             formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>0</sub>(x) - c<sub>d</sub>)</sup></div>';
             formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
+            formulaMath += (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff</sub>(x) = I<sub>0</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff</sub>(x) = I<sub>0</sub>(x) × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                }
+            })();
             
             // 获取实际参数值并计算当前点
             // 🔥 修复：统一参数获取逻辑，确保从正确的源获取参数
@@ -7601,6 +8164,32 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• V: 干涉条纹可见度 (${visibilityParam})</div>
                 <div>• a: 周期 (${angleParam}°)</div>
                 <div class="formula-separator"></div>
+                ${(() => {
+                    // 获取ARC参数数据
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    } else if (params.arc_parameters) {
+                        arcParams = params.arc_parameters;
+                    }
+                    
+                    if (arcParams && arcParams.materials) {
+                        const substrate = arcParams.materials.substrate;
+                        const arc = arcParams.materials.arc;
+                        return `
+                        <div>🔬 <strong>基底材料与ARC设计：</strong></div>
+                        <div>• 基底: ${substrate.name} (n=${substrate.n.toFixed(3)}, k=${substrate.k.toFixed(3)})</div>
+                        <div>• ARC: ${arc.name} - ${arc.type}</div>
+                        <div>• 反射率抑制: ${arcParams.suppression_ratio.toFixed(1)}x</div>
+                        <div>• ARC优化了光强均匀性，影响蚀刻深度分布</div>
+                        <div class="formula-separator"></div>`;
+                    } else {
+                        return `
+                        <div>🔬 <strong>基底材料与ARC设计：</strong></div>
+                        <div>• 使用默认材料参数进行光学计算</div>
+                        <div class="formula-separator"></div>`;
+                    }
+                })()}
                 <div>📍 <strong>当前位置 x=${x.toFixed(3)}mm 的计算：</strong></div>
                 <div>• I<sub>0</sub>(x): 该点光强 = ${I0_at_x.toFixed(6)} mW/cm²</div>
                 <div>• H(x): 形貌深度 (当前值: ${y.toFixed(6)})</div>
@@ -7623,19 +8212,148 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             
             // 检查是否有多维数据，确定计算公式
             if (params.sine_type === 'multi') {
-                formulaMath = 'M(x,y) = e<sup>-C × D(x,y)</sup>';
-                formulaMath += '<br>D(x,y) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + φ))';
+                formulaMath = 'I<sub>base</sub>(x,y) = I<sub>avg</sub> × (1 + V × cos(Kx·x + Ky·y + φ))<br>D<sub>eff</sub>(x,y) = I<sub>base</sub>(x,y) × t<sub>exp</sub><br>M(x,y) = e<sup>-C × D<sub>eff</sub>(x,y)</sup>';
+                formulaMath += (() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    
+                    if (arcParams && arcParams.materials) {
+                        const η_arc = 1 - 1/arcParams.suppression_ratio;
+                        const α_coupling = 1/arcParams.suppression_ratio + 1;
+                        return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                               `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                        ``;
+                    } else {
+                        return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                               `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                        ``;
+                    }
+                })();
             } else if (params.sine_type === '3d') {
-                formulaMath = 'M(x,y,z) = e<sup>-C × D(x,y,z)</sup>';
-                formulaMath += '<br>D(x,y,z) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ))';
+                formulaMath = 'I<sub>base</sub>(x,y,z) = I<sub>avg</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ))<br>D<sub>eff</sub>(x,y,z) = I<sub>base</sub>(x,y,z) × t<sub>exp</sub><br>M(x,y,z) = e<sup>-C × D<sub>eff</sub>(x,y,z)</sup>';
+                formulaMath += (() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    
+                    if (arcParams && arcParams.materials) {
+                        const η_arc = 1 - 1/arcParams.suppression_ratio;
+                        const α_coupling = 1/arcParams.suppression_ratio + 1;
+                        return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                               `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                        ``;
+                    } else {
+                        return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                               `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                        ``;
+                    }
+                })();
             } else {
-                formulaMath = 'M(x) = e<sup>-C × D(x)</sup>';
+                formulaMath = 'I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))<br>D<sub>eff</sub>(x) = I<sub>base</sub>(x) × t<sub>exp</sub><br>M(x) = e<sup>-C × D<sub>eff</sub>(x)</sup>';
+                formulaMath += (() => {
+                    let arcParams = null;
+                    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                        arcParams = window.lastPlotData.arc_parameters;
+                    }
+                    
+                    if (arcParams && arcParams.materials) {
+                        const η_arc = 1 - 1/arcParams.suppression_ratio;
+                        const α_coupling = 1/arcParams.suppression_ratio + 1;
+                        return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                               `D<sub>eff</sub>(x) = I<sub>eff</sub> × t<sub>exp</sub> × [光强分布]<br>` +
+                               `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                        ``;
+                    } else {
+                        return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                               `D<sub>eff</sub>(x) = I<sub>eff</sub> × t<sub>exp</sub> × [光强分布]<br>` +
+                               `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                        ``;
+                    }
+                })();
             }
             
             formulaExplanation = `
                 <div>• C: 光敏速率常数 (${params.C} cm²<span class="fraction"><span class="numerator">1</span><span class="denominator">mJ</span></span>)</div>
                 <div>• D(x): 该点曝光剂量 (${y.toFixed(3)} mJ<span class="fraction"><span class="numerator">1</span><span class="denominator">cm²</span></span>)</div>
             `;
+        }
+    }
+    
+    // 🔬 添加ARC（抗反射薄膜）信息
+    if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+        const arcParams = window.lastPlotData.arc_parameters;
+        
+        // 检查ARC是否启用
+        if (arcParams.status === 'enabled') {
+            const arcInfoHtml = `
+                <div class="point-info-section">
+                    <h4>🔬 抗反射薄膜 (ARC) 设计参数</h4>
+                    <div class="info-grid responsive-grid">
+                        <div class="info-item"><span class="info-label">基底材料:</span><span class="info-value">${arcParams.materials.substrate.name}</span></div>
+                        <div class="info-item"><span class="info-label">基底折射率:</span><span class="info-value">n=${arcParams.materials.substrate.n.toFixed(3)}, k=${arcParams.materials.substrate.k.toFixed(3)}</span></div>
+                        <div class="info-item"><span class="info-label">ARC材料:</span><span class="info-value">${arcParams.materials.arc.name}</span></div>
+                        <div class="info-item"><span class="info-label">ARC折射率:</span><span class="info-value">n=${arcParams.materials.arc.n.toFixed(3)}, k=${arcParams.materials.arc.k.toFixed(3)}</span></div>
+                        <div class="info-item"><span class="info-label">ARC类型:</span><span class="info-value">${arcParams.materials.arc.type}</span></div>
+                        <div class="info-item"><span class="info-label">波长:</span><span class="info-value">${arcParams.materials.wavelength} nm</span></div>
+                    </div>
+                </div>
+                <div class="point-info-section">
+                    <h4>📐 ARC计算结果</h4>
+                    <div class="info-grid responsive-grid">
+                        <div class="info-item"><span class="info-label">理想ARC折射率:</span><span class="info-value">${arcParams.n_arc_ideal.toFixed(3)}</span></div>
+                        <div class="info-item"><span class="info-label">理想ARC厚度:</span><span class="info-value">${arcParams.d_arc_ideal.toFixed(1)} nm</span></div>
+                        <div class="info-item"><span class="info-label">反射率抑制:</span><span class="info-value">${arcParams.suppression_ratio.toFixed(1)}x</span></div>
+                        <div class="info-item"><span class="info-label">无ARC反射率:</span><span class="info-value">${(arcParams.reflectance_no_arc*100).toFixed(2)}%</span></div>
+                        <div class="info-item"><span class="info-label">有ARC反射率:</span><span class="info-value">${(arcParams.reflectance_with_arc*100).toFixed(2)}%</span></div>
+                        <div class="info-item"><span class="info-label">ARC效率:</span><span class="info-value">${(arcParams.arc_efficiency*100).toFixed(1)}%</span></div>
+                    </div>
+                </div>
+                <div class="point-info-section">
+                    <h4>🧮 ARC设计公式</h4>
+                    <div class="formula-container">
+                        <div class="formula-title">抗反射薄膜设计原理：</div>
+                        <div class="formula-math">
+                            n<sub>ARC,理想</sub> = √(n<sub>光刻胶</sub> × n<sub>基底</sub>)<br>
+                            d<sub>ARC,理想</sub> = λ/(4 × n<sub>ARC</sub>)<br>
+                            反射率抑制 = R<sub>无ARC</sub> / R<sub>有ARC</sub>
+                        </div>
+                        <div class="formula-explanation">
+                            <div>• n<sub>光刻胶</sub>: 光刻胶折射率 (${arcParams.n_resist})</div>
+                            <div>• n<sub>基底</sub>: 基底折射率 (${arcParams.materials.substrate.n.toFixed(3)})</div>
+                            <div>• n<sub>ARC</sub>: ARC折射率 (${arcParams.materials.arc.n.toFixed(3)})</div>
+                            <div>• λ: 光波长 (${arcParams.materials.wavelength} nm)</div>
+                            <div>• 设计原理: 通过干涉相消和光吸收减少驻波效应</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 将ARC信息添加到现有的additionalInfo中
+            if (additionalInfo) {
+                additionalInfo += arcInfoHtml;
+            } else {
+                additionalInfo = arcInfoHtml;
+            }
+        } else if (arcParams.status === 'disabled') {
+            // ARC被禁用的情况
+            const arcDisabledHtml = `
+                <div class="point-info-section">
+                    <h4>🔬 抗反射薄膜 (ARC) 状态</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><span class="info-label">状态:</span><span class="info-value">已禁用</span></div>
+                        <div class="info-item"><span class="info-label">原因:</span><span class="info-value">${arcParams.message}</span></div>
+                    </div>
+                </div>
+            `;
+            
+            if (additionalInfo) {
+                additionalInfo += arcDisabledHtml;
+            } else {
+                additionalInfo = arcDisabledHtml;
+            }
         }
     }
     
@@ -7657,7 +8375,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             <h4>📋 ${LANGS[currentLang].popup_section_params_dill || '参数组'}: ${setName} (${isUsingCustomData ? (customIntensityData.source === 'photo-recognition' ? '照片识别DILL模型' : '自定义向量DILL模型') : isIdealExposureModel ? 'DILL模型' : 'Dill模型'})</h4>
             <div class="info-grid responsive-grid">
                 ${isUsingCustomData ? `
-                <div class="info-item"><span class="info-label">数据来源:</span><span class="info-value">${customIntensityData.source === 'photo-recognition' ? '照片灰度识别' : '💾 自定义向量'}</span></div>
+                <div class="info-item"><span class="info-label">数据来源:</span><span class="info-value">${customIntensityData.source === 'photo-recognition' ? '照片灰度识别' : '自定义向量'}</span></div>
                 <div class="info-item"><span class="info-label">数据点数:</span><span class="info-value">${customIntensityData.x ? customIntensityData.x.length : 0} 个</span></div>
                 <div class="info-item"><span class="info-label">X范围:</span><span class="info-value">[${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 0}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 0}] ${customIntensityData.source === 'photo-recognition' ? 'μm' : (customIntensityData.x_unit || 'pixels')}</span></div>
                 <div class="info-item"><span class="info-label">光强范围:</span><span class="info-value">[${customIntensityData.intensity ? Math.min(...customIntensityData.intensity).toFixed(3) : 0}, ${customIntensityData.intensity ? Math.max(...customIntensityData.intensity).toFixed(3) : 0}]</span></div>
@@ -7691,6 +8409,79 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 `}
             </div>
         </div>
+        ${(() => {
+            // 获取ARC参数数据
+            let arcParams = null;
+            
+            // 优先从window.lastPlotData获取ARC参数
+            if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                arcParams = window.lastPlotData.arc_parameters;
+            } else if (params.arc_parameters) {
+                arcParams = params.arc_parameters;
+            }
+            
+            // 如果有ARC参数数据，显示ARC设计信息
+            if (arcParams && arcParams.materials) {
+                const substrate = arcParams.materials.substrate;
+                const arc = arcParams.materials.arc;
+                const wavelength = arcParams.materials.wavelength || 405;
+                
+                return `
+                <div class="point-info-section">
+                    <h4>基底材料与ARC设计</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 12px;">
+                        <div>
+                            <h5 style="margin: 0 0 8px 0; color: #333; font-weight: bold;">📋 基底材料</h5>
+                            <div class="info-grid" style="grid-template-columns: 1fr;">
+                                <div class="info-item"><span class="info-label">基底材料:</span><span class="info-value">${substrate.name}</span></div>
+                                <div class="info-item"><span class="info-label">基底折射率(n):</span><span class="info-value">${substrate.n.toFixed(3)}</span></div>
+                                <div class="info-item"><span class="info-label">基底消光系数(k):</span><span class="info-value">${substrate.k.toFixed(3)}</span></div>
+                                <div class="info-item"><span class="info-label">反射率(无ARC):</span><span class="info-value">${(arcParams.reflectance_no_arc * 100).toFixed(2)}%</span></div>
+                                <div class="info-item"><span class="info-label">工作波长:</span><span class="info-value">${wavelength} nm</span></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 style="margin: 0 0 8px 0; color: #333; font-weight: bold;">🎯 ARC设计</h5>
+                            <div class="info-grid" style="grid-template-columns: 1fr;">
+                                <div class="info-item"><span class="info-label">ARC材料:</span><span class="info-value">${arc.name}</span></div>
+                                <div class="info-item"><span class="info-label">ARC类型:</span><span class="info-value">${arc.type}</span></div>
+                                <div class="info-item"><span class="info-label">ARC折射率(n):</span><span class="info-value">${arc.n.toFixed(3)}</span></div>
+                                <div class="info-item"><span class="info-label">ARC消光系数(k):</span><span class="info-value">${arc.k.toFixed(3)}</span></div>
+                                <div class="info-item"><span class="info-label">理想ARC折射率:</span><span class="info-value">${arcParams.n_arc_ideal.toFixed(3)}</span></div>
+                                <div class="info-item"><span class="info-label">理想ARC厚度:</span><span class="info-value">${arcParams.d_arc_ideal.toFixed(1)} nm</span></div>
+                                <div class="info-item"><span class="info-label">反射率(有ARC):</span><span class="info-value">${(arcParams.reflectance_with_arc * 100).toFixed(4)}%</span></div>
+                                <div class="info-item"><span class="info-label">反射率抑制比:</span><span class="info-value">${arcParams.suppression_ratio.toFixed(1)}x</span></div>
+                                <div class="info-item"><span class="info-label">ARC效率:</span><span class="info-value">${(arcParams.arc_efficiency * 100).toFixed(0)}%</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            } else {
+                return `
+                <div class="point-info-section">
+                    <h4>基底材料与ARC设计</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 12px;">
+                        <div>
+                            <h5 style="margin: 0 0 8px 0; color: #333; font-weight: bold;">📋 基底材料</h5>
+                            <div class="info-grid" style="grid-template-columns: 1fr;">
+                                <div class="info-item"><span class="info-label">基底材料:</span><span class="info-value">硅 (Si) - 默认</span></div>
+                                <div class="info-item"><span class="info-label">工作波长:</span><span class="info-value">405 nm - 默认</span></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 style="margin: 0 0 8px 0; color: #333; font-weight: bold;">🎯 ARC设计</h5>
+                            <div class="info-grid" style="grid-template-columns: 1fr;">
+                                <div class="info-item"><span class="info-label">ARC材料:</span><span class="info-value">氮氧化硅 (SiON) - 默认</span></div>
+                                <div class="info-item"><span class="info-label">状态:</span><span class="info-value">⚠️ ARC参数未获取</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="color: #666; font-size: 12px; margin-top: 8px;">
+                        💡 提示：ARC设计参数将在下次计算时自动更新显示
+                    </div>
+                </div>`;
+            }
+        })()}
         <div class="point-info-section">
             <h4>🧮 ${LANGS[currentLang].popup_section_formula || '计算公式 (核心)'}</h4>
             <div class="formula-container">
@@ -7718,8 +8509,26 @@ function getEnhancedDillPopupHtmlContent(x, y, setName, params, plotType) {
         
         // 根据波形类型显示不同公式
         if (params.sine_type === 'multi') {
-            formulaMath = 'D(x,y,z) = ∫ I(x,y,z,t) dt';
-            formulaMath += '<br>I(x,y,z) = I<sub>0</sub> × (1 + V × cos(Kx·x + Ky·y + φ)) × e<sup>-∫[A(z_h,T,t_B)·M+B(z_h,T,t_B)]dz</sup>';
+            formulaMath = 'D<sub>eff</sub>(x,y,z) = ∫ I<sub>eff</sub>(x,y,z,t) dt';
+            formulaMath += '<br>I<sub>eff</sub>(x,y,z) = I<sub>0</sub> × (1 + V × cos(Kx·x + Ky·y + φ)) × e<sup>-∫[A(z_h,T,t_B)·M+B(z_h,T,t_B)]dz</sup>';
+            formulaMath += (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>0</sub> → I<sub>eff,0</sub> = I<sub>0</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>0</sub> → I<sub>eff,0</sub> = I<sub>0</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                }
+            })();
             formulaExplanation = `
                 <div>• I<sub>0</sub>: 初始光强度 (${params.I0})</div>
                 <div>• V: 干涉条纹可见度 (${params.V})</div>
@@ -7733,8 +8542,26 @@ function getEnhancedDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• B(z_h,T,t_B): 基底吸收率，与胶厚、前烘温度、前烘时间相关</div>
             `;
         } else if (params.sine_type === '3d') {
-            formulaMath = 'D(x,y,z) = ∫ I(x,y,z,t) dt';
-            formulaMath += '<br>I(x,y,z) = I<sub>0</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ)) × e<sup>-∫[A(z_h,T,t_B)·M+B(z_h,T,t_B)]dz</sup>';
+            formulaMath = 'D<sub>eff</sub>(x,y,z) = ∫ I<sub>eff</sub>(x,y,z,t) dt';
+            formulaMath += '<br>I<sub>eff</sub>(x,y,z) = I<sub>0</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ)) × e<sup>-∫[A(z_h,T,t_B)·M+B(z_h,T,t_B)]dz</sup>';
+            formulaMath += (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>0</sub> → I<sub>eff,0</sub> = I<sub>0</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>0</sub> → I<sub>eff,0</sub> = I<sub>0</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                }
+            })();
             formulaExplanation = `
                 <div>• I<sub>0</sub>: 初始光强度 (${params.I0})</div>
                 <div>• V: 干涉条纹可见度 (${params.V})</div>
@@ -7961,8 +8788,26 @@ function getCarPopupHtmlContent(x, y, setName, params, plotType) {
         
         // 根据波形类型显示不同公式
         if (params.sine_type === 'multi') {
-            formulaMath = '[H<sup>+</sup>] = η × D(x,y)';
-            formulaMath += '<br>D(x,y) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + φ))';
+            formulaMath = '[H<sup>+</sup>] = η × D<sub>eff</sub>(x,y)';
+            formulaMath += '<br>D<sub>eff</sub>(x,y) = I<sub>eff</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + φ))';
+            formulaMath += (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                }
+            })();
             formulaExplanation = `
                 <div>• η: 光酸产生效率 (${params.acid_gen_efficiency})</div>
                 <div>• I<sub>avg</sub>: 平均光强度 (${params.I_avg} mW/cm²)</div>
@@ -7973,8 +8818,26 @@ function getCarPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• t<sub>exp</sub>: 曝光时间 (${params.t_exp} s)</div>
             `;
         } else if (params.sine_type === '3d') {
-            formulaMath = '[H<sup>+</sup>] = η × D(x,y,z)';
-            formulaMath += '<br>D(x,y,z) = I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ))';
+            formulaMath = '[H<sup>+</sup>] = η × D<sub>eff</sub>(x,y,z)';
+            formulaMath += '<br>D<sub>eff</sub>(x,y,z) = I<sub>eff</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ))';
+            formulaMath += (() => {
+                let arcParams = null;
+                if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                    arcParams = window.lastPlotData.arc_parameters;
+                }
+                
+                if (arcParams && arcParams.materials) {
+                    const η_arc = 1 - 1/arcParams.suppression_ratio;
+                    const α_coupling = 1/arcParams.suppression_ratio + 1;
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                } else {
+                    return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                           `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                    ``;
+                }
+            })();
             formulaExplanation = `
                 <div>• η: 光酸产生效率 (${params.acid_gen_efficiency})</div>
                 <div>• I<sub>avg</sub>: 平均光强度 (${params.I_avg} mW/cm²)</div>
@@ -8157,9 +9020,27 @@ function getCarPopupHtmlContent(x, y, setName, params, plotType) {
         valueLabel = '值:';
         valueUnit = '(归一化)';
         formulaTitle = 'CAR模型二维分布:';
-        formulaMath = '[H<sup>+</sup>](x,y) = η × I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + φ))';
+        formulaMath = '[H<sup>+</sup>](x,y) = η × I<sub>eff</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + φ))';
         formulaMath += '<br>扩散: [H⁺]<sub>diff</sub>(x,y) = G([H⁺], l<sub>diff</sub>)';
         formulaMath += '<br>M(x,y) = 1-e<sup>-k·[H⁺]<sub>diff</sub>(x,y)·A</sup>';
+        formulaMath += (() => {
+            let arcParams = null;
+            if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                arcParams = window.lastPlotData.arc_parameters;
+            }
+            
+            if (arcParams && arcParams.materials) {
+                const η_arc = 1 - 1/arcParams.suppression_ratio;
+                const α_coupling = 1/arcParams.suppression_ratio + 1;
+                return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                       `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                ``;
+            } else {
+                return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                       `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                ``;
+            }
+        })();
         
         formulaExplanation = `
             <div>• I<sub>avg</sub>: 平均光强度 (${params.I_avg} mW<span class="fraction"><span class="numerator">1</span><span class="denominator">cm²</span></span>)</div>
@@ -8174,9 +9055,27 @@ function getCarPopupHtmlContent(x, y, setName, params, plotType) {
         valueLabel = '值:';
         valueUnit = '(归一化)';
         formulaTitle = 'CAR模型三维分布:';
-        formulaMath = '[H<sup>+</sup>](x,y,z) = η × I<sub>avg</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ))';
+        formulaMath = '[H<sup>+</sup>](x,y,z) = η × I<sub>eff</sub> × t<sub>exp</sub> × (1 + V × cos(Kx·x + Ky·y + Kz·z + φ))';
         formulaMath += '<br>扩散: [H⁺]<sub>diff</sub>(x,y,z) = G([H⁺], l<sub>diff</sub>)';
         formulaMath += '<br>M(x,y,z) = 1-e<sup>-k·[H⁺]<sub>diff</sub>(x,y,z)·A</sup>';
+        formulaMath += (() => {
+            let arcParams = null;
+            if (window.lastPlotData && window.lastPlotData.arc_parameters) {
+                arcParams = window.lastPlotData.arc_parameters;
+            }
+            
+            if (arcParams && arcParams.materials) {
+                const η_arc = 1 - 1/arcParams.suppression_ratio;
+                const α_coupling = 1/arcParams.suppression_ratio + 1;
+                return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                       `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                ``;
+            } else {
+                return `<br><br><span style="color: #2196F3; font-weight: bold;">ARC优化影响:</span><br>` +
+                       `I<sub>eff</sub> = I<sub>avg</sub> × (1 + η<sub>ARC</sub>) × α<sub>coupling</sub><br>` +
+                                                                ``;
+            }
+        })();
         
         formulaExplanation = `
             <div>• η: 光酸产生效率 (${params.acid_gen_efficiency})</div>

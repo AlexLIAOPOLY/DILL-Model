@@ -637,6 +637,128 @@
     font-size: 16px;
 }
 
+/* 向量数据详细预览区域 */
+.vector-data-preview-section {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.data-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.data-preview-header h4 {
+    margin: 0;
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.data-summary {
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.data-preview-container {
+    display: block;
+    margin-top: 20px;
+}
+
+/* 数据表格样式 */
+.data-preview-table-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+}
+
+.vector-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: white;
+}
+
+.vector-data-table thead {
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.vector-data-table th,
+.vector-data-table td {
+    padding: 12px 16px;
+    text-align: center;
+    border-bottom: 1px solid #e9ecef;
+    width: 33.333%;
+}
+
+.vector-data-table th {
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    background: #f8f9fa;
+}
+
+.vector-data-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.vector-data-table tbody tr.separator-row {
+    background: #e9ecef;
+    font-weight: 500;
+}
+
+.vector-data-table tbody tr.separator-row:hover {
+    background: #e9ecef;
+}
+
+.vector-data-table td:first-child {
+    font-weight: 500;
+    color: #6c757d;
+    width: 80px;
+}
+
+.vector-data-table td:nth-child(2),
+.vector-data-table td:nth-child(3) {
+    font-family: 'Monaco', 'Consolas', 'Ubuntu Mono', monospace;
+    color: #2d3748;
+}
+
+
+/* 滚动条样式 */
+.data-preview-table-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+.data-preview-table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.data-preview-table-wrapper::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.data-preview-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .photo-recognition-area {
@@ -703,6 +825,17 @@
         width: 100%;
         justify-content: center;
     }
+    
+    /* 向量数据预览区域响应式 */
+    .data-preview-table-wrapper {
+        max-height: 300px;
+    }
+    
+    .vector-data-table th,
+    .vector-data-table td {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
 }
 
 /* 动画效果 */
@@ -741,14 +874,14 @@
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
 }
 
-/* 加载状态动画 */
-.loading {
+/* 加载状态动画 - 重命名以避免与全局loading冲突 */
+.photo-loading {
     opacity: 0.6;
     pointer-events: none;
     position: relative;
 }
 
-.loading::after {
+.photo-loading::after {
     content: '';
     position: absolute;
     top: 50%;

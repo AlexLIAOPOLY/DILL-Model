@@ -265,6 +265,33 @@ function displayParameters(params) {
                 'is_ideal_exposure_model': '曝光模型类型'
             }
         },
+        '基底材料参数': {
+            icon: 'fas fa-layer-group',
+            params: {
+                'substrate_material': '基底材料类型',
+                'substrate_refractive_index': '基底折射率',
+                'substrate_extinction_coefficient': '基底消光系数',
+                'substrate_thickness': '基底厚度 (μm)',
+                'substrate_thermal_conductivity': '热导率 (W/m·K)',
+                'substrate_optical_density': '光学密度',
+                'substrate_bandgap': '带隙 (eV)',
+                'substrate_surface_roughness': '表面粗糙度 (nm)'
+            }
+        },
+        '抗反射薄膜参数': {
+            icon: 'fas fa-shield-alt',
+            params: {
+                'arc_material': 'ARC材料类型',
+                'arc_refractive_index': 'ARC折射率',
+                'arc_extinction_coefficient': 'ARC消光系数',
+                'arc_thickness': 'ARC厚度 (nm)',
+                'arc_deposition_method': '沉积方法',
+                'arc_uniformity': '厚度均匀性 (%)',
+                'arc_reflectance': '反射率 (%)',
+                'arc_anti_reflective_efficiency': '抗反射效率 (%)',
+                'arc_thermal_stability': '热稳定性 (°C)'
+            }
+        },
         '光学参数': {
             icon: 'fas fa-eye',
             params: {
@@ -272,7 +299,10 @@ function displayParameters(params) {
                 'V': '对比度',
                 'K': '空间频率K',
                 'wavelength': '波长 (nm)',
-                'angle_a': '衍射周期 (°)'
+                'angle_a': '衍射周期 (°)',
+                'numerical_aperture': '数值孔径',
+                'polarization': '偏振状态',
+                'coherence_factor': '相干性因子'
             }
         },
         '曝光参数': {
@@ -281,7 +311,10 @@ function displayParameters(params) {
                 't_exp': '曝光时间 (s)',
                 'C': '光敏速率常数',
                 'exposure_threshold': '曝光阈值',
-                'exposure_calculation_method': '曝光计算方式'
+                'exposure_calculation_method': '曝光计算方式',
+                'dose_uniformity': '曝光剂量均匀性 (%)',
+                'focus_offset': '焦点偏移 (μm)',
+                'aberration_correction': '像差校正'
             }
         },
         '高级计算参数': {
@@ -292,7 +325,40 @@ function displayParameters(params) {
                 'segment_count': '分段数量',
                 'segment_duration': '单段时长 (s)',
                 'segment_intensities': '分段光强数组',
-                'total_exposure_dose': '总曝光剂量'
+                'total_exposure_dose': '总曝光剂量',
+                'simulation_resolution': '仿真分辨率',
+                'boundary_conditions': '边界条件',
+                'mesh_density': '网格密度',
+                'convergence_criteria': '收敛准则'
+            }
+        },
+        '机器学习参数': {
+            icon: 'fas fa-brain',
+            params: {
+                'ml_model_type': 'ML模型类型',
+                'training_algorithm': '训练算法',
+                'learning_rate': '学习率',
+                'epochs': '训练轮数',
+                'batch_size': '批次大小',
+                'validation_split': '验证集比例',
+                'feature_scaling': '特征缩放方法',
+                'regularization_factor': '正则化因子',
+                'early_stopping': '早停机制',
+                'cross_validation_folds': '交叉验证折数'
+            }
+        },
+        '经验学习参数': {
+            icon: 'fas fa-graduation-cap',
+            params: {
+                'historical_data_weight': '历史数据权重',
+                'expert_knowledge_factor': '专家知识因子',
+                'pattern_recognition_threshold': '模式识别阈值',
+                'adaptive_learning_rate': '自适应学习率',
+                'experience_decay_factor': '经验衰减因子',
+                'confidence_threshold': '置信度阈值',
+                'uncertainty_estimation': '不确定性估计',
+                'knowledge_base_size': '知识库大小',
+                'learning_curve_analysis': '学习曲线分析'
             }
         }
     };
@@ -950,6 +1016,149 @@ function enableParameterEditing() {
 }
 
 /**
+ * 生成包含完整参数的对象（包括基底材料和ARC参数）
+ */
+function generateCompleteParameters(baseParameters) {
+    console.log('🔧 开始生成完整参数对象，基础参数:', baseParameters);
+    
+    // 获取模型类型以确定合适的默认值
+    const modelType = baseParameters.model_type || 'dill';
+    const wavelength = baseParameters.wavelength || 193.0; // 默认ArF激光波长
+    
+    // 根据波长选择合适的基底材料参数
+    let substrateDefaults, arcDefaults;
+    
+    if (wavelength <= 200) {
+        // ArF激光(193nm)或更短波长 - 硅基底
+        substrateDefaults = {
+            material: 'Silicon (Si)',
+            refractive_index: 3.42,
+            extinction_coefficient: 0.02,
+            thickness: 525.0,
+            thermal_conductivity: 150.0,
+            optical_density: 0.85,
+            bandgap: 1.12,
+            surface_roughness: 0.5
+        };
+        
+        // 氮氧化硅ARC (适用于ArF)
+        arcDefaults = {
+            material: '氮氧化硅 (SiON)',
+            refractive_index: 1.85,
+            extinction_coefficient: 0.001,
+            thickness: 75.0,
+            deposition_method: 'PECVD',
+            uniformity: 98.5,
+            reflectance: 2.1,
+            anti_reflective_efficiency: 97.9,
+            thermal_stability: 400.0
+        };
+    } else {
+        // KrF激光(248nm)或更长波长 - 硅基底但参数稍有不同
+        substrateDefaults = {
+            material: 'Silicon (Si)',
+            refractive_index: 4.05,
+            extinction_coefficient: 0.05,
+            thickness: 525.0,
+            thermal_conductivity: 150.0,
+            optical_density: 0.90,
+            bandgap: 1.12,
+            surface_roughness: 0.5
+        };
+        
+        // 有机ARC (适用于KrF)
+        arcDefaults = {
+            material: '有机ARC (Organic)',
+            refractive_index: 1.65,
+            extinction_coefficient: 0.05,
+            thickness: 85.0,
+            deposition_method: 'Spin-coating',
+            uniformity: 97.0,
+            reflectance: 3.5,
+            anti_reflective_efficiency: 96.5,
+            thermal_stability: 250.0
+        };
+    }
+    
+    // 创建完整参数对象，包含所有必要的参数
+    const completeParameters = {
+        ...baseParameters, // 保留原有参数
+        
+        // 基底材料参数（根据波长选择合适的默认值）
+        substrate_material: baseParameters.substrate_material || substrateDefaults.material,
+        substrate_refractive_index: baseParameters.substrate_refractive_index || substrateDefaults.refractive_index,
+        substrate_extinction_coefficient: baseParameters.substrate_extinction_coefficient || substrateDefaults.extinction_coefficient,
+        substrate_thickness: baseParameters.substrate_thickness || substrateDefaults.thickness,
+        substrate_thermal_conductivity: baseParameters.substrate_thermal_conductivity || substrateDefaults.thermal_conductivity,
+        substrate_optical_density: baseParameters.substrate_optical_density || substrateDefaults.optical_density,
+        substrate_bandgap: baseParameters.substrate_bandgap || substrateDefaults.bandgap,
+        substrate_surface_roughness: baseParameters.substrate_surface_roughness || substrateDefaults.surface_roughness,
+        
+        // 抗反射薄膜参数（根据波长选择合适的默认值）
+        arc_material: baseParameters.arc_material || arcDefaults.material,
+        arc_refractive_index: baseParameters.arc_refractive_index || arcDefaults.refractive_index,
+        arc_extinction_coefficient: baseParameters.arc_extinction_coefficient || arcDefaults.extinction_coefficient,
+        arc_thickness: baseParameters.arc_thickness || arcDefaults.thickness,
+        arc_deposition_method: baseParameters.arc_deposition_method || arcDefaults.deposition_method,
+        arc_uniformity: baseParameters.arc_uniformity || arcDefaults.uniformity,
+        arc_reflectance: baseParameters.arc_reflectance || arcDefaults.reflectance,
+        arc_anti_reflective_efficiency: baseParameters.arc_anti_reflective_efficiency || arcDefaults.anti_reflective_efficiency,
+        arc_thermal_stability: baseParameters.arc_thermal_stability || arcDefaults.thermal_stability,
+        
+        // 增强光学参数
+        wavelength: wavelength,
+        numerical_aperture: baseParameters.numerical_aperture || (wavelength <= 200 ? 1.35 : 0.85),
+        polarization: baseParameters.polarization || 'TE',
+        coherence_factor: baseParameters.coherence_factor || 0.7,
+        
+        // 高级曝光参数
+        exposure_threshold: baseParameters.exposure_threshold || 0.5,
+        dose_uniformity: baseParameters.dose_uniformity || 95.0,
+        focus_offset: baseParameters.focus_offset || 0.0,
+        aberration_correction: baseParameters.aberration_correction !== undefined ? baseParameters.aberration_correction : true,
+        
+        // 高级计算参数
+        simulation_resolution: baseParameters.simulation_resolution || 0.01,
+        boundary_conditions: baseParameters.boundary_conditions || 'periodic',
+        mesh_density: baseParameters.mesh_density || 'medium',
+        convergence_criteria: baseParameters.convergence_criteria || 1e-6,
+        
+        // 机器学习参数（智能设置）
+        ml_model_type: baseParameters.ml_model_type || 'random_forest',
+        training_algorithm: baseParameters.training_algorithm || 'ensemble',
+        learning_rate: baseParameters.learning_rate || 0.01,
+        epochs: baseParameters.epochs || 100,
+        batch_size: baseParameters.batch_size || 32,
+        validation_split: baseParameters.validation_split || 0.2,
+        feature_scaling: baseParameters.feature_scaling || 'standard',
+        regularization_factor: baseParameters.regularization_factor || 0.001,
+        early_stopping: baseParameters.early_stopping !== undefined ? baseParameters.early_stopping : true,
+        cross_validation_folds: baseParameters.cross_validation_folds || 5,
+        
+        // 经验学习参数
+        historical_data_weight: baseParameters.historical_data_weight || 0.8,
+        expert_knowledge_factor: baseParameters.expert_knowledge_factor || 0.3,
+        pattern_recognition_threshold: baseParameters.pattern_recognition_threshold || 0.85,
+        adaptive_learning_rate: baseParameters.adaptive_learning_rate || 0.001,
+        experience_decay_factor: baseParameters.experience_decay_factor || 0.95,
+        confidence_threshold: baseParameters.confidence_threshold || 0.7,
+        uncertainty_estimation: baseParameters.uncertainty_estimation || 'bayesian',
+        knowledge_base_size: baseParameters.knowledge_base_size || 1000,
+        learning_curve_analysis: baseParameters.learning_curve_analysis !== undefined ? baseParameters.learning_curve_analysis : true
+    };
+    
+    console.log('✅ 生成完整参数对象成功:', {
+        total_params: Object.keys(completeParameters).length,
+        substrate_material: completeParameters.substrate_material,
+        arc_material: completeParameters.arc_material,
+        wavelength: completeParameters.wavelength,
+        model_type: completeParameters.model_type
+    });
+    
+    return completeParameters;
+}
+
+/**
  * 提交验证数据
  */
 async function submitValidationData() {
@@ -959,13 +1168,21 @@ async function submitValidationData() {
     }
     
     try {
+        // 生成包含完整参数的对象
+        showStatusMessage('info', '正在生成完整参数信息（包括基底材料和ARC参数）...');
+        const completeParameters = generateCompleteParameters(currentParameters);
+        
         const submitData = {
             timestamp: new Date().toISOString(),
-            parameters: currentParameters,
+            parameters: completeParameters,
             annotations: annotations
         };
         
-        showStatusMessage('info', '正在保存数据...');
+        // 显示自动添加的参数信息
+        const addedParamsInfo = `自动添加参数: ${completeParameters.substrate_material} + ${completeParameters.arc_material}`;
+        console.log('📋 ' + addedParamsInfo);
+        
+        showStatusMessage('info', '正在保存完整数据到Excel...');
         
         const response = await fetch('/api/save_validation_data', {
             method: 'POST',
@@ -979,7 +1196,9 @@ async function submitValidationData() {
         
         if (result.success) {
             const totalRecords = result.data?.total_records || 0;
-            showStatusMessage('success', `数据已成功保存到Excel文件。当前总记录数: ${totalRecords}`);
+            const substrate = completeParameters.substrate_material || '硅基底';
+            const arc = completeParameters.arc_material || 'ARC';
+            showStatusMessage('success', `完整数据已保存到Excel文件！\n包含: ${substrate} + ${arc} + 所有标注参数\n当前总记录数: ${totalRecords}`);
             
             // 清除当前标注，准备下一次标注
             annotations = [];
@@ -1158,14 +1377,52 @@ async function predictParameters() {
             return;
         }
         
-        // 准备预测数据（使用当前参数和默认位置）
+        // 准备预测数据（使用完整的参数，与训练时保持一致）
+        const completeParameters = generateCompleteParameters(currentParameters);
+        
         const predictionData = {
-            I_avg: currentParameters.I_avg || 0.5,
-            V: currentParameters.V || 0.8,
-            K: currentParameters.K || 0.1,
-            t_exp: currentParameters.t_exp || 100.0,
+            // 基础参数
+            I_avg: completeParameters.I_avg || 0.5,
+            V: completeParameters.V || 0.8,
+            K: completeParameters.K || 0.1,
+            t_exp: completeParameters.t_exp || 100.0,
             x: 0,  // 默认位置
-            y: 0   // 默认位置
+            y: 0,  // 默认位置
+            target_thickness: 1.0,  // 目标厚度
+            
+            // 基底材料参数
+            substrate_refractive_index: completeParameters.substrate_refractive_index,
+            substrate_extinction_coefficient: completeParameters.substrate_extinction_coefficient,
+            substrate_thickness: completeParameters.substrate_thickness,
+            substrate_thermal_conductivity: completeParameters.substrate_thermal_conductivity,
+            
+            // ARC参数
+            arc_refractive_index: completeParameters.arc_refractive_index,
+            arc_extinction_coefficient: completeParameters.arc_extinction_coefficient,
+            arc_thickness: completeParameters.arc_thickness,
+            arc_reflectance: completeParameters.arc_reflectance,
+            arc_anti_reflective_efficiency: completeParameters.arc_anti_reflective_efficiency,
+            
+            // 高级光学参数
+            wavelength: completeParameters.wavelength,
+            numerical_aperture: completeParameters.numerical_aperture,
+            coherence_factor: completeParameters.coherence_factor,
+            
+            // 曝光高级参数
+            exposure_threshold: completeParameters.exposure_threshold,
+            dose_uniformity: completeParameters.dose_uniformity,
+            focus_offset: completeParameters.focus_offset,
+            
+            // ML参数
+            learning_rate: completeParameters.learning_rate,
+            batch_size: completeParameters.batch_size,
+            validation_split: completeParameters.validation_split,
+            regularization_factor: completeParameters.regularization_factor,
+            
+            // 经验学习参数
+            historical_data_weight: completeParameters.historical_data_weight,
+            expert_knowledge_factor: completeParameters.expert_knowledge_factor,
+            confidence_threshold: completeParameters.confidence_threshold
         };
         
         console.log('使用参数进行预测:', predictionData);
@@ -1698,41 +1955,109 @@ function sortColumnsByContent(columns, records) {
         'timestamp': 1,
         'model_type': 2,
         'sine_type': 3,
+        'is_ideal_exposure_model': 4,
         
         // 标注坐标信息
-        'annotation_x': 4,
-        'annotation_y': 5,
+        'annotation_x': 5,
+        'annotation_y': 6,
         
-        // 实验参数（光强、对比度等）
-        'I_avg': 6,
-        'V': 7,
-        'K': 8,
-        't_exp': 9,
-        'exposure_calculation_method': 10,
+        // 基底材料参数
+        'substrate_material': 10,
+        'substrate_refractive_index': 11,
+        'substrate_extinction_coefficient': 12,
+        'substrate_thickness': 13,
+        'substrate_thermal_conductivity': 14,
+        'substrate_optical_density': 15,
+        'substrate_bandgap': 16,
+        'substrate_surface_roughness': 17,
+        
+        // 抗反射薄膜参数
+        'arc_material': 20,
+        'arc_refractive_index': 21,
+        'arc_extinction_coefficient': 22,
+        'arc_thickness': 23,
+        'arc_deposition_method': 24,
+        'arc_uniformity': 25,
+        'arc_reflectance': 26,
+        'arc_anti_reflective_efficiency': 27,
+        'arc_thermal_stability': 28,
+        
+        // 光学参数
+        'I_avg': 30,
+        'V': 31,
+        'K': 32,
+        'wavelength': 33,
+        'angle_a': 34,
+        'numerical_aperture': 35,
+        'polarization': 36,
+        'coherence_factor': 37,
+        
+        // 曝光参数
+        't_exp': 40,
+        'exposure_threshold': 41,
+        'exposure_calculation_method': 42,
+        'dose_uniformity': 43,
+        'focus_offset': 44,
+        'aberration_correction': 45,
+        
+        // 高级计算参数
+        'enable_exposure_time_window': 50,
+        'time_mode': 51,
+        'segment_count': 52,
+        'segment_duration': 53,
+        'segment_intensities': 54,
+        'total_exposure_dose': 55,
+        'simulation_resolution': 56,
+        'boundary_conditions': 57,
+        'mesh_density': 58,
+        'convergence_criteria': 59,
+        
+        // 机器学习参数
+        'ml_model_type': 60,
+        'training_algorithm': 61,
+        'learning_rate': 62,
+        'epochs': 63,
+        'batch_size': 64,
+        'validation_split': 65,
+        'feature_scaling': 66,
+        'regularization_factor': 67,
+        'early_stopping': 68,
+        'cross_validation_folds': 69,
+        
+        // 经验学习参数
+        'historical_data_weight': 70,
+        'expert_knowledge_factor': 71,
+        'pattern_recognition_threshold': 72,
+        'adaptive_learning_rate': 73,
+        'experience_decay_factor': 74,
+        'confidence_threshold': 75,
+        'uncertainty_estimation': 76,
+        'knowledge_base_size': 77,
+        'learning_curve_analysis': 78,
         
         // 化学放大参数
-        'acid_gen_efficiency': 11,
-        'diffusion_length': 12,
-        'reaction_rate': 13,
-        'amplification': 14,
-        'contrast': 15,
+        'acid_gen_efficiency': 80,
+        'diffusion_length': 81,
+        'reaction_rate': 82,
+        'amplification': 83,
+        'contrast': 84,
         
         // 三维空间频率参数
-        'Kx': 16,
-        'Ky': 17,
-        'Kz': 18,
-        'phi_expr': 19,
+        'Kx': 85,
+        'Ky': 86,
+        'Kz': 87,
+        'phi_expr': 88,
         
         // 标注结果（相对靠右）
-        'simulated_value': 20,
-        'actual_value': 21,
-        'annotation_timestamp': 22,
+        'simulated_value': 90,
+        'actual_value': 91,
+        'annotation_timestamp': 92,
         
         // 兼容旧字段
-        'x_coord': 23,
-        'y_coord': 24,
-        'relative_error': 25,
-        'C': 26,
+        'x_coord': 95,
+        'y_coord': 96,
+        'relative_error': 97,
+        'C': 98,
         
         // 其他列默认优先级很低（空白列会排到最右边）
     };
@@ -1830,12 +2155,81 @@ function displayExcelData(data) {
         'timestamp': '记录时间',
         'model_type': '模型类型',
         'sine_type': '正弦波类型',
+        'is_ideal_exposure_model': '曝光模型类型',
         
-        // 光强和曝光参数
+        // 基底材料参数
+        'substrate_material': '基底材料',
+        'substrate_refractive_index': '基底折射率',
+        'substrate_extinction_coefficient': '基底消光系数',
+        'substrate_thickness': '基底厚度 (μm)',
+        'substrate_thermal_conductivity': '热导率 (W/m·K)',
+        'substrate_optical_density': '光学密度',
+        'substrate_bandgap': '带隙 (eV)',
+        'substrate_surface_roughness': '表面粗糙度 (nm)',
+        
+        // 抗反射薄膜参数
+        'arc_material': 'ARC材料',
+        'arc_refractive_index': 'ARC折射率',
+        'arc_extinction_coefficient': 'ARC消光系数',
+        'arc_thickness': 'ARC厚度 (nm)',
+        'arc_deposition_method': '沉积方法',
+        'arc_uniformity': '厚度均匀性 (%)',
+        'arc_reflectance': '反射率 (%)',
+        'arc_anti_reflective_efficiency': '抗反射效率 (%)',
+        'arc_thermal_stability': '热稳定性 (°C)',
+        
+        // 光学参数
         'I_avg': '平均光强',
         'V': '对比度',
         'K': '空间频率K',
+        'wavelength': '波长 (nm)',
+        'angle_a': '衍射周期 (°)',
+        'numerical_aperture': '数值孔径',
+        'polarization': '偏振状态',
+        'coherence_factor': '相干性因子',
+        
+        // 曝光参数
         't_exp': '曝光时间 (s)',
+        'exposure_threshold': '曝光阈值',
+        'exposure_calculation_method': '曝光计算方法',
+        'dose_uniformity': '曝光剂量均匀性 (%)',
+        'focus_offset': '焦点偏移 (μm)',
+        'aberration_correction': '像差校正',
+        
+        // 高级计算参数
+        'enable_exposure_time_window': '启用曝光时间窗口',
+        'time_mode': '时间模式',
+        'segment_count': '分段数量',
+        'segment_duration': '单段时长 (s)',
+        'segment_intensities': '分段光强数组',
+        'total_exposure_dose': '总曝光剂量',
+        'simulation_resolution': '仿真分辨率',
+        'boundary_conditions': '边界条件',
+        'mesh_density': '网格密度',
+        'convergence_criteria': '收敛准则',
+        
+        // 机器学习参数
+        'ml_model_type': 'ML模型类型',
+        'training_algorithm': '训练算法',
+        'learning_rate': '学习率',
+        'epochs': '训练轮数',
+        'batch_size': '批次大小',
+        'validation_split': '验证集比例',
+        'feature_scaling': '特征缩放方法',
+        'regularization_factor': '正则化因子',
+        'early_stopping': '早停机制',
+        'cross_validation_folds': '交叉验证折数',
+        
+        // 经验学习参数
+        'historical_data_weight': '历史数据权重',
+        'expert_knowledge_factor': '专家知识因子',
+        'pattern_recognition_threshold': '模式识别阈值',
+        'adaptive_learning_rate': '自适应学习率',
+        'experience_decay_factor': '经验衰减因子',
+        'confidence_threshold': '置信度阈值',
+        'uncertainty_estimation': '不确定性估计',
+        'knowledge_base_size': '知识库大小',
+        'learning_curve_analysis': '学习曲线分析',
         
         // 化学放大参数
         'acid_gen_efficiency': '酸产生效率',
@@ -1850,14 +2244,11 @@ function displayExcelData(data) {
         'Kz': 'Z方向频率',
         'phi_expr': '相位表达式',
         
-        // 曝光计算方法
-        'exposure_calculation_method': '曝光计算方法',
-        
         // 标注数据
         'annotation_x': '标注X坐标',
         'annotation_y': '标注Y坐标',
-        'simulated_value': '模拟值 (mm)',
-        'actual_value': '实测值 (mm)',
+        'simulated_value': '模拟值 (μm)',
+        'actual_value': '实测值 (μm)',
         'annotation_timestamp': '标注时间',
         
         // 兼容旧字段

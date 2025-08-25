@@ -14,11 +14,11 @@
     <link rel="stylesheet" href="css/popup-enhanced.css?v=1.0">
     <link rel="stylesheet" href="css/draggable-resizable-popup.css?v=1.0">
     <link rel="stylesheet" href="css/car-model.css?v=1.1">
-    <link rel="stylesheet" href="css/loading-animation.css">
+    <link rel="stylesheet" href="css/loading-animation.css?v=1.2">
     <link rel="stylesheet" href="css/theme-colors.css?v=1.0">
     <link rel="stylesheet" href="css/professional-header-footer.css?v=1.1">
     <link rel="stylesheet" href="css/animation-controls.css?v=2.0">
-    <link rel="stylesheet" href="css/photo-recognition.css?v=1.0">
+    <link rel="stylesheet" href="css/photo-recognition.css?v=1.1">
     <!-- 添加数学公式所需的样式 -->
     <style>
         /* 隐藏浏览器默认的网络状态指示器和进度条 */
@@ -1380,7 +1380,34 @@ intensity3
                                         </div>
                                         <div class="vector-actions">
                                             <button id="apply-vector-data-btn" class="camera-btn start-btn">应用到模型</button>
+                                            <button id="preview-vector-data-btn" class="camera-btn">预览数据</button>
                                             <button id="export-vector-data-btn" class="camera-btn">导出数据</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- 向量数据详细预览区域 -->
+                                    <div id="vector-data-preview-section" class="vector-data-preview-section" style="display:none;">
+                                        <div class="data-preview-header">
+                                            <h4>向量数据预览</h4>
+                                            <div class="data-summary">
+                                                <span id="preview-data-count">0 个数据点</span>
+                                            </div>
+                                        </div>
+                                        <div class="data-preview-container">
+                                            <div class="data-preview-table-wrapper">
+                                                <table id="vector-data-table" class="vector-data-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>序号</th>
+                                                            <th>坐标位置</th>
+                                                            <th>光强度</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="vector-data-tbody">
+                                                        <!-- 数据行将在这里动态生成 -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                     
@@ -2017,6 +2044,40 @@ intensity3
                                 <input type="number" class="number-input" value="20" min="1" max="100" step="1" title="曝光阈值数值输入" aria-label="曝光阈值数值">
                             </div>
                             <div class="parameter-description" data-i18n="param_desc_exposure_threshold">曝光反应阶段：控制曝光反应阈值，阈值高=需更强曝光才反应，阈值低=反应条件宽松</div>
+                        </div>
+                        
+                        <!-- 基底材料选择 -->
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span class="parameter-name">基底材料种类</span>
+                                <span class="parameter-value" id="substrate_material_display">硅(Si)</span>
+                            </div>
+                            <div class="parameter-input">
+                                <select id="substrate_material" class="method-select" title="选择基底材料" aria-label="基底材料选择">
+                                    <option value="none" title="无基底材料">无</option>
+                                    <option value="silicon" selected title="硅 (Silicon, Si) - 折射率 n=4.15, 消光系数 k=0.044 @405nm">硅 (Silicon, Si)</option>
+                                    <option value="gaas" title="砷化镓 (GaAs) - 折射率 n=3.95, 消光系数 k=0.18 @405nm">砷化镓 (GaAs)</option>
+                                    <option value="sio2" title="石英/熔融石英 (SiO₂) - 折射率 n=1.46, 消光系数 k=0.0 @405nm">石英/熔融石英 (SiO₂)</option>
+                                </select>
+                            </div>
+                            <div class="parameter-description">选择基底材料：不同材料的光学特性会影响反射和驻波效应</div>
+                        </div>
+
+                        <!-- 抗反射薄膜选择 -->
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span class="parameter-name">抗反射薄膜(ARC)</span>
+                                <span class="parameter-value" id="arc_material_display">氮氧化硅(SiON)</span>
+                            </div>
+                            <div class="parameter-input">
+                                <select id="arc_material" class="method-select" title="选择抗反射薄膜材料" aria-label="ARC材料选择">
+                                    <option value="none" title="无抗反射薄膜">无</option>
+                                    <option value="sion" selected title="氮氧化硅 (SiON) - 干涉型 - 折射率 n=1.75, 消光系数 k=0.01 @405nm - 通过干涉相消原理减少反射">氮氧化硅 (SiON) - 干涉型</option>
+                                    <option value="tin" title="氮化钛 (TiN) - 混合型 - 折射率 n=1.9, 消光系数 k=2.3 @405nm - 结合干涉和吸收机制">氮化钛 (TiN) - 混合型</option>
+                                    <option value="barc" title="底部抗反射涂层 (BARC) - 吸收型 - 折射率 n=1.55, 消光系数 k=0.20 @405nm - 通过光吸收减少反射">底部抗反射涂层 (BARC) - 吸收型</option>
+                                </select>
+                            </div>
+                            <div class="parameter-description">选择ARC材料：不同ARC材料通过不同机制减少反射（干涉相消或光吸收）</div>
                         </div>
                         
                     </div>

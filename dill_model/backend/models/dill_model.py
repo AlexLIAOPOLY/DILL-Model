@@ -64,10 +64,180 @@ class DillModel:
     - Γ: 对比度参数
     - Dc: 临界剂量
     - D₀: 实际曝光剂量
+    
+    新增功能：
+    - 基底材料光学参数
+    - 抗反射薄膜(ARC)设计计算
     """
     
     def __init__(self):
-        pass
+        self.setup_optical_database()
+        
+    def setup_optical_database(self):
+        """设置基底材料和ARC材料的光学参数数据库"""
+        
+        # 基底材料光学参数（193nm/248nm/405nm波长）
+        self.substrate_materials = {
+            'silicon': {
+                'name': '硅 (Si)', 
+                'n': {'193': 0.88, '248': 1.58, '405': 4.15},
+                'k': {'193': 2.78, '248': 3.58, '405': 0.044}
+            },
+            'gaas': {
+                'name': '砷化镓 (GaAs)', 
+                'n': {'193': 2.45, '248': 2.15, '405': 3.95},
+                'k': {'193': 2.70, '248': 3.95, '405': 0.18}
+            },
+            'sio2': {
+                'name': '石英/熔融石英 (SiO₂)', 
+                'n': {'193': 1.56, '248': 1.51, '405': 1.46},
+                'k': {'193': 0.0, '248': 0.0, '405': 0.0}
+            }
+        }
+        
+        # ARC材料光学参数
+        self.arc_materials = {
+            'sion': {
+                'name': '氮氧化硅 (SiON)', 
+                'type': '干涉型',
+                'n': {'193': 1.85, '248': 1.82, '405': 1.75},
+                'k': {'193': 0.05, '248': 0.04, '405': 0.01}
+            },
+            'tin': {
+                'name': '氮化钛 (TiN)', 
+                'type': '混合型',
+                'n': {'193': 1.5, '248': 1.6, '405': 1.9},
+                'k': {'193': 1.7, '248': 1.8, '405': 2.3}
+            },
+            'barc': {
+                'name': '底部抗反射涂层 (BARC)', 
+                'type': '吸收型',
+                'n': {'193': 1.65, '248': 1.62, '405': 1.55},
+                'k': {'193': 0.35, '248': 0.30, '405': 0.20}
+            }
+        }
+        
+        logger.info("🔧 光学参数数据库初始化完成")
+        
+    def get_material_properties(self, substrate_material='silicon', arc_material='sion', wavelength=405):
+        """获取材料光学性质"""
+        wl_key = str(int(wavelength))
+        
+        # 获取基底材料参数
+        if substrate_material == 'none':
+            substrate_info = {'name': '无基底', 'n': 1.0, 'k': 0.0}
+        else:
+            substrate = self.substrate_materials.get(substrate_material, self.substrate_materials['silicon'])
+            substrate_n = substrate['n'].get(wl_key, substrate['n']['405'])
+            substrate_k = substrate['k'].get(wl_key, substrate['k']['405'])
+            substrate_info = {'name': substrate['name'], 'n': substrate_n, 'k': substrate_k}
+        
+        # 获取ARC材料参数  
+        if arc_material == 'none':
+            arc_info = {'name': '无ARC薄膜', 'type': '无', 'n': 1.0, 'k': 0.0}
+        else:
+            arc = self.arc_materials.get(arc_material, self.arc_materials['sion'])
+            arc_n = arc['n'].get(wl_key, arc['n']['405'])
+            arc_k = arc['k'].get(wl_key, arc['k']['405'])
+            arc_info = {'name': arc['name'], 'type': arc['type'], 'n': arc_n, 'k': arc_k}
+        
+        return {
+            'substrate': substrate_info,
+            'arc': arc_info,
+            'wavelength': wavelength
+        }
+        
+    def calculate_arc_parameters(self, substrate_material='silicon', arc_material='sion', wavelength=405):
+        """计算ARC设计参数"""
+        materials = self.get_material_properties(substrate_material, arc_material, wavelength)
+        
+        # 如果没有ARC材料，但基底材料存在，需要计算基底本身的反射率
+        if arc_material == 'none':
+            # 处理基底材料为'none'的情况
+            if substrate_material == 'none':
+                return {
+                    'materials': materials,
+                    'n_resist': 1.7,
+                    'n_arc_ideal': 1.0,
+                    'd_arc_ideal': 0.0,
+                    'reflectance_no_arc': 0.0,
+                    'reflectance_with_arc': 0.0,
+                    'suppression_ratio': 1.0,
+                    'arc_efficiency': 1.0,  # 无基底无ARC，透射率修正因子为1.0
+                    'status': 'disabled',
+                    'message': '基底和ARC材料均未选择，抗反射计算已禁用'
+                }
+            else:
+                # 基底存在但无ARC，计算基底本身的反射率
+                n_resist = 1.7
+                n_substrate = materials['substrate']['n']
+                
+                # 计算无ARC时的反射率 (光刻胶/基底界面)
+                reflectance_no_arc = ((n_resist - n_substrate) / (n_resist + n_substrate)) ** 2
+                
+                # 无ARC情况下，有ARC反射率等于无ARC反射率
+                reflectance_with_arc = reflectance_no_arc
+                
+                # 透射率修正因子 = (1 - 有ARC反射率) / (1 - 无ARC反射率) = 1.0
+                # 但考虑到基底反射损失，实际透射率 = 1 - 反射率
+                arc_efficiency = 1.0 - reflectance_no_arc
+                
+                return {
+                    'materials': materials,
+                    'n_resist': n_resist,
+                    'n_arc_ideal': 1.0,
+                    'd_arc_ideal': 0.0,
+                    'reflectance_no_arc': reflectance_no_arc,
+                    'reflectance_with_arc': reflectance_with_arc,
+                    'suppression_ratio': 1.0,
+                    'arc_efficiency': arc_efficiency,
+                    'status': 'no_arc',
+                    'message': f'基底材料{materials["substrate"]["name"]}存在，但无ARC材料，考虑基底反射率损失'
+                }
+        
+        # 光刻胶折射率（典型值）
+        n_resist = 1.7
+        
+        # 处理基底材料为'none'的情况，使用默认值(如玻璃基底)
+        if substrate_material == 'none':
+            n_substrate = 1.5  # 假设玻璃基底的折射率
+        else:
+            n_substrate = materials['substrate']['n']
+            
+        n_arc = materials['arc']['n']
+        k_arc = materials['arc']['k']
+        
+        # 理想ARC折射率（振幅匹配）
+        n_arc_ideal = np.sqrt(n_resist * n_substrate)
+        
+        # 理想ARC厚度（四分之一波长）
+        d_arc_ideal = wavelength / (4 * n_arc)
+        
+        # 反射率估算
+        r_no_arc = abs((n_resist - n_substrate) / (n_resist + n_substrate))**2
+        
+        # 简化的ARC效果计算
+        if materials['arc']['type'] == '干涉型':
+            arc_efficiency = 0.9  # 90%抑制
+        elif materials['arc']['type'] == '吸收型':
+            arc_efficiency = 0.7  # 70%抑制
+        else:  # 混合型
+            arc_efficiency = 0.95  # 95%抑制
+            
+        r_with_arc = r_no_arc * (1 - arc_efficiency)
+        
+        return {
+            'materials': materials,
+            'n_resist': n_resist,
+            'n_arc_ideal': n_arc_ideal,
+            'd_arc_ideal': d_arc_ideal,
+            'reflectance_no_arc': r_no_arc,
+            'reflectance_with_arc': r_with_arc,
+            'suppression_ratio': r_no_arc / max(r_with_arc, 1e-6),
+            'arc_efficiency': arc_efficiency,
+            'status': 'enabled',
+            'message': 'ARC计算已启用'
+        }
     
     def calculate_duty_cycle_parameters(self, exposure_dose, D0, gamma=1.0, method='physical'):
         """
@@ -168,7 +338,7 @@ class DillModel:
         
         return duty_cycle, critical_dose
     
-    def calculate_intensity_distribution(self, x, I_avg, V, K=None, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, t=0, custom_intensity_data=None):
+    def calculate_intensity_distribution(self, x, I_avg, V, K=None, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, t=0, custom_intensity_data=None, arc_transmission_factor=1.0):
         """
         计算光强分布，支持一维、二维和三维正弦波，以及自定义光强分布
         
@@ -186,6 +356,7 @@ class DillModel:
             z: z坐标（三维模式使用）
             t: 时间
             custom_intensity_data: 自定义光强分布数据 {'x': [], 'intensity': []}
+            arc_transmission_factor: ARC透射率修正因子
             
         返回:
             光强分布数组
@@ -372,10 +543,14 @@ class DillModel:
                 # 确保结果为正值（光强不能为负）
                 result = np.maximum(result, 0)
                 
+                # 🔥 关键修复：应用ARC透射率修正因子到自定义光强数据
+                result = result * arc_transmission_factor
+                
                 logger.info(f"🔸 插值计算结果:")
                 logger.info(f"   - 输出光强范围: [{np.min(result):.6f}, {np.max(result):.6f}]")
                 logger.info(f"   - 输出平均值: {np.mean(result):.6f}")
                 logger.info(f"   - 数据点数: {len(result)}")
+                logger.info(f"   - ARC透射率修正因子已应用: {arc_transmission_factor:.4f}")
                 
                 return result
                 
@@ -408,7 +583,7 @@ class DillModel:
             logger.info(f"   - x坐标范围: [{np.min(x):.3f}, {np.max(x):.3f}], 点数: {len(x)}")
             
             # y默认为0，若后续支持二维分布可扩展
-            result = I_avg * (1 + V * np.cos(Kx * x + Ky * y + phi))
+            result = I_avg * arc_transmission_factor * (1 + V * np.cos(Kx * x + Ky * y + phi))
             
             logger.info(f"🔸 计算结果:")
             logger.info(f"   - 光强分布范围: [{np.min(result):.6f}, {np.max(result):.6f}]")
@@ -445,7 +620,7 @@ class DillModel:
             logger.info(f"   - x坐标范围: [{np.min(x):.3f}, {np.max(x):.3f}], 点数: {len(x)}")
             
             # 三维正弦波
-            result = I_avg * (1 + V * np.cos(Kx * x + Ky * y + Kz * z + phi))
+            result = I_avg * arc_transmission_factor * (1 + V * np.cos(Kx * x + Ky * y + Kz * z + phi))
             
             logger.info(f"🔸 计算结果:")
             logger.info(f"   - 光强分布范围: [{np.min(result):.6f}, {np.max(result):.6f}]")
@@ -467,7 +642,7 @@ class DillModel:
             logger.info(f"   - K (空间频率) = {K}")
             logger.info(f"   - x坐标范围: [{np.min(x):.3f}, {np.max(x):.3f}], 点数: {len(x)}")
             
-            result = I_avg * (1 + V * np.cos(K * x))
+            result = I_avg * arc_transmission_factor * (1 + V * np.cos(K * x))
             
             logger.info(f"🔸 计算结果:")
             logger.info(f"   - 光强分布范围: [{np.min(result):.6f}, {np.max(result):.6f}]")
@@ -475,7 +650,7 @@ class DillModel:
             
             return result
     
-    def calculate_exposure_dose(self, x, I_avg, V, K=None, t_exp=1, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None):
+    def calculate_exposure_dose(self, x, I_avg, V, K=None, t_exp=1, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y=0, z=0, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None, arc_transmission_factor=1.0):
         """
         计算曝光剂量分布，支持一维、二维和三维正弦波，以及自定义光强分布
         
@@ -497,6 +672,7 @@ class DillModel:
             segment_duration: 多段曝光时间累积模式下的单段时间长度
             segment_count: 多段曝光时间累积模式下的段数
             segment_intensities: 多段曝光时间累积模式下各段的光强值列表
+            arc_transmission_factor: ARC透射率修正因子
             
         返回:
             曝光剂量分布数组
@@ -517,7 +693,7 @@ class DillModel:
             # 获取基准光强分布
             # 由于多段曝光时间累积模式下，各段使用不同的光强值，
             # 这里计算的基准强度分布仅用于得到空间分布形状
-            base_intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0, custom_intensity_data=custom_intensity_data)
+            base_intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0, custom_intensity_data=custom_intensity_data, arc_transmission_factor=arc_transmission_factor)
             
             # 归一化基准光强分布，使其均值为1
             if np.mean(base_intensity) != 0:
@@ -550,7 +726,7 @@ class DillModel:
             logger.info(f"   - t_exp (曝光时间) = {t_exp}")
             
             # 只支持t=0时的phi_expr，后续可扩展为时变
-            intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0, custom_intensity_data=custom_intensity_data)
+            intensity = self.calculate_intensity_distribution(x, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, y, z, t=0, custom_intensity_data=custom_intensity_data, arc_transmission_factor=arc_transmission_factor)
             exposure_dose = intensity * t_exp
             
             logger.info(f"🔸 计算结果:")
@@ -592,7 +768,7 @@ class DillModel:
         logger.info(f"   - C (光敏速率常数) = {C}")
         logger.info(f"   - V (对比度) = {V}")
         
-        exposure_dose = self.calculate_exposure_dose(x, I_avg, V, K, t_exp, sine_type, Kx, Ky, Kz, phi_expr, y, z)
+        exposure_dose = self.calculate_exposure_dose(x, I_avg, V, K, t_exp, sine_type, Kx, Ky, Kz, phi_expr, y, z, arc_transmission_factor=arc_transmission_factor)
         
         # 计算基础厚度（指数衰减模型）
         basic_thickness = np.exp(-C * exposure_dose)
@@ -664,7 +840,7 @@ class DillModel:
         logger.info(f"   - 占空比计算方法 = {duty_cycle_method}")
         
         # 计算基础曝光剂量
-        exposure_dose = self.calculate_exposure_dose(x, I_avg, V, K, t_exp, sine_type, Kx, Ky, Kz, phi_expr, y, z)
+        exposure_dose = self.calculate_exposure_dose(x, I_avg, V, K, t_exp, sine_type, Kx, Ky, Kz, phi_expr, y, z, arc_transmission_factor=arc_transmission_factor)
         
         # 计算基础厚度（指数衰减模型）
         basic_thickness = np.exp(-C * exposure_dose)
@@ -725,7 +901,7 @@ class DillModel:
         
         return result
 
-    def generate_data(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None):
+    def generate_data(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None, substrate_material=None, arc_material=None, arc_params=None):
         """
         生成数据，支持一维、二维、三维正弦波和4D动画
         
@@ -757,6 +933,9 @@ class DillModel:
             segment_duration: 多段曝光时间累积模式下的单段时间长度
             segment_count: 多段曝光时间累积模式下的段数
             segment_intensities: 多段曝光时间累积模式下各段的光强值列表
+            substrate_material: 基底材料类型
+            arc_material: ARC材料类型
+            arc_params: ARC参数计算结果（包含反射率等参数）
             
         返回:
             包含曝光剂量和厚度数据的字典
@@ -783,6 +962,27 @@ class DillModel:
         logger.info(f"   - z_range = {z_range}")
         logger.info(f"   - enable_4d_animation = {enable_4d_animation}")
         logger.info(f"   - custom_exposure_times = {custom_exposure_times}")
+        logger.info(f"   - substrate_material = {substrate_material}")
+        logger.info(f"   - arc_material = {arc_material}")
+        
+        # === 🔸 处理ARC参数，应用反射率修正 ===
+        arc_transmission_factor = 1.0  # 默认无修正
+        if arc_params is not None:
+            # 计算透射率（1 - 反射率）
+            reflectance_with_arc = arc_params.get('reflectance_with_arc', 0.0)
+            reflectance_no_arc = arc_params.get('reflectance_no_arc', 0.0)
+            
+            # ARC透射率修正因子：考虑基底反射对光强分布的影响
+            arc_transmission_factor = (1 - reflectance_with_arc) / (1 - reflectance_no_arc) if reflectance_no_arc > 0 else 1.0
+            
+            logger.info(f"🔬 ARC参数应用:")
+            logger.info(f"   - 无ARC反射率: {reflectance_no_arc:.4f}")
+            logger.info(f"   - 有ARC反射率: {reflectance_with_arc:.4f}")
+            logger.info(f"   - 透射率修正因子: {arc_transmission_factor:.4f}")
+            logger.info(f"   - 基底: {arc_params.get('materials', {}).get('substrate', {}).get('name', 'Unknown')}")
+            logger.info(f"   - ARC: {arc_params.get('materials', {}).get('arc', {}).get('name', 'Unknown')}")
+        else:
+            logger.info(f"🔬 无ARC参数，使用默认透射率修正因子: {arc_transmission_factor}")
         
         # === 🔍 调试自定义光强数据接收 ===
         logger.info(f"🔍 后端调试 - 自定义光强数据接收检查:")
@@ -824,7 +1024,8 @@ class DillModel:
                 x_min=-1000,
                 x_max=1000,
                 num_points=2001,
-                V=V  # 🔧 修复：正确传递V参数
+                V=V,  # 🔧 修复：正确传递V参数
+                arc_transmission_factor=arc_transmission_factor  # 🔧 新增：传递ARC透射率修正因子
             )
             
             # 添加自定义曝光时间窗口的标识
@@ -1135,7 +1336,8 @@ class DillModel:
                     # 修复：使用calculate_intensity_distribution方法来正确处理custom_intensity_data
                     base_intensity = self.calculate_intensity_distribution(
                         x_coords, I_avg, V, K, sine_type, Kx, Ky, Kz, phi_expr, 
-                        y=0, z=0, t=0, custom_intensity_data=custom_intensity_data
+                        y=0, z=0, t=0, custom_intensity_data=custom_intensity_data,
+                        arc_transmission_factor=arc_transmission_factor
                     )
                     
                     # 如果没有自定义数据，使用理想曝光模型公式作为备选
@@ -1143,6 +1345,8 @@ class DillModel:
                         angle_a_rad = angle_a * np.pi / 180
                         spatial_freq = 4 * np.pi * np.sin(angle_a_rad) / wavelength
                         base_intensity = I_avg * (1 + V * np.cos(spatial_freq * x_coords))
+                        # 应用ARC透射率修正（重要：防止ARC修正被覆盖）
+                        base_intensity = base_intensity * arc_transmission_factor
                     
                     # 记录光强分布计算信息
                     if custom_intensity_data is not None:
@@ -1266,13 +1470,15 @@ class DillModel:
                         exposure_calculation_method=exposure_calculation_method,
                         segment_duration=segment_duration,
                         segment_count=segment_count,
-                        segment_intensities=segment_intensities
+                        segment_intensities=segment_intensities,
+                        arc_transmission_factor=arc_transmission_factor
                     )
                     
                     # 获取光强分布
                     intensity_distribution = self.calculate_intensity_distribution(
                         x_coords, I_avg, V, K, '1d', 
-                        custom_intensity_data=custom_intensity_data
+                        custom_intensity_data=custom_intensity_data,
+                        arc_transmission_factor=arc_transmission_factor
                     )
                     
                     # 使用理想模型的阈值机制计算厚度分布
@@ -1348,7 +1554,8 @@ class DillModel:
                     x_min=-1000,
                     x_max=1000,
                     num_points=2001,
-                    V=V  # 🔥 重要修复：传递V参数给理想曝光模型
+                    V=V,  # 🔥 重要修复：传递V参数给理想曝光模型
+                    arc_transmission_factor=arc_transmission_factor  # 🔧 新增：传递ARC透射率修正因子
                 )
                 
                 logger.info(f"🔸 理想曝光模型一维数据生成完成")
@@ -1420,7 +1627,7 @@ class DillModel:
                 
                 return enhanced_ideal_data
 
-    def generate_plots(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None):
+    def generate_plots(self, I_avg, V, K, t_exp, C, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, x_min=0, x_max=10, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, custom_exposure_times=None, custom_intensity_data=None, exposure_calculation_method=None, segment_duration=None, segment_count=None, segment_intensities=None, substrate_material=None, arc_material=None):
         """
         生成图表数据的包装器方法
         
@@ -1462,6 +1669,30 @@ class DillModel:
             logger.info(f"   - segment_count = {segment_count}")
             logger.info(f"   - segment_intensities = {segment_intensities[:5]}... (共{len(segment_intensities)}段)")
         
+        # === 🔸 处理ARC参数，计算透射率修正因子 ===
+        arc_transmission_factor = 1.0  # 默认无修正
+        arc_params = None
+        
+        if substrate_material is not None and arc_material is not None:
+            from ..utils.helpers import calculate_reflectance
+            try:
+                # 计算ARC参数
+                arc_params = calculate_reflectance(substrate_material, arc_material, wavelength)
+                if arc_params is not None:
+                    reflectance_with_arc = arc_params.get('reflectance_with_arc', 0.0)
+                    reflectance_no_arc = arc_params.get('reflectance_no_arc', 0.0)
+                    arc_transmission_factor = (1 - reflectance_with_arc) / (1 - reflectance_no_arc) if reflectance_no_arc > 0 else 1.0
+                    
+                    logger.info(f"🔬 ARC透射率修正因子计算:")
+                    logger.info(f"   - 无ARC反射率: {reflectance_no_arc:.4f}")
+                    logger.info(f"   - 有ARC反射率: {reflectance_with_arc:.4f}")
+                    logger.info(f"   - 透射率修正因子: {arc_transmission_factor:.4f}")
+            except Exception as e:
+                logger.warning(f"⚠️ ARC参数计算失败: {e}, 使用默认值")
+                arc_transmission_factor = 1.0
+        else:
+            logger.info(f"🔬 无ARC参数，使用默认透射率修正因子: {arc_transmission_factor}")
+
         return self.generate_data(
             I_avg, V, K, t_exp, C, sine_type=sine_type, 
             Kx=Kx, Ky=Ky, Kz=Kz, phi_expr=phi_expr, 
@@ -1476,7 +1707,8 @@ class DillModel:
             exposure_calculation_method=exposure_calculation_method,
             segment_duration=segment_duration,
             segment_count=segment_count,
-            segment_intensities=segment_intensities
+            segment_intensities=segment_intensities,
+            arc_params=arc_params  # 传递ARC参数
         )
 
     def generate_1d_animation_data(self, I_avg, V, K, t_exp_start, t_exp_end, time_steps, C, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405):
@@ -1520,7 +1752,8 @@ class DillModel:
                 x_min=-1000,
                 x_max=1000,
                 num_points=1001,  # 减少点数以提高动画性能
-                V=V  # 🔧 修复：正确传递V参数
+                V=V,  # 🔧 修复：正确传递V参数
+                arc_transmission_factor=arc_transmission_factor  # 🔧 新增：传递ARC透射率修正因子
             )
             
             # 生成标准的1D数据结构 - 添加exposure_data字段以符合前端期望
@@ -1636,6 +1869,7 @@ class DillModel:
             # 使用理想曝光模型的强度分布公式
             # I0 = I_avg * (1 + V * cos((4 * π * sin(a) / λ) * X))
             intensity_distribution = I_avg * (1 + v_val * np.cos(spatial_freq_coeff * x_um))
+            # 注意：此函数暂未支持ARC修正，需要单独传递arc_transmission_factor参数
             
             # 计算曝光剂量 D0 = I0 * t_exp
             exposure_dose = intensity_distribution * t_exp
@@ -1706,7 +1940,7 @@ class DillModel:
     def calculate_ideal_exposure_model(self, I_avg=1.0, exposure_constant_C=0.022, angle_a_deg=11.7, 
                                      exposure_threshold_cd=20, contrast_ctr=1, wavelength_nm=405,
                                      exposure_times=[30, 60, 250, 1000, 2000], 
-                                     x_min=-1000, x_max=1000, num_points=2001, V=None):
+                                     x_min=-1000, x_max=1000, num_points=2001, V=None, arc_transmission_factor=1.0):
         """
         理想曝光模型计算 - 完全按照Python代码逻辑实现
         
@@ -1756,6 +1990,8 @@ class DillModel:
         # 原公式: I0 = 0.5 * (1 + ctr * cos((4 * π * sin(a) / 405) * X))
         # 修正公式: I0 = I_avg * (1 + V * cos((4 * π * sin(a) / λ) * X))
         I0 = I_avg * (1 + visibility_param * np.cos((4 * np.pi * np.sin(a) / wavelength_nm) * X))
+        # 应用ARC透射率修正
+        I0 = I0 * arc_transmission_factor
         
         logger.info(f"🔸 强度分布计算完成:")
         logger.info(f"   - I0 范围: [{np.min(I0):.6f}, {np.max(I0):.6f}]")
@@ -1827,7 +2063,8 @@ class DillModel:
                                      contrast_ctr=0.9, threshold_cd=25, wavelength_nm=405,
                                      x_min=-1000, x_max=1000, y_min=-1000, y_max=1000, 
                                      step_size=5, exposure_calculation_method='standard',
-                                     segment_intensities=None, custom_intensity_data=None):
+                                     segment_intensities=None, custom_intensity_data=None,
+                                     substrate_material='silicon', arc_material='sion'):
         """
         2D曝光图案计算 - 基于MATLAB latent_image2d.m文件逻辑
         
@@ -1845,14 +2082,31 @@ class DillModel:
             exposure_calculation_method: 曝光计算方式，'standard' 或 'cumulative'
             segment_intensities: 累积模式下的段强度列表
             custom_intensity_data: 自定义光强分布数据
+            substrate_material: 基底材料类型，默认 'silicon'
+            arc_material: 抗反射涂层材料类型，默认 'sion'
             
         返回:
-            包含2D曝光图案计算结果的字典
+            包含2D曝光图案计算结果的字典，包括ARC参数信息
         """
         logger.info("=" * 60)
         logger.info("【Dill模型 - 2D曝光图案计算】")
         logger.info("=" * 60)
         logger.info("🔸 使用MATLAB latent_image2d.m文件逻辑")
+        
+        # 🔸 计算ARC设计参数
+        arc_params = self.calculate_arc_parameters(substrate_material, arc_material, wavelength_nm)
+        logger.info(f"🔬 2D曝光图案ARC设计计算完成:")
+        logger.info(f"   - 基底: {arc_params['materials']['substrate']['name']} (n={arc_params['materials']['substrate']['n']:.3f}, k={arc_params['materials']['substrate']['k']:.3f})")
+        logger.info(f"   - ARC: {arc_params['materials']['arc']['name']} - {arc_params['materials']['arc']['type']} (n={arc_params['materials']['arc']['n']:.3f}, k={arc_params['materials']['arc']['k']:.3f})")
+        logger.info(f"   - 理想ARC折射率: {arc_params['n_arc_ideal']:.3f}")
+        logger.info(f"   - 理想ARC厚度: {arc_params['d_arc_ideal']:.1f} nm")
+        logger.info(f"   - 反射率抑制: {arc_params['suppression_ratio']:.1f}x ({arc_params['reflectance_no_arc']*100:.2f}% → {arc_params['reflectance_with_arc']*100:.4f}%)")
+        
+        # 🔸 计算ARC透射率修正因子
+        reflectance_with_arc = arc_params.get('reflectance_with_arc', 0.0)
+        reflectance_no_arc = arc_params.get('reflectance_no_arc', 0.0)
+        arc_transmission_factor = (1 - reflectance_with_arc) / (1 - reflectance_no_arc) if reflectance_no_arc > 0 else 1.0
+        logger.info(f"🔬 2D曝光图案ARC透射率修正因子: {arc_transmission_factor:.4f}")
         
         # 角度转弧度
         angle_a_rad = angle_a_deg * np.pi / 180
@@ -1991,8 +2245,8 @@ class DillModel:
             
             # 关键修复：只对X的1D坐标插值，然后广播到2D网格
             # 严格按照MATLAB逻辑：D0(i,j) 只依赖于X(i)，对所有j都相同
-            # 自定义光强需要乘以I_avg系数
-            intensity_1d = I_avg * np.interp(x_range, custom_x, custom_intensity)
+            # 自定义光强需要乘以I_avg系数和ARC透射率修正因子
+            intensity_1d = I_avg * arc_transmission_factor * np.interp(x_range, custom_x, custom_intensity)
             # 广播到2D网格：每一行都相同（只依赖X坐标）
             intensity_factor = np.broadcast_to(intensity_1d, (len(y_range), len(x_range)))
             
@@ -2004,12 +2258,13 @@ class DillModel:
             logger.info(f"📊 使用MATLAB标准余弦光强分布")
             # 严格按照MATLAB公式: I_avg*(1+ctr*cos((4*pi*sin(a)/405)*X(i)))
             spatial_frequency = 4 * np.pi * np.sin(angle_a_rad) / wavelength_nm
-            # 只依赖于X坐标，包含I_avg系数
-            intensity_1d = I_avg * (1 + contrast_ctr * np.cos(spatial_frequency * x_range))
+            # 只依赖于X坐标，包含I_avg系数和ARC透射率修正因子
+            intensity_1d = I_avg * arc_transmission_factor * (1 + contrast_ctr * np.cos(spatial_frequency * x_range))
             # 广播到2D网格
             intensity_factor = np.broadcast_to(intensity_1d, (len(y_range), len(x_range)))
             logger.info(f"   - 空间频率: {spatial_frequency:.6f}")
             logger.info(f"   - 光强因子范围: [{intensity_factor.min():.6f}, {intensity_factor.max():.6f}]")
+            logger.info(f"   - ARC透射率修正因子已应用: {arc_transmission_factor:.4f}")
         
         # === 步骤2: 计算时间相关的D0和最终剂量分布D ===
         logger.info(f"🔍 计算剂量分布...")
@@ -2072,6 +2327,10 @@ class DillModel:
         logger.info(f"✅ 2D曝光图案计算完成!")
         logger.info(f"   - 曝光时间: {exposure_time}")
         logger.info(f"   - 网格大小: {grid_shape[0]} × {grid_shape[1]}")
+        
+        # 添加ARC参数到返回数据
+        results_data['arc_parameters'] = arc_params
+        logger.info(f"✅ 2D曝光图案ARC参数已添加到返回数据中")
         
         return results_data
 
