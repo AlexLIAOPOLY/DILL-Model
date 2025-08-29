@@ -332,8 +332,15 @@ def calculate():
                     
                     add_progress_log('dill', f"启用1D时间动画 (曝光时间: {t_exp_start_1d}s - {t_exp_end_1d}s, {time_steps_1d}步)", dimension='1d')
                     
+                    # 计算ARC透射率修正因子
+                    arc_transmission_factor = 1.0  # 默认无修正
+                    if arc_params is not None:
+                        reflectance_with_arc = arc_params.get('reflectance_with_arc', 0.0)
+                        reflectance_no_arc = arc_params.get('reflectance_no_arc', 0.0)
+                        arc_transmission_factor = (1 - reflectance_with_arc) / (1 - reflectance_no_arc) if reflectance_no_arc > 0 else 1.0
+                    
                     # 生成1D动画数据并合并到静态数据中
-                    animation_data = model.generate_1d_animation_data(I_avg, V, K, t_exp_start_1d, t_exp_end_1d, time_steps_1d, C, angle_a, exposure_threshold, contrast_ctr, wavelength)
+                    animation_data = model.generate_1d_animation_data(I_avg, V, K, t_exp_start_1d, t_exp_end_1d, time_steps_1d, C, angle_a, exposure_threshold, contrast_ctr, wavelength, arc_transmission_factor)
                     
                     # 直接合并动画数据（动画数据已不再包含会覆盖静态数据的字段）
                     plots.update(animation_data)
@@ -923,10 +930,17 @@ def calculate_data():
                     print(f"[Dill-1D-Animation] 启用1D时间动画，时间范围: {t_start}s - {t_end}s, {time_steps}步")
                     add_progress_log('dill', f"启用1D时间动画 (时间范围: {t_start}s - {t_end}s, {time_steps}步)", dimension='1d')
                     
+                        # 计算ARC透射率修正因子
+                    arc_transmission_factor = 1.0  # 默认无修正
+                    if arc_params is not None:
+                        reflectance_with_arc = arc_params.get('reflectance_with_arc', 0.0)
+                        reflectance_no_arc = arc_params.get('reflectance_no_arc', 0.0)
+                        arc_transmission_factor = (1 - reflectance_with_arc) / (1 - reflectance_no_arc) if reflectance_no_arc > 0 else 1.0
+                    
                     # 生成动画数据
                     print(f"[Dill-1D-Animation] 生成动画数据 ({t_start}s - {t_end}s, {time_steps}帧)")
                     anim_calc_start = time.time()
-                    animation_data = model.generate_1d_animation_data(I_avg, V, K, t_start, t_end, time_steps, C, angle_a, exposure_threshold, contrast_ctr)
+                    animation_data = model.generate_1d_animation_data(I_avg, V, K, t_start, t_end, time_steps, C, angle_a, exposure_threshold, contrast_ctr, wavelength, arc_transmission_factor)
                     anim_calc_time = time.time() - anim_calc_start
                     total_calc_time += anim_calc_time
                     

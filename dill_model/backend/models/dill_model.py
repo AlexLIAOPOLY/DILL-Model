@@ -1711,7 +1711,7 @@ class DillModel:
             arc_params=arc_params  # 传递ARC参数
         )
 
-    def generate_1d_animation_data(self, I_avg, V, K, t_exp_start, t_exp_end, time_steps, C, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405):
+    def generate_1d_animation_data(self, I_avg, V, K, t_exp_start, t_exp_end, time_steps, C, angle_a=11.7, exposure_threshold=20, contrast_ctr=1, wavelength=405, arc_transmission_factor=1.0):
         """
         生成1D时间动画数据 - 使用理想曝光模型
         
