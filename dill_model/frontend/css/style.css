@@ -245,6 +245,21 @@ header::before {
     margin-bottom: 0.6rem;
 }
 
+/* 单位标签样式 */
+.unit-label {
+    display: inline-block;
+    background: #f5f7fa;
+    color: #8b9dc3;
+    font-size: 0.7em;
+    font-weight: 400;
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-left: 3px;
+    vertical-align: middle;
+    letter-spacing: 0.2px;
+    border: 1px solid #e8edf5;
+}
+
 /* 响应式设计优化 */
 @media (max-width: 1200px) {
     .container {

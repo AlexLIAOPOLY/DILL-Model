@@ -313,7 +313,7 @@ function displayParameters(params) {
                 'V': '对比度',
                 'K': '空间频率K',
                 'wavelength': '波长 (nm)',
-                'angle_a': '衍射周期 (°)',
+                'angle_a': '周期距离 (μm)',
                 'numerical_aperture': '数值孔径',
                 'polarization': '偏振状态',
                 'coherence_factor': '相干性因子'
@@ -650,8 +650,15 @@ function displayThicknessPlot(data) {
             
             // 确保图表完全适配容器
             setTimeout(() => {
-                Plotly.Plots.resize(plotDiv);
-                console.log('图表已调整为自适应尺寸');
+                if (plotDiv && plotDiv._fullLayout && 
+                    plotDiv.offsetWidth > 0 && 
+                    plotDiv.offsetHeight > 0 &&
+                    plotDiv.style.display !== 'none') {
+                    Plotly.Plots.resize(plotDiv);
+                    console.log('图表已调整为自适应尺寸');
+                } else {
+                    console.log('⚠️ 跳过图表resize - 图表不可见或无效');
+                }
             }, 100);
             
             // 绑定点击事件用于标注
@@ -660,7 +667,14 @@ function displayThicknessPlot(data) {
             
             // 监听窗口大小变化
             window.addEventListener('resize', () => {
-                Plotly.Plots.resize(plotDiv);
+                if (plotDiv && plotDiv._fullLayout && 
+                    plotDiv.offsetWidth > 0 && 
+                    plotDiv.offsetHeight > 0 &&
+                    plotDiv.style.display !== 'none') {
+                    Plotly.Plots.resize(plotDiv);
+                } else {
+                    console.log('⚠️ 跳过窗口resize事件中的图表调整 - 图表不可见或无效');
+                }
             });
         }).catch(error => {
             console.error('Plotly图表创建失败:', error);
@@ -719,7 +733,15 @@ function displayPlaceholderPlot() {
     
     Plotly.newPlot('thickness-plot', plotData, layout, config).then(() => {
         setTimeout(() => {
-            Plotly.Plots.resize(document.getElementById('thickness-plot'));
+            const plotDiv = document.getElementById('thickness-plot');
+            if (plotDiv && plotDiv._fullLayout && 
+                plotDiv.offsetWidth > 0 && 
+                plotDiv.offsetHeight > 0 &&
+                plotDiv.style.display !== 'none') {
+                Plotly.Plots.resize(plotDiv);
+            } else {
+                console.log('⚠️ 跳过厚度图表resize - 图表不可见或无效');
+            }
         }, 100);
     });
 }
@@ -2197,7 +2219,7 @@ function displayExcelData(data) {
         'V': '对比度',
         'K': '空间频率K',
         'wavelength': '波长 (nm)',
-        'angle_a': '衍射周期 (°)',
+        'angle_a': '周期距离 (μm)',
         'numerical_aperture': '数值孔径',
         'polarization': '偏振状态',
         'coherence_factor': '相干性因子',

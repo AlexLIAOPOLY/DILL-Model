@@ -1986,21 +1986,21 @@ intensity3
                         <!-- 参数1: angle_a -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">周期 (a)</span>
+                                <span class="parameter-name">周期距离 (Period) <span class="unit-label">μm</span></span>
                                 
-                                <span class="parameter-value">11.7</span>
+                                <span class="parameter-value">1.0</span>
                             </div>
                             <div class="parameter-input">
-                                <input type="range" id="angle_a" class="slider" min="1" max="45" step="0.1" value="11.7" title="周期滑块" aria-label="周期">
-                                <input type="number" class="number-input" value="11.7" min="1" max="45" step="0.1" title="周期数值输入" aria-label="周期数值">
+                                <input type="range" id="angle_a" class="slider" min="0.628" max="6.28" step="0.01" value="1.0" title="周期距离滑块" aria-label="周期距离">
+                                <input type="number" class="number-input" value="1.0" min="0.628" max="6.28" step="0.01" title="周期距离数值输入" aria-label="周期距离数值">
                             </div>
-                            <div class="parameter-description" data-i18n="param_desc_angle_a">光强分布阶段：控制干涉条纹周期，周期小=条纹密度高=空间频率高，周期大=条纹稀疏</div>
+                            <div class="parameter-description" data-i18n="param_desc_angle_a">光强分布阶段：控制干涉条纹的真实周期距离（两个最低点间距，单位μm），周期小=条纹密集=空间频率高</div>
                         </div>
                         
                         <!-- 参数2: wavelength -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">光波长 (λ)</span>
+                                <span class="parameter-name">光波长 (λ) <span class="unit-label">nm</span></span>
                                 
                                 <span class="parameter-value">405</span>
                             </div>
@@ -2060,7 +2060,7 @@ intensity3
                         <!-- 参数4: K -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">空间频率 (K)</span>
+                                <span class="parameter-name">空间频率 (K) <span class="unit-label">rad/μm</span></span>
                                 
                                 <span class="parameter-value">2</span>
                             </div>
@@ -2074,7 +2074,7 @@ intensity3
                         <!-- 参数5: I_avg -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">平均入射光强度 (I<sub>avg</sub>)</span>
+                                <span class="parameter-name">平均入射光强度 (I<sub>avg</sub>) <span class="unit-label">mW/cm²</span></span>
                                 
                                 <span class="parameter-value">10</span>
                             </div>
@@ -2085,6 +2085,20 @@ intensity3
                             <div class="parameter-description" data-i18n="param_desc_I_avg">光强分布阶段：平均入射光强度，单位：mW/cm²</div>
                         </div>
                         
+                        <!-- 参数6: X坐标 (仅在自定义向量模式下显示) -->
+                        <div id="x-coordinate-param" class="parameter-item slider-fill" style="display: none;">
+                            <div class="parameter-label">
+                                <span class="parameter-name">指定点X坐标 <span class="unit-label">μm</span></span>
+                                
+                                <span class="parameter-value">0.0</span>
+                            </div>
+                            <div class="parameter-input">
+                                <input type="range" id="x_coordinate" class="slider" min="-10" max="10" step="0.01" value="0.0" title="指定点X坐标滑块" aria-label="指定点X坐标" oninput="handleXCoordinateChange()">
+                                <input type="number" class="number-input" value="0.0" min="-10" max="10" step="0.01" title="指定点X坐标数值输入" aria-label="指定点X坐标数值" oninput="handleXCoordinateChange()">
+                            </div>
+                            <div class="parameter-description">自定义向量模式：指定要提取光强值的X坐标位置，单位：μm</div>
+                        </div>
+                        
                         </div> <!-- End of formula-params-container -->
 
                         <!-- 曝光反应阶段参数 -->
@@ -2092,7 +2106,7 @@ intensity3
                         <!-- 参数6: C -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">曝光常数 (C)</span>
+                                <span class="parameter-name">曝光常数 (C) <span class="unit-label">cm²/mJ</span></span>
                                 
                                 <span class="parameter-value">0.022</span>
                             </div>
@@ -2106,7 +2120,7 @@ intensity3
                         <!-- 参数7: exposure_threshold -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">曝光阈值 (cd)</span>
+                                <span class="parameter-name">曝光阈值 (cd) <span class="unit-label">mJ/cm²</span></span>
                                 
                                 <span class="parameter-value">20</span>
                             </div>
@@ -2172,7 +2186,7 @@ intensity3
                         <!-- 单一曝光时间参数 -->
                         <div class="parameter-item slider-fill" id="standard_exposure_time_container">
                             <div class="parameter-label">
-                                <span class="parameter-name">曝光时间 (t<sub>exp</sub>)</span>
+                                <span class="parameter-name">曝光时间 (t<sub>exp</sub>) <span class="unit-label">s</span></span>
                                 
                                 <span class="parameter-value">100</span>
                             </div>
@@ -2720,22 +2734,22 @@ intensity3
                     <!-- Enhanced Dill模型基本参数容器 -->
                     <div class="parameter-group-container" id="enhanced-dill-basic-params-container" data-title="增强Dill模型基本参数" data-i18n-title="enhanced_dill_basic_params">
                         <div class="parameter-item slider-fill">
-                            <div class="parameter-label"><span class="parameter-name">胶厚 (z<sub>h</sub>, μm)</span><span class="parameter-value">10</span></div>
+                            <div class="parameter-label"><span class="parameter-name">胶厚 (z<sub>h</sub>) <span class="unit-label">μm</span></span><span class="parameter-value">10</span></div>
                             <div class="parameter-input"><input type="range" id="z_h" class="slider" min="1" max="50" step="0.1" value="10"><input type="number" class="number-input" value="10" min="1" max="50" step="0.1"></div>
                             <div class="parameter-description" data-i18n="param_desc_z_h">影响光传播深度，厚度大=吸收多，厚度小=穿透强</div>
                         </div>
                         <div class="parameter-item slider-fill">
-                            <div class="parameter-label"><span class="parameter-name">前烘温度 (T, ℃)</span><span class="parameter-value">100</span></div>
+                            <div class="parameter-label"><span class="parameter-name">前烘温度 (T) <span class="unit-label">℃</span></span><span class="parameter-value">100</span></div>
                             <div class="parameter-input"><input type="range" id="T" class="slider" min="60" max="150" step="1" value="100"><input type="number" class="number-input" value="100" min="60" max="150" step="1"></div>
                             <div class="parameter-description" data-i18n="param_desc_T">影响溶剂挥发速度，温度高=挥发快=胶膜更致密</div>
                         </div>
                         <div class="parameter-item slider-fill">
-                            <div class="parameter-label"><span class="parameter-name">前烘时间 (t<sub>B</sub>, min)</span><span class="parameter-value">2</span></div>
+                            <div class="parameter-label"><span class="parameter-name">前烘时间 (t<sub>B</sub>) <span class="unit-label">min</span></span><span class="parameter-value">2</span></div>
                             <div class="parameter-input"><input type="range" id="t_B" class="slider" min="0.5" max="10" step="0.1" value="2"><input type="number" class="number-input" value="2" min="0.5" max="10" step="0.1"></div>
                             <div class="parameter-description" data-i18n="param_desc_t_B">影响胶膜稳定性，时间长=溶剂去除彻底=曝光均匀</div>
                         </div>
                         <div class="parameter-item slider-fill">
-                            <div class="parameter-label"><span class="parameter-name">初始光强 (I<sub>0</sub>)</span><span class="parameter-value">1</span></div>
+                            <div class="parameter-label"><span class="parameter-name">初始光强 (I<sub>0</sub>) <span class="unit-label">mW/cm²</span></span><span class="parameter-value">1</span></div>
                             <div class="parameter-input"><input type="range" id="I_0" class="slider" min="0.1" max="2" step="0.01" value="1"><input type="number" class="number-input" value="1" min="0.1" max="2" step="0.01"></div>
                             <div class="parameter-description" data-i18n="param_desc_I0">影响曝光强度，值大=光强高=反应快，值小=光强低=反应慢</div>
                         </div>
@@ -2745,7 +2759,7 @@ intensity3
                             <div class="parameter-description" data-i18n="param_desc_M0">影响光敏剂浓度，值大=敏感度高=易曝光，值小=敏感度低=需长时间</div>
                         </div>
                         <div class="parameter-item slider-fill">
-                            <div class="parameter-label"><span class="parameter-name">曝光时间 (t<sub>exp</sub>)</span><span class="parameter-value">100</span></div>
+                            <div class="parameter-label"><span class="parameter-name">曝光时间 (t<sub>exp</sub>) <span class="unit-label">s</span></span><span class="parameter-value">100</span></div>
                             <div class="parameter-input"><input type="range" id="enhanced_t_exp" class="slider" min="0.1" max="1000" step="0.1" value="100"><input type="number" class="number-input" value="100" min="0.1" max="1000" step="0.1"></div>
                             <div class="parameter-description" data-i18n="param_desc_t_exp_enhanced">决定曝光剂量，时间长=剂量大=反应充分，时间短=剂量小=反应不足</div>
                         </div>
@@ -2765,7 +2779,7 @@ intensity3
                         
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">空间频率 (K)</span>
+                                <span class="parameter-name">空间频率 (K) <span class="unit-label">rad/μm</span></span>
                                 <span class="parameter-value">2</span>
                             </div>
                             <div class="parameter-input">
@@ -2987,7 +3001,7 @@ intensity3
                         <!-- 参数1: I_avg -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">平均入射光强度 (I<sub>avg</sub>)</span>
+                                <span class="parameter-name">平均入射光强度 (I<sub>avg</sub>) <span class="unit-label">mW/cm²</span></span>
                                 
                                 <span class="parameter-value">10</span>
                             </div>
@@ -3015,7 +3029,7 @@ intensity3
                         <!-- 参数3: K -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">空间频率 (K)</span>
+                                <span class="parameter-name">空间频率 (K) <span class="unit-label">rad/μm</span></span>
                                 
                                 <span class="parameter-value">2</span>
                             </div>
@@ -3029,7 +3043,7 @@ intensity3
                         <!-- 参数4: t_exp -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">曝光时间 (t<sub>exp</sub>)</span>
+                                <span class="parameter-name">曝光时间 (t<sub>exp</sub>) <span class="unit-label">s</span></span>
                                 
                                 <span class="parameter-value">5</span>
                             </div>
@@ -3057,7 +3071,7 @@ intensity3
                         <!-- 参数6: diffusion_length -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">扩散长度 (EPDL)</span>
+                                <span class="parameter-name">扩散长度 (EPDL) <span class="unit-label">nm</span></span>
                                 
                                 <span class="parameter-value">3</span>
                             </div>
@@ -3071,7 +3085,7 @@ intensity3
                         <!-- 参数7: reaction_rate -->
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
-                                <span class="parameter-name">反应速率常数 (k)</span>
+                                <span class="parameter-name">反应速率常数 (k) <span class="unit-label">s⁻¹</span></span>
                                 
                                 <span class="parameter-value">0.3</span>
                             </div>

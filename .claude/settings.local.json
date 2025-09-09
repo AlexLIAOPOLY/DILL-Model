@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(grep:*)",
+      "Bash(git restore:*)",
+      "Bash(git reset:*)",
+      "Bash(rg:*)",
+      "Bash(pkill:*)",
+      "Bash(true)",
+      "Bash(/opt/homebrew/bin/python3:*)",
+      "Bash(node:*)"
+    ],
+    "deny": []
+  }
+}

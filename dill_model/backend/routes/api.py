@@ -70,6 +70,63 @@ def clear_logs():
     global calculation_logs
     calculation_logs = []
 
+def extract_intensity_at_x_coordinate(custom_intensity_data, x_coordinate):
+    """
+    从自定义向量数据中提取指定X坐标处的光强值
+    使用线性插值方法
+    """
+    try:
+        if not custom_intensity_data or 'x' not in custom_intensity_data or 'intensity' not in custom_intensity_data:
+            print("❌ 无效的自定义向量数据结构")
+            return None
+        
+        x_data = custom_intensity_data['x']
+        intensity_data = custom_intensity_data['intensity']
+        
+        if len(x_data) == 0 or len(intensity_data) == 0 or len(x_data) != len(intensity_data):
+            print("❌ 自定义向量数据为空或长度不匹配")
+            return None
+        
+        print(f"🔍 从{len(x_data)}个数据点中提取X={x_coordinate}处的光强值")
+        
+        # 转换为numpy数组便于计算
+        x_array = np.array(x_data)
+        intensity_array = np.array(intensity_data)
+        
+        # 如果恰好有匹配的X坐标
+        exact_indices = np.where(np.abs(x_array - x_coordinate) < 1e-6)[0]
+        if len(exact_indices) > 0:
+            result = float(intensity_array[exact_indices[0]])
+            print(f"✅ 找到精确匹配: X={x_array[exact_indices[0]]}, I={result}")
+            return result
+        
+        # 排序数据以便插值
+        sorted_indices = np.argsort(x_array)
+        x_sorted = x_array[sorted_indices]
+        intensity_sorted = intensity_array[sorted_indices]
+        
+        # 边界处理
+        if x_coordinate <= x_sorted[0]:
+            result = float(intensity_sorted[0])
+            print(f"📍 X坐标小于最小值，使用边界值: I={result}")
+            return result
+        
+        if x_coordinate >= x_sorted[-1]:
+            result = float(intensity_sorted[-1])
+            print(f"📍 X坐标大于最大值，使用边界值: I={result}")
+            return result
+        
+        # 使用numpy的线性插值
+        interpolated_intensity = np.interp(x_coordinate, x_sorted, intensity_sorted)
+        result = float(interpolated_intensity)
+        
+        print(f"🔍 线性插值成功: X={x_coordinate} → I={result:.6f}")
+        return result
+        
+    except Exception as e:
+        print(f"❌ 提取光强值时发生异常: {str(e)}")
+        return None
+
 # 创建API蓝图
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -129,6 +186,26 @@ def calculate():
             
             # 检查是否使用自定义光强分布
             custom_intensity_data = data.get('custom_intensity_data', None)
+            
+            # 新逻辑：如果是自定义向量模式，获取指定的X坐标
+            x_coordinate = data.get('x_coordinate', 0.0) if custom_intensity_data else None
+            
+            # 新逻辑：如果是自定义向量模式，需要从向量数据中提取指定点的光强值
+            if custom_intensity_data and x_coordinate is not None:
+                print(f"🔍 自定义向量模式：需要从数据中提取X={x_coordinate}处的光强值")
+                add_progress_log('dill', f"自定义向量模式：提取X={x_coordinate}处的光强值", dimension=sine_type)
+                
+                # 进行线性插值提取光强值
+                extracted_intensity = extract_intensity_at_x_coordinate(custom_intensity_data, x_coordinate)
+                if extracted_intensity is not None:
+                    # 使用提取的光强值覆盖I_avg参数
+                    original_I_avg = I_avg
+                    I_avg = float(extracted_intensity)
+                    print(f"🔍 已从自定义向量数据中提取光强值：原I_avg={original_I_avg}, 新I_avg={I_avg}")
+                    add_progress_log('dill', f"光强值提取成功：X={x_coordinate} → I_avg={I_avg:.6f} mW/cm²", dimension=sine_type)
+                else:
+                    print(f"⚠️ 无法从自定义向量数据中提取X={x_coordinate}处的光强值")
+                    add_warning_log('dill', f"无法提取X={x_coordinate}处的光强值，使用原始I_avg={I_avg}", dimension=sine_type)
             
             # 🔸 调试波长参数
             print(f"🌈 波长参数调试: wavelength = {wavelength} nm (来源: {data.get('wavelength', '默认值')})")
@@ -539,6 +616,24 @@ def calculate_data():
             V = float(data['V'])
             t_exp = float(data['t_exp'])
             C = float(data['C'])
+            
+            # 自定义向量数据的新逻辑处理（与calculate端点一致）
+            custom_intensity_data = data.get('custom_intensity_data', None)
+            x_coordinate = data.get('x_coordinate', 0.0) if custom_intensity_data else None
+            
+            if custom_intensity_data and x_coordinate is not None:
+                print(f"🔍 [calculate_data] 自定义向量模式：需要从数据中提取X={x_coordinate}处的光强值")
+                add_progress_log('dill', f"自定义向量模式：提取X={x_coordinate}处的光强值", dimension=sine_type)
+                
+                extracted_intensity = extract_intensity_at_x_coordinate(custom_intensity_data, x_coordinate)
+                if extracted_intensity is not None:
+                    original_I_avg = I_avg
+                    I_avg = float(extracted_intensity)
+                    print(f"🔍 [calculate_data] 已从自定义向量数据中提取光强值：原I_avg={original_I_avg}, 新I_avg={I_avg}")
+                    add_progress_log('dill', f"光强值提取成功：X={x_coordinate} → I_avg={I_avg:.6f} mW/cm²", dimension=sine_type)
+                else:
+                    print(f"⚠️ [calculate_data] 无法从自定义向量数据中提取X={x_coordinate}处的光强值")
+                    add_warning_log('dill', f"无法提取X={x_coordinate}处的光强值，使用原始I_avg={I_avg}", dimension=sine_type)
             
             # 检查是否启用4D动画
             enable_4d_animation = data.get('enable_4d_animation', False)
@@ -998,7 +1093,7 @@ def calculate_data():
                     
                     # 生成V评估数据 - 使用理想曝光模型
                     print(f"[Dill-1D-V-Eval] 使用理想曝光模型生成V评估数据 (V: {v_start} - {v_end}, {v_time_steps}帧)")
-                    print(f"[Dill-1D-V-Eval] 理想曝光模型参数: angle_a={angle_a}°, exposure_threshold={exposure_threshold}, wavelength={wavelength}nm")
+                    print(f"[Dill-1D-V-Eval] 理想曝光模型参数: Period={angle_a}μm, exposure_threshold={exposure_threshold}, wavelength={wavelength}nm")
                     v_calc_start = time.time()
                     v_evaluation_data = model.generate_1d_v_animation_data(I_avg, v_start, v_end, v_time_steps, K, t_exp, C, 
                                                                           angle_a=angle_a, exposure_threshold=exposure_threshold, wavelength=wavelength)
@@ -3727,16 +3822,14 @@ def predict_parameters():
             
             # 推导其他相关参数
             # 基于Dill模型的物理关系推导
-            angle_a = 11.7  # 标准衍射角度
+            angle_a = 1.0   # 标准周期距离 (μm)
             wavelength = 405.0  # 标准波长 (nm)
             
             # 根据空间频率K推导物理参数
-            # K = 4π sin(θ) / λ
+            # K = 2π / Period
             if K > 0:
-                sin_theta = K * wavelength / (4 * math.pi)
-                sin_theta = min(abs(sin_theta), 1.0)  # 限制在物理范围内
-                theta_rad = math.asin(sin_theta)
-                angle_a = math.degrees(theta_rad)
+                # 使用新公式推导周期距离
+                angle_a = (2 * math.pi) / K  # Period = 2π / K
             
             # 根据目标厚度调整曝光参数
             exposure_threshold = 20.0

@@ -273,6 +273,71 @@ def format_response(success, data=None, message=""):
         'message': message
     }
 
+def calculate_reflectance(substrate_material, arc_material, wavelength):
+    """
+    计算ARC（抗反射涂层）参数的简化实现
+    
+    Args:
+        substrate_material: 基底材料
+        arc_material: ARC材料 
+        wavelength: 波长(nm)
+        
+    Returns:
+        dict: ARC参数字典
+    """
+    # 简化的材料折射率数据库
+    material_properties = {
+        'silicon': {'n': 3.88, 'k': 0.02},
+        'sion': {'n': 1.46, 'k': 0.0},
+        'sin': {'n': 2.0, 'k': 0.0}, 
+        'sio2': {'n': 1.46, 'k': 0.0},
+        'air': {'n': 1.0, 'k': 0.0}
+    }
+    
+    # 获取材料属性
+    substrate_props = material_properties.get(substrate_material, {'n': 3.88, 'k': 0.02})
+    arc_props = material_properties.get(arc_material, {'n': 1.46, 'k': 0.0})
+    
+    # 简化的反射率计算
+    n_substrate = substrate_props['n']
+    n_arc = arc_props['n']
+    n_air = 1.0
+    
+    # 无ARC时的反射率
+    r_no_arc = ((n_substrate - n_air) / (n_substrate + n_air)) ** 2
+    
+    # 理想ARC厚度计算 (λ/4)
+    d_arc_ideal = wavelength / (4 * n_arc)
+    
+    # 理想ARC折射率
+    n_arc_ideal = np.sqrt(n_substrate * n_air)
+    
+    # 有ARC时的简化反射率计算
+    r_with_arc = ((n_arc - n_air) / (n_arc + n_air)) ** 2 * 0.1  # 简化模型
+    
+    return {
+        'materials': {
+            'substrate': {
+                'name': substrate_material,
+                'n': n_substrate,
+                'k': substrate_props['k'],
+                'type': 'substrate'
+            },
+            'arc': {
+                'name': arc_material,
+                'n': n_arc,
+                'k': arc_props['k'],
+                'type': 'arc'
+            }
+        },
+        'wavelength_nm': wavelength,
+        'reflectance_no_arc': r_no_arc,
+        'reflectance_with_arc': r_with_arc,
+        'n_arc_ideal': n_arc_ideal,
+        'd_arc_ideal': d_arc_ideal,
+        'suppression_ratio': r_no_arc / r_with_arc if r_with_arc > 0 else 10.0
+    }
+
 class NumpyEncoder(json.JSONEncoder):
     """处理NumPy数据类型的JSON编码器"""
     def default(self, obj):
@@ -283,3 +348,67 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, (np.int_, np.int8, np.int16, np.int32, np.int64)):
             return int(obj)
         return json.JSONEncoder.default(self, obj) 
+        dict: ARC参数字典
+    """
+    # 简化的材料折射率数据库
+    material_properties = {
+        'silicon': {'n': 3.88, 'k': 0.02},
+        'sion': {'n': 1.46, 'k': 0.0},
+        'sin': {'n': 2.0, 'k': 0.0}, 
+        'sio2': {'n': 1.46, 'k': 0.0},
+        'air': {'n': 1.0, 'k': 0.0}
+    }
+    
+    # 获取材料属性
+    substrate_props = material_properties.get(substrate_material, {'n': 3.88, 'k': 0.02})
+    arc_props = material_properties.get(arc_material, {'n': 1.46, 'k': 0.0})
+    
+    # 简化的反射率计算
+    n_substrate = substrate_props['n']
+    n_arc = arc_props['n']
+    n_air = 1.0
+    
+    # 无ARC时的反射率
+    r_no_arc = ((n_substrate - n_air) / (n_substrate + n_air)) ** 2
+    
+    # 理想ARC厚度计算 (λ/4)
+    d_arc_ideal = wavelength / (4 * n_arc)
+    
+    # 理想ARC折射率
+    n_arc_ideal = np.sqrt(n_substrate * n_air)
+    
+    # 有ARC时的简化反射率计算
+    r_with_arc = ((n_arc - n_air) / (n_arc + n_air)) ** 2 * 0.1  # 简化模型
+    
+    return {
+        'materials': {
+            'substrate': {
+                'name': substrate_material,
+                'n': n_substrate,
+                'k': substrate_props['k'],
+                'type': 'substrate'
+            },
+            'arc': {
+                'name': arc_material,
+                'n': n_arc,
+                'k': arc_props['k'],
+                'type': 'arc'
+            }
+        },
+        'wavelength_nm': wavelength,
+        'reflectance_no_arc': r_no_arc,
+        'reflectance_with_arc': r_with_arc,
+        'n_arc_ideal': n_arc_ideal,
+        'd_arc_ideal': d_arc_ideal,
+        'suppression_ratio': r_no_arc / r_with_arc if r_with_arc > 0 else 10.0
+    }
+
+class NumpyEncoder(json.JSONEncoder):
+    """处理NumPy数据类型的JSON编码器"""
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
+            return float(obj)
+        if isinstance(obj, (np.int_, np.int8, np.int16, np.int32, np.int64)):
+            return int(obj)

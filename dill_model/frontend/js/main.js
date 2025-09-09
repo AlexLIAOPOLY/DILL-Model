@@ -1346,48 +1346,30 @@ function initMaterialSelectors() {
  */
 /**
  * 自动计算空间频率K值
- * 根据公式：K = 4π × sin(a) / λ
- * 其中 a 是周期参数（度），λ 是波长（nm）
+ * 根据公式：K = 2π / Period
+ * 其中 Period 是真实周期距离（μm）
  */
 function autoCalculateSpaceFrequencyK(showNotice = true) {
-    // 获取周期参数和波长的元素
-    const angleSlider = document.getElementById('angle_a');
-    const wavelengthSlider = document.getElementById('wavelength');
-    const wavelengthInput = document.getElementById('wavelength_number');
+    // 获取周期距离参数的元素
+    const periodSlider = document.getElementById('angle_a'); // 重用原来的ID
     const kSlider = document.getElementById('K');
     const kInput = kSlider ? kSlider.parentElement.querySelector('.number-input') : null;
     
     // 确保所有必要的元素都存在
-    if (!angleSlider || (!wavelengthSlider && !wavelengthInput) || !kSlider || !kInput) {
+    if (!periodSlider || !kSlider || !kInput) {
         console.warn('⚠️ 无法找到计算K值所需的参数元素');
         return;
     }
     
-    // 获取周期参数值（度）
-    let angleValue = parseFloat(angleSlider.value);
-    if (isNaN(angleValue)) {
-        console.warn('⚠️ 周期参数值无效:', angleSlider.value);
+    // 获取周期距离值（μm）
+    let periodValue = parseFloat(periodSlider.value);
+    if (isNaN(periodValue) || periodValue <= 0) {
+        console.warn('⚠️ 周期距离值无效:', periodSlider.value);
         return;
     }
     
-    // 获取波长值（nm），优先使用数字输入框
-    let wavelengthValue;
-    if (wavelengthInput && wavelengthInput.value !== '') {
-        wavelengthValue = parseFloat(wavelengthInput.value);
-    } else if (wavelengthSlider) {
-        wavelengthValue = parseFloat(wavelengthSlider.value);
-    }
-    
-    if (isNaN(wavelengthValue) || wavelengthValue <= 0) {
-        console.warn('⚠️ 波长值无效:', wavelengthValue);
-        return;
-    }
-    
-    // 将周期转换为弧度
-    const angleInRadians = angleValue * Math.PI / 180;
-    
-    // 计算空间频率K = 4π × sin(a) / λ
-    const calculatedK = (4 * Math.PI * Math.sin(angleInRadians)) / wavelengthValue;
+    // 计算空间频率K = 2π / Period
+    const calculatedK = (2 * Math.PI) / periodValue;
     
     // 限制K值在滑块范围内
     const minK = parseFloat(kSlider.min) || 0.1;
@@ -1415,14 +1397,13 @@ function autoCalculateSpaceFrequencyK(showNotice = true) {
     
     // 记录计算过程（仅在调试时显示）
     console.log(`🔄 自动计算空间频率K:
-        周期 a = ${angleValue}° (${angleInRadians.toFixed(4)} rad)
-        波长 λ = ${wavelengthValue} nm  
-        计算结果 K = 4π×sin(${angleValue}°)/${wavelengthValue} = ${calculatedK.toFixed(6)}
+        周期距离 Period = ${periodValue} μm
+        计算结果 K = 2π/${periodValue} = ${calculatedK.toFixed(6)}
         最终值 K = ${roundedK} rad/μm`);
     
     // 显示计算提示（仅在showNotice为true时显示）
     if (showNotice) {
-        showKCalculationNotice(angleValue, wavelengthValue, roundedK);
+        showKCalculationNoticeFromPeriod(periodValue, roundedK);
     }
 }
 
@@ -1445,6 +1426,103 @@ function showKCalculationNotice(angle, wavelength, kValue) {
             <span>空间频率K已自动计算</span>
             <div class="calculation-details">
                 K = 4π×sin(${angle}°)/${wavelength} = ${kValue} rad/μm
+            </div>
+            <button class="close-notice" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    // 添加样式
+    notice.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: linear-gradient(135deg, #4caf50, #45a049);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        z-index: 9999;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 13px;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+        max-width: 350px;
+    `;
+    
+    notice.querySelector('.notice-content').style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    `;
+    
+    notice.querySelector('.calculation-details').style.cssText = `
+        font-size: 11px;
+        opacity: 0.9;
+        font-family: monospace;
+        background: rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+    `;
+    
+    notice.querySelector('.close-notice').style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 3px;
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+    `;
+    
+    // 添加到页面
+    document.body.appendChild(notice);
+    
+    // 触发动画
+    setTimeout(() => {
+        notice.style.opacity = '1';
+        notice.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // 2.5秒后自动消失
+    setTimeout(() => {
+        if (notice.parentElement) {
+            notice.style.opacity = '0';
+            notice.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notice.parentElement) {
+                    notice.remove();
+                }
+            }, 300);
+        }
+    }, 2500);
+}
+
+/**
+ * 显示基于周期距离的K值自动计算提示信息
+ */
+function showKCalculationNoticeFromPeriod(period, kValue) {
+    // 移除已有的提示
+    const existingNotice = document.querySelector('.k-calculation-notice');
+    if (existingNotice) {
+        existingNotice.remove();
+    }
+    
+    // 创建新的提示元素
+    const notice = document.createElement('div');
+    notice.className = 'k-calculation-notice';
+    notice.innerHTML = `
+        <div class="notice-content">
+            <i class="fas fa-calculator"></i>
+            <span>空间频率K已自动计算</span>
+            <div class="calculation-details">
+                K = 2π/${period} = ${kValue} rad/μm
             </div>
             <button class="close-notice" onclick="this.parentElement.parentElement.remove()">
                 <i class="fas fa-times"></i>
@@ -6069,7 +6147,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
     // 🔧 根据情况确定哪些参数是默认值或自动计算的
     // 四种情况说明：
     // 1. 基础情况：公式计算 + 标准模式 - 所有参数都正常使用
-    // 2. 自定义向量：自定义向量 + 标准模式 - 波长、周期、对比度变成默认值，I_avg自动计算
+    // 2. 自定义向量：自定义向量 + 标准模式 - 波长、周期距离、对比度变成默认值，I_avg自动计算
     // 3. 多段曝光：公式计算 + 多段累积模式 - 曝光时间t_exp由多段累积计算
     // 4. 混合模式：自定义向量 + 多段累积模式 - 物理参数默认值 + I_avg自动计算 + 时间累积计算
     const defaultCalculatedParams = [];
@@ -6135,7 +6213,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
             <div>🔬 <strong>实际计算参数：</strong></div>
             <div>• I<sub>avg</sub>: 平均入射光强度 (${I_avg_display} mW/cm²)</div>
             <div>• V: 干涉条纹可见度 (${contrast_ctr})</div>
-            <div>• a: 周期 (${angle_a_deg}°)</div>
+            <div>• Period: 周期距离 (${angle_a_deg} μm)</div>
             <div>• λ: 光波长 (${wavelength_nm} nm)</div>
             <div>• t<sub>exp</sub>: 曝光时间 (${exposureTime}s)</div>
             <div>• 空间频率系数: 4π×sin(a)/λ = ${spatial_freq.toFixed(6)} rad/nm</div>
@@ -6228,7 +6306,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
             <div>🔬 <strong>实际计算参数：</strong></div>
             <div>• I<sub>avg</sub>: 平均入射光强度 (${I_avg_display} mW/cm²)</div>
             <div>• V: 干涉条纹可见度 (${contrast_ctr})</div>
-            <div>• a: 周期 (${angle_a_deg}°)</div>
+            <div>• Period: 周期距离 (${angle_a_deg} μm)</div>
             <div>• λ: 光波长 (${wavelength_nm} nm)</div>
             <div>• t<sub>exp</sub>: 曝光时间 (${exposureTime}s)</div>
             <div>• C: DILL常数 (${C})</div>
@@ -6405,9 +6483,9 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
                 </div>
                 `}
                 <div class="info-item">
-                    <span class="info-label">周期:</span>
+                    <span class="info-label">周期距离:</span>
                     <span class="info-value">
-                        ${angle_a_deg}°
+                        ${angle_a_deg} μm
                         ${defaultCalculatedParams.includes('angle_a') ? '<span class="default-calc-tag" title="此参数在自定义向量模式下不参与计算，为默认显示值"> [默认值]</span>' : ''}
                     </span>
                 </div>
@@ -8384,7 +8462,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div class="info-item"><span class="info-label">曝光时间:</span><span class="info-value">${params.t_exp || 100} s</span></div>
                 ` : isIdealExposureModel ? `
                 <div class="info-item"><span class="info-label">干涉条纹可见度(V):</span><span class="info-value">${params.V || 1}</span></div>
-                <div class="info-item"><span class="info-label">周期(a):</span><span class="info-value">${params.angle_a || 11.7}°</span></div>
+                <div class="info-item"><span class="info-label">周期距离(Period):</span><span class="info-value">${params.angle_a || 1.0} μm</span></div>
                 <div class="info-item"><span class="info-label">波长(λ):</span><span class="info-value">${(params.parameters && params.parameters.wavelength_nm) || params.wavelength || 405} nm</span></div>
                 <div class="info-item"><span class="info-label">C常数:</span><span class="info-value">${params.C || 0.022}</span></div>
                 <div class="info-item"><span class="info-label">阈值(cd):</span><span class="info-value">${params.exposure_threshold || 20}</span></div>

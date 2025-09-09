@@ -561,12 +561,20 @@ class ResizablePlotly {
                             const plotlyElements = targetConfig.plotlyDiv.querySelectorAll('.plotly-graph-div');
                             if (plotlyElements.length > 0) {
                                 for (let element of plotlyElements) {
-                                    if (element._fullLayout) {
+                                    if (element._fullLayout && 
+                                        element.offsetWidth > 0 && 
+                                        element.offsetHeight > 0 &&
+                                        element.style.display !== 'none') {
                                         await Plotly.Plots.resize(element);
                                         console.log(`✅ 同步后Plotly.Plots.resize成功`);
+                                    } else {
+                                        console.log(`⚠️ 跳过同步resize - 元素不可见或无效`);
                                     }
                                 }
-                            } else if (targetConfig.plotlyDiv._fullLayout) {
+                            } else if (targetConfig.plotlyDiv._fullLayout && 
+                                       targetConfig.plotlyDiv.offsetWidth > 0 && 
+                                       targetConfig.plotlyDiv.offsetHeight > 0 &&
+                                       targetConfig.plotlyDiv.style.display !== 'none') {
                                 // 容器本身就是Plotly元素
                                 await Plotly.Plots.resize(targetConfig.plotlyDiv);
                                 console.log(`✅ 同步后直接Plotly.Plots.resize成功`);
@@ -1040,9 +1048,16 @@ class ResizablePlotly {
                             // 🔄 策略2: 额外使用Plots.resize确保生效
                             setTimeout(async () => {
                                 try {
-                                    if (window.Plotly.Plots && window.Plotly.Plots.resize) {
+                                    // 检查元素是否可见和有效
+                                    if (window.Plotly.Plots && window.Plotly.Plots.resize && 
+                                        element._fullLayout && 
+                                        element.offsetWidth > 0 && 
+                                        element.offsetHeight > 0 &&
+                                        element.style.display !== 'none') {
                                         await Plotly.Plots.resize(element);
                                         console.log(`✅ 额外Plotly.Plots.resize成功`);
+                                    } else {
+                                        console.log(`⚠️ 跳过Plotly.Plots.resize - 元素不可见或无效`);
                                     }
                                 } catch (resizeError) {
                                     console.warn('⚠️ 额外resize失败:', resizeError);

@@ -924,7 +924,7 @@ class DillModel:
             time_steps: 时间步数
             x_min: x范围最小值
             x_max: x范围最大值
-            angle_a: 理想曝光模型角度参数
+            angle_a: 理想曝光模型周期距离参数（μm）
             exposure_threshold: 理想曝光模型曝光阈值
             contrast_ctr: 理想曝光模型对比度参数
             custom_exposure_times: 自定义曝光时间列表（用于曝光时间窗口功能）
@@ -950,7 +950,7 @@ class DillModel:
         logger.info(f"   - K (1D空间频率) = {K}")
         logger.info(f"   - t_exp (曝光时间) = {t_exp}")
         logger.info(f"   - C (光敏速率常数) = {C}")
-        logger.info(f"   - angle_a (角度参数) = {angle_a}°")
+        logger.info(f"   - Period (周期距离) = {angle_a} μm")
         logger.info(f"   - exposure_threshold (曝光阈值) = {exposure_threshold}")
         logger.info(f"   - wavelength (光波长) = {wavelength} nm")
         logger.info(f"   - contrast_ctr (对比度参数) = {contrast_ctr}")
@@ -1012,6 +1012,13 @@ class DillModel:
             logger.info(f"   - 自定义曝光时间数量: {len(custom_exposure_times)}")
             logger.info(f"   - 曝光时间列表: {custom_exposure_times}")
             
+            # 计算动态x轴范围
+            period_distance_um = angle_a
+            total_range_um = period_distance_um * 8
+            half_range_um = total_range_um / 2
+            x_min_dynamic = -half_range_um
+            x_max_dynamic = half_range_um
+            
             # 使用理想曝光模型计算多个曝光时间的结果
             ideal_data = self.calculate_ideal_exposure_model(
                 I_avg=I_avg,  # 🔧 修复：传递实际的I_avg参数而不是硬编码0.5
@@ -1021,8 +1028,8 @@ class DillModel:
                 contrast_ctr=contrast_ctr,
                 wavelength_nm=wavelength,
                 exposure_times=custom_exposure_times,
-                x_min=-1000,
-                x_max=1000,
+                x_min=x_min_dynamic,
+                x_max=x_max_dynamic,
                 num_points=2001,
                 V=V,  # 🔧 修复：正确传递V参数
                 arc_transmission_factor=arc_transmission_factor  # 🔧 新增：传递ARC透射率修正因子
@@ -1035,7 +1042,23 @@ class DillModel:
             logger.info(f"🔸 自定义曝光时间窗口计算完成")
             return ideal_data
         
-        x_axis_points = np.linspace(0, 10, 1000)
+        # 动态计算x轴范围：根据周期距离调整显示范围，确保显示6-8个完整周期
+        period_distance_um = angle_a  # angle_a现在表示周期距离(μm)
+        
+        # 确保显示合理的周期数量
+        total_range_um = period_distance_um * 8  # 显示8个完整周期
+        half_range_um = total_range_um / 2
+        
+        # x轴范围：以0为中心，±half_range_um
+        x_start = -half_range_um
+        x_end = half_range_um
+        
+        logger.info(f"🔸 动态x轴范围计算:")
+        logger.info(f"   - 周期距离: {period_distance_um:.3f} μm")
+        logger.info(f"   - 总显示范围: {total_range_um:.3f} μm (8个周期)")
+        logger.info(f"   - x轴范围: [{x_start:.3f}, {x_end:.3f}] μm")
+        
+        x_axis_points = np.linspace(x_start, x_end, 1000)
         
         # 三维正弦波处理
         if sine_type == '3d' and Kx is not None and Ky is not None and Kz is not None:
@@ -1342,8 +1365,8 @@ class DillModel:
                     
                     # 如果没有自定义数据，使用理想曝光模型公式作为备选
                     if custom_intensity_data is None:
-                        angle_a_rad = angle_a * np.pi / 180
-                        spatial_freq = 4 * np.pi * np.sin(angle_a_rad) / wavelength
+                        period_distance_um = angle_a  # 现在angle_a实际代表周期距离
+                        spatial_freq = (2 * np.pi) / period_distance_um  # K = 2π / Period
                         base_intensity = I_avg * (1 + V * np.cos(spatial_freq * x_coords))
                         # 应用ARC透射率修正（重要：防止ARC修正被覆盖）
                         base_intensity = base_intensity * arc_transmission_factor
@@ -1355,10 +1378,11 @@ class DillModel:
                         logger.info(f"   - 光强范围: [{np.min(base_intensity):.6f}, {np.max(base_intensity):.6f}]")
                     else:
                         logger.info(f"🔥 使用理想曝光模型公式计算基准光强:")
-                        angle_a_rad = angle_a * np.pi / 180
-                        spatial_freq = 4 * np.pi * np.sin(angle_a_rad) / wavelength
-                        logger.info(f"   - 空间频率: 4π×sin({angle_a}°)/{wavelength} = {spatial_freq:.6f} rad/μm")
-                        logger.info(f"   - 波长: {2*np.pi/spatial_freq:.1f} μm")
+                        period_distance_um = angle_a  # 现在angle_a实际代表周期距离
+                        spatial_freq = (2 * np.pi) / period_distance_um  # K = 2π / Period
+                        logger.info(f"   - 周期距离: {period_distance_um} μm")
+                        logger.info(f"   - 空间频率: K = 2π/{period_distance_um} = {spatial_freq:.6f} rad/μm")
+                        logger.info(f"   - 实际周期: {2*np.pi/spatial_freq:.1f} μm")
                         logger.info(f"   - 预期周期数: {2000/(2*np.pi/spatial_freq):.1f}个")
                     
                     # 🔥 累积计算多段曝光剂量 - 修复：使用实际光强值而非归一化
@@ -1542,17 +1566,17 @@ class DillModel:
                         }
                     }
                 
-                # 使用理想曝光模型参数
+                # 使用理想曝光模型参数（使用动态计算的x轴范围）
                 ideal_data = self.calculate_ideal_exposure_model(
                     I_avg=I_avg,  # 🔧 修复：传递实际的I_avg参数而不是硬编码0.5
                     exposure_constant_C=C,  # 使用传入的C参数
-                    angle_a_deg=angle_a,   # 使用传入的角度参数
+                    angle_a_deg=angle_a,   # 使用传入的周期距离参数
                     exposure_threshold_cd=exposure_threshold,  # 使用传入的阈值参数
                     contrast_ctr=contrast_ctr,  # 使用传入的对比度参数
                     wavelength_nm=wavelength,  # 传递波长参数
                     exposure_times=exposure_times_to_use,  # 使用确定的曝光时间序列
-                    x_min=-1000,
-                    x_max=1000,
+                    x_min=x_start,
+                    x_max=x_end,
                     num_points=2001,
                     V=V,  # 🔥 重要修复：传递V参数给理想曝光模型
                     arc_transmission_factor=arc_transmission_factor  # 🔧 新增：传递ARC透射率修正因子
@@ -1565,8 +1589,8 @@ class DillModel:
                 
                 # 🔥 关键修复：为V评估模式和前端静态图表兼容性，添加exposure_dose和thickness字段
                 # 基于强度分布计算1D曝光剂量和厚度（用于静态图表显示）
-                x_coords_mm = np.array(ideal_data['x'])  # 位置坐标（mm）
-                x_coords_um = x_coords_mm * 1000  # 转换为微米
+                x_coords_um = np.array(ideal_data['x'])  # 位置坐标（μm）
+                x_coords_mm = x_coords_um / 1000  # 转换为毫米
                 intensity_distribution = np.array(ideal_data['intensity_distribution'])
                 
                 # 🔥 修复：计算曝光剂量并应用阈值逻辑（基于理想曝光模型）
@@ -1605,7 +1629,7 @@ class DillModel:
                     # 🔥 修复：添加用户输入的原始参数（前端弹窗需要）
                     'V': V,  # 干涉条纹可见度
                     'C': C,  # 光敏速率常数
-                    'angle_a': angle_a,  # 角度参数
+                    'angle_a': angle_a,  # 周期距离参数
                     'exposure_threshold': exposure_threshold,  # 曝光阈值
                     't_exp': t_exp,  # 曝光时间
                     
@@ -1645,7 +1669,7 @@ class DillModel:
             t_start, t_end: 时间范围
             time_steps: 时间步数
             x_min, x_max: x轴范围
-            angle_a: 理想曝光模型角度参数
+            angle_a: 理想曝光模型周期距离参数（μm）
             exposure_threshold: 理想曝光模型曝光阈值
             contrast_ctr: 理想曝光模型对比度参数
             custom_exposure_times: 自定义曝光时间列表
@@ -1740,6 +1764,13 @@ class DillModel:
         # 为每个时间点生成理想曝光模型数据
         animation_frames = []
         for i, t_exp in enumerate(time_values):
+            # 计算动态x轴范围
+            period_distance_um = angle_a
+            total_range_um = period_distance_um * 8
+            half_range_um = total_range_um / 2
+            x_min_dynamic = -half_range_um
+            x_max_dynamic = half_range_um
+            
             # 使用理想曝光模型计算当前时间点的数据
             ideal_data = self.calculate_ideal_exposure_model(
                 I_avg=I_avg,  # 🔧 修复：传递实际的I_avg参数而不是硬编码0.5
@@ -1749,8 +1780,8 @@ class DillModel:
                 contrast_ctr=contrast_ctr,
                 wavelength_nm=wavelength,  # 传递波长参数
                 exposure_times=[t_exp * 30, t_exp * 60, t_exp * 250, t_exp * 1000, t_exp * 2000],
-                x_min=-1000,
-                x_max=1000,
+                x_min=x_min_dynamic,
+                x_max=x_max_dynamic,
                 num_points=1001,  # 减少点数以提高动画性能
                 V=V,  # 🔧 修复：正确传递V参数
                 arc_transmission_factor=arc_transmission_factor  # 🔧 新增：传递ARC透射率修正因子
@@ -1830,7 +1861,7 @@ class DillModel:
             K: 干涉条纹的空间频率（此参数在理想曝光模型中由angle_a和wavelength确定）
             t_exp: 曝光时间
             C: 光刻胶光敏速率常数
-            angle_a: 入射角度（度），用于理想曝光模型
+            angle_a: 周期距离（μm），用于理想曝光模型
             exposure_threshold: 曝光阈值，用于理想曝光模型
             wavelength: 光波长（nm），用于理想曝光模型
             
@@ -1844,21 +1875,24 @@ class DillModel:
         logger.info(f"🔸 V值步数: {time_steps}")
         logger.info(f"🔸 使用理想曝光模型公式")
         logger.info(f"🔸 参数: I_avg={I_avg}, t_exp={t_exp}, C={C}")
-        logger.info(f"🔸 理想曝光模型参数: angle_a={angle_a}°, exposure_threshold={exposure_threshold}, wavelength={wavelength}nm")
+        logger.info(f"🔸 理想曝光模型参数: Period={angle_a}μm, exposure_threshold={exposure_threshold}, wavelength={wavelength}nm")
         
-        # 生成x坐标（使用理想曝光模型的标准范围）
-        x_um = np.linspace(-1000, 1000, 1001)  # 微米单位，-1000到1000微米
-        x_mm = x_um / 1000.0  # 转换为毫米单位（理想曝光模型输出格式）
+        # 生成x坐标（使用动态计算的范围，保持微米单位）
+        period_distance_um = angle_a
+        total_range_um = period_distance_um * 8
+        half_range_um = total_range_um / 2
+        x_um = np.linspace(-half_range_um, half_range_um, 1001)  # 微米单位，动态范围
         
         # 生成V值序列
         v_values = np.linspace(V_start, V_end, time_steps)
         
         # 理想曝光模型的固定参数
-        angle_a_rad = angle_a * np.pi / 180  # 角度转弧度
-        spatial_freq_coeff = 4 * np.pi * np.sin(angle_a_rad) / wavelength  # 空间频率系数
+        period_distance_um = angle_a  # 现在angle_a实际代表周期距离
+        spatial_freq_coeff = (2 * np.pi) / period_distance_um  # 空间频率系数: K = 2π / Period
         
         logger.info(f"🔸 理想曝光模型计算参数:")
-        logger.info(f"   - 空间频率系数: 4π×sin(a)/λ = {spatial_freq_coeff:.6f} rad/μm")
+        logger.info(f"   - 周期距离: {period_distance_um} μm")
+        logger.info(f"   - 空间频率系数: K = 2π/Period = {spatial_freq_coeff:.6f} rad/μm")
         logger.info(f"   - x坐标范围: [{np.min(x_um):.1f}, {np.max(x_um):.1f}] μm")
         
         # 为每个V值生成数据
@@ -1867,7 +1901,7 @@ class DillModel:
             logger.info(f"🔸 计算第 {i+1}/{time_steps} 帧 (V={v_val:.3f})")
             
             # 使用理想曝光模型的强度分布公式
-            # I0 = I_avg * (1 + V * cos((4 * π * sin(a) / λ) * X))
+            # I0 = I_avg * (1 + V * cos(K * X))，其中 K = 2π / Period
             intensity_distribution = I_avg * (1 + v_val * np.cos(spatial_freq_coeff * x_um))
             # 注意：此函数暂未支持ARC修正，需要单独传递arc_transmission_factor参数
             
@@ -1888,8 +1922,8 @@ class DillModel:
             
             frame_data = {
                 'v_value': float(v_val),
-                'x_coords': x_mm.tolist(),  # 输出毫米单位坐标
-                'x': x_mm.tolist(),  # 兼容性字段
+                'x_coords': x_um.tolist(),  # 输出微米单位坐标
+                'x': x_um.tolist(),  # 兼容性字段
                 'exposure_dose': exposure_dose.tolist(),
                 'exposure_data': exposure_dose.tolist(),  # 保持向后兼容
                 'thickness': thickness.tolist(),
@@ -1916,7 +1950,7 @@ class DillModel:
             'time_steps': time_steps,
             'v_values': v_values.tolist(),
             'frames': animation_frames,
-            'x_coords': x_mm.tolist(),
+            'x_coords': x_um.tolist(),
             # 理想曝光模型参数信息
             'ideal_exposure_model': True,
             'parameters': {
@@ -1932,22 +1966,22 @@ class DillModel:
         
         logger.info(f"🎬 理想曝光模型1D V（对比度）评估动画数据生成完成，共{time_steps}帧")
         logger.info(f"🔸 确认使用理想曝光模型公式:")
-        logger.info(f"   - 强度分布: I0 = I_avg * (1 + V * cos((4π×sin(a)/λ) * X))")
+        logger.info(f"   - 强度分布: I0 = I_avg * (1 + V * cos(K * X))，其中 K = 2π/Period = {spatial_frequency:.6f} rad/μm")
         logger.info(f"   - 阈值逻辑: M = 1 (if D0 < threshold), M = exp(-C*(D0-threshold)) (if D0 >= threshold)")
         
         return result
 
-    def calculate_ideal_exposure_model(self, I_avg=1.0, exposure_constant_C=0.022, angle_a_deg=11.7, 
+    def calculate_ideal_exposure_model(self, I_avg=1.0, exposure_constant_C=0.022, angle_a_deg=1.0, 
                                      exposure_threshold_cd=20, contrast_ctr=1, wavelength_nm=405,
                                      exposure_times=[30, 60, 250, 1000, 2000], 
                                      x_min=-1000, x_max=1000, num_points=2001, V=None, arc_transmission_factor=1.0):
         """
-        理想曝光模型计算 - 完全按照Python代码逻辑实现
+        理想曝光模型计算 - 基于周期距离的物理模型
         
         参数:
             I_avg: 平均入射光强度，默认 1.0
             exposure_constant_C: 曝光常数 C，默认 0.022
-            angle_a_deg: 角度参数 a（度），默认 11.7
+            angle_a_deg: 周期距离（μm），默认 1.0 (注意：参数名保持angle_a_deg以维持API兼容性)
             exposure_threshold_cd: 曝光阈值 cd，默认 20
             contrast_ctr: 对比度参数 ctr，默认 1（已废弃，使用V参数替代）
             wavelength_nm: 光波长（纳米），默认 405
@@ -1972,7 +2006,7 @@ class DillModel:
         logger.info(f"🔸 输入参数:")
         logger.info(f"   - I_avg (平均入射光强度) = {I_avg}")
         logger.info(f"   - C (曝光常数) = {exposure_constant_C}")
-        logger.info(f"   - a (角度参数) = {angle_a_deg}°")
+        logger.info(f"   - Period (周期距离) = {angle_a_deg} μm")
         logger.info(f"   - cd (曝光阈值) = {exposure_threshold_cd}")
         logger.info(f"   - λ (光波长) = {wavelength_nm} nm")
         logger.info(f"   - {param_source} = {visibility_param}")
@@ -1983,20 +2017,20 @@ class DillModel:
         # 创建位置数组（按Python代码：X = np.arange(-1000, 1001, 1)）
         X = np.linspace(x_min, x_max, num_points)
         
-        # 角度转换为弧度
-        a = angle_a_deg * np.pi / 180
+        # 从周期距离计算空间频率
+        period_distance_um = angle_a_deg  # 现在angle_a_deg实际代表周期距离
+        spatial_frequency = (2 * np.pi) / period_distance_um  # K = 2π / Period
         
-        # 计算强度分布 I0（修正：使用I_avg、V参数和动态波长）
-        # 原公式: I0 = 0.5 * (1 + ctr * cos((4 * π * sin(a) / 405) * X))
-        # 修正公式: I0 = I_avg * (1 + V * cos((4 * π * sin(a) / λ) * X))
-        I0 = I_avg * (1 + visibility_param * np.cos((4 * np.pi * np.sin(a) / wavelength_nm) * X))
+        # 计算强度分布 I0（使用新的基于周期的公式）
+        # 新公式: I0 = I_avg * (1 + V * cos(K * X))，其中 K = 2π / Period
+        I0 = I_avg * (1 + visibility_param * np.cos(spatial_frequency * X))
         # 应用ARC透射率修正
         I0 = I0 * arc_transmission_factor
         
         logger.info(f"🔸 强度分布计算完成:")
         logger.info(f"   - I0 范围: [{np.min(I0):.6f}, {np.max(I0):.6f}]")
         logger.info(f"   - I0 平均值: {np.mean(I0):.6f}")
-        logger.info(f"   - 空间频率系数: 4π×sin(a)/λ = {(4 * np.pi * np.sin(a) / wavelength_nm):.6f} rad/μm")
+        logger.info(f"   - 空间频率系数: K = 2π/Period = {spatial_frequency:.6f} rad/μm")
         logger.info(f"   - 使用参数: {param_source}")
         
         # 计算各曝光时间的蚀刻深度
@@ -2032,17 +2066,16 @@ class DillModel:
             
             logger.info(f"   - 蚀刻深度范围: [{np.min(etch_depth_negative):.6f}, {np.max(etch_depth_negative):.6f}]")
         
-        # 返回数据（位置转换为mm以匹配图片显示）
-        x_mm = X / 1000.0  # 转换为mm
-        
+        # 返回数据（保持微米单位以与动态范围计算一致）
         result = {
-            'x': x_mm.tolist(),
+            'x': X.tolist(),  # 保持微米单位
             'intensity_distribution': I0.tolist(),
             'etch_depths_data': etch_depths_data,
             'exposure_times': exposure_times,
             'parameters': {
                 'C': exposure_constant_C,
-                'a_deg': angle_a_deg,
+                'period_um': angle_a_deg,
+                'spatial_frequency': spatial_frequency,
                 'cd': exposure_threshold_cd,
                 'wavelength_nm': wavelength_nm,
                 'visibility_param': visibility_param,
@@ -2053,12 +2086,12 @@ class DillModel:
         }
         
         logger.info(f"🔸 理想曝光模型计算完成")
-        logger.info(f"   - 位置范围: [{np.min(x_mm):.3f}, {np.max(x_mm):.3f}] mm")
+        logger.info(f"   - 位置范围: [{np.min(X):.3f}, {np.max(X):.3f}] μm")
         logger.info(f"   - 共生成 {len(etch_depths_data)} 条蚀刻深度曲线")
         
         return result
 
-    def calculate_2d_exposure_pattern(self, I_avg=0.5, C=0.022, angle_a_deg=11.7, 
+    def calculate_2d_exposure_pattern(self, I_avg=0.5, C=0.022, angle_a_deg=1.0, 
                                      exposure_time=100, 
                                      contrast_ctr=0.9, threshold_cd=25, wavelength_nm=405,
                                      x_min=-1000, x_max=1000, y_min=-1000, y_max=1000, 
@@ -2066,12 +2099,12 @@ class DillModel:
                                      segment_intensities=None, custom_intensity_data=None,
                                      substrate_material='silicon', arc_material='sion'):
         """
-        2D曝光图案计算 - 基于MATLAB latent_image2d.m文件逻辑
+        2D曝光图案计算 - 基于周期距离的物理模型
         
         参数:
             I_avg: 平均入射光强度，对应MATLAB中的0.5系数，默认 0.5
             C: 光敏速率常数，默认 0.022
-            angle_a_deg: 入射角度（度），默认 11.7
+            angle_a_deg: 周期距离（μm），默认 1.0 (注意：参数名保持angle_a_deg以维持API兼容性)
             exposure_time: 曝光时间（标准模式为单个时间，累积模式为总时间），默认 100
             contrast_ctr: 对比度参数，默认 0.9
             threshold_cd: 阈值剂量，默认 25
@@ -2108,13 +2141,15 @@ class DillModel:
         arc_transmission_factor = (1 - reflectance_with_arc) / (1 - reflectance_no_arc) if reflectance_no_arc > 0 else 1.0
         logger.info(f"🔬 2D曝光图案ARC透射率修正因子: {arc_transmission_factor:.4f}")
         
-        # 角度转弧度
-        angle_a_rad = angle_a_deg * np.pi / 180
+        # 从周期距离计算空间频率
+        period_distance_um = angle_a_deg  # 现在angle_a_deg实际代表周期距离
+        spatial_frequency = (2 * np.pi) / period_distance_um  # K = 2π / Period
         
         logger.info(f"🔸 输入参数:")
         logger.info(f"   - I_avg (平均光强) = {I_avg}")
         logger.info(f"   - C (光敏速率常数) = {C}")
-        logger.info(f"   - a (入射角度) = {angle_a_deg}°")
+        logger.info(f"   - Period (周期距离) = {angle_a_deg} μm")
+        logger.info(f"   - 空间频率 K = 2π/Period = {spatial_frequency:.6f} rad/μm")
         logger.info(f"   - ctr (对比度) = {contrast_ctr}")
         logger.info(f"   - cd (阈值剂量) = {threshold_cd}")
         logger.info(f"   - λ (光波长) = {wavelength_nm} nm")
@@ -2147,8 +2182,8 @@ class DillModel:
             'exposure_time': exposure_time,
             'parameters': {
                 'C': C,
-                'angle_a_deg': angle_a_deg,
-                'angle_a_rad': angle_a_rad,
+                'period_um': angle_a_deg,
+                'spatial_frequency': spatial_frequency,
                 'contrast_ctr': contrast_ctr,
                 'threshold_cd': threshold_cd,
                 'wavelength_nm': wavelength_nm
@@ -2255,14 +2290,14 @@ class DillModel:
             logger.info(f"   - 广播后2D光强范围: [{intensity_factor.min():.6f}, {intensity_factor.max():.6f}]")
             
         else:
-            logger.info(f"📊 使用MATLAB标准余弦光强分布")
-            # 严格按照MATLAB公式: I_avg*(1+ctr*cos((4*pi*sin(a)/405)*X(i)))
-            spatial_frequency = 4 * np.pi * np.sin(angle_a_rad) / wavelength_nm
+            logger.info(f"📊 使用基于周期距离的余弦光强分布")
+            # 使用新的基于周期距离的公式: I_avg*(1+ctr*cos(K*X))，其中 K = 2π/Period
+            # spatial_frequency 已在前面计算好
             # 只依赖于X坐标，包含I_avg系数和ARC透射率修正因子
             intensity_1d = I_avg * arc_transmission_factor * (1 + contrast_ctr * np.cos(spatial_frequency * x_range))
             # 广播到2D网格
             intensity_factor = np.broadcast_to(intensity_1d, (len(y_range), len(x_range)))
-            logger.info(f"   - 空间频率: {spatial_frequency:.6f}")
+            logger.info(f"   - 空间频率: {spatial_frequency:.6f} rad/μm")
             logger.info(f"   - 光强因子范围: [{intensity_factor.min():.6f}, {intensity_factor.max():.6f}]")
             logger.info(f"   - ARC透射率修正因子已应用: {arc_transmission_factor:.4f}")
         
