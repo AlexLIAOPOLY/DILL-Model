@@ -15155,6 +15155,21 @@ function handleIntensityMethodChange() {
         // 更新界面标签以适配自定义向量模式
         updateLabelsForCustomVectorMode();
         
+        // 隐藏平均入射光强度输入框，显示指定入射光强度显示框
+        const avgIntensityParam = document.getElementById('avg-intensity-param');
+        const specifiedIntensityParam = document.getElementById('specified-intensity-param');
+        const xCoordinateParam = document.getElementById('x-coordinate-param');
+        
+        if (avgIntensityParam) {
+            avgIntensityParam.style.display = 'none';
+        }
+        if (specifiedIntensityParam) {
+            specifiedIntensityParam.style.display = 'block';
+        }
+        if (xCoordinateParam) {
+            xCoordinateParam.style.display = 'block';
+        }
+        
         // 检查是否同时选择了多段曝光时间累积
         const exposureMethodSelect = document.getElementById('exposure_calculation_method');
         const isCumulative = exposureMethodSelect && exposureMethodSelect.value === 'cumulative';
@@ -15229,6 +15244,21 @@ function handleIntensityMethodChange() {
         
         // 恢复公式计算模式的标签
         updateLabelsForFormulaMode();
+        
+        // 显示平均入射光强度输入框，隐藏指定入射光强度显示框
+        const avgIntensityParam = document.getElementById('avg-intensity-param');
+        const specifiedIntensityParam = document.getElementById('specified-intensity-param');
+        const xCoordinateParam = document.getElementById('x-coordinate-param');
+        
+        if (avgIntensityParam) {
+            avgIntensityParam.style.display = 'block';
+        }
+        if (specifiedIntensityParam) {
+            specifiedIntensityParam.style.display = 'none';
+        }
+        if (xCoordinateParam) {
+            xCoordinateParam.style.display = 'none';
+        }
         
         // 恢复显示三个控制框（如果不是多段曝光时间累计模式）
         const exposureMethodSelect = document.getElementById('exposure_calculation_method');
@@ -21085,46 +21115,21 @@ window.updateDataStatusDisplay = updateDataStatusDisplay;
 function updateLabelsForCustomVectorMode() {
     console.log('🔄 切换到自定义向量模式，更新界面标签');
     
-    // 修改平均入射光强度标签为指定入射光强度
-    const iAvgLabel = document.querySelector('#formula-intensity-params .parameter-item:nth-child(5) .parameter-name');
-    if (iAvgLabel) {
-        iAvgLabel.innerHTML = '指定入射光强度 (I<sub>avg</sub>)';
-    }
+    // 注意：现在我们使用独立的指定入射光强度显示框，所以不需要修改原始标签
+    // 原始的平均入射光强度框将被隐藏，新的指定入射光强度框将被显示
+    // X坐标参数的显示/隐藏由handleIntensityMethodChange函数控制
     
-    // 修改参数描述
-    const iAvgDesc = document.querySelector('#formula-intensity-params .parameter-item:nth-child(5) .parameter-description');
-    if (iAvgDesc) {
-        iAvgDesc.textContent = '光强分布阶段：从自定义向量数据中提取的指定点光强度，单位：mW/cm²';
-    }
-    
-    // 显示指定点X坐标参数（如果存在）
-    const xCoordParam = document.getElementById('x-coordinate-param');
-    if (xCoordParam) {
-        xCoordParam.style.display = 'block';
-    }
+    console.log('✅ 自定义向量模式标签更新完成');
 }
 
 // 恢复公式计算模式的标签
 function updateLabelsForFormulaMode() {
     console.log('🔄 切换到公式计算模式，恢复界面标签');
     
-    // 恢复平均入射光强度标签
-    const iAvgLabel = document.querySelector('#formula-intensity-params .parameter-item:nth-child(5) .parameter-name');
-    if (iAvgLabel) {
-        iAvgLabel.innerHTML = '平均入射光强度 (I<sub>avg</sub>)';
-    }
+    // 注意：现在我们使用独立的显示框，原始标签保持不变
+    // 显示/隐藏逻辑由handleIntensityMethodChange函数控制
     
-    // 恢复参数描述
-    const iAvgDesc = document.querySelector('#formula-intensity-params .parameter-item:nth-child(5) .parameter-description');
-    if (iAvgDesc) {
-        iAvgDesc.textContent = '光强分布阶段：平均入射光强度，单位：mW/cm²';
-    }
-    
-    // 隐藏指定点X坐标参数（如果存在）
-    const xCoordParam = document.getElementById('x-coordinate-param');
-    if (xCoordParam) {
-        xCoordParam.style.display = 'none';
-    }
+    console.log('✅ 公式计算模式标签恢复完成');
 }
 
 // 从自定义向量数据中提取指定点的光强值
@@ -21191,12 +21196,30 @@ function updateSpecifiedIntensity(intensityValue) {
         return;
     }
     
+    // 检查当前模式
+    const methodSelect = document.getElementById('intensity_input_method');
+    if (!methodSelect || methodSelect.value !== 'custom') {
+        console.log('🔍 非自定义向量模式，跳过更新指定入射光强度');
+        return;
+    }
+    
+    // 更新新的指定入射光强度显示框
+    const specifiedIntensityInput = document.getElementById('specified_intensity');
+    const specifiedIntensityValueSpan = document.querySelector('#specified-intensity-param .parameter-value');
+    
+    const clampedValue = Math.max(0.1, Math.min(100, intensityValue)); // 限制在合理范围内
+    
+    if (specifiedIntensityInput) {
+        specifiedIntensityInput.value = clampedValue.toFixed(4);
+    }
+    if (specifiedIntensityValueSpan) {
+        specifiedIntensityValueSpan.textContent = clampedValue.toFixed(4);
+    }
+    
+    // 同时更新原来的I_avg滑块（供计算使用）
     const iAvgSlider = document.getElementById('I_avg');
-    // 使用更准确的选择器
     const iAvgNumberInput = iAvgSlider ? iAvgSlider.parentElement.querySelector('.number-input') : null;
     const iAvgValueSpan = iAvgSlider ? iAvgSlider.parentElement.parentElement.querySelector('.parameter-value') : null;
-    
-    const clampedValue = Math.max(0.1, Math.min(100, intensityValue)); // 限制在滑块范围内
     
     if (iAvgSlider) {
         iAvgSlider.value = clampedValue;
@@ -21208,8 +21231,11 @@ function updateSpecifiedIntensity(intensityValue) {
         iAvgValueSpan.textContent = clampedValue.toFixed(3);
     }
     
-    console.log(`✅ 已更新指定入射光强度: ${clampedValue.toFixed(3)} mW/cm²`);
+    console.log(`✅ 已更新指定入射光强度显示: ${clampedValue.toFixed(4)} mW/cm² (同时更新了内部I_avg参数)`);
 }
+
+// 防抖动计时器
+let xCoordinateChangeTimeout = null;
 
 // 处理X坐标变化
 function handleXCoordinateChange() {
@@ -21260,20 +21286,30 @@ function handleXCoordinateChange() {
     const extractedIntensity = extractIntensityAtXCoordinate(xCoordinate);
     
     if (extractedIntensity !== null) {
-        // 更新指定入射光强度
+        // 更新指定入射光强度（立即更新，无延迟）
         updateSpecifiedIntensity(extractedIntensity);
         
-        // 显示提取状态（只在有数据变化时显示）
-        const currentIntensity = document.getElementById('I_avg').value;
-        if (Math.abs(extractedIntensity - parseFloat(currentIntensity)) > 1e-3) {
-            showNotification(`已从自定义向量数据中提取X=${xCoordinate}处的光强值: ${extractedIntensity.toFixed(3)} mW/cm²`, 'success', 2000);
+        // 清除之前的防抖动计时器
+        if (xCoordinateChangeTimeout) {
+            clearTimeout(xCoordinateChangeTimeout);
         }
+        
+        // 设置防抖动：只在滑动停止500毫秒后显示通知
+        xCoordinateChangeTimeout = setTimeout(() => {
+            showNotification(`已从自定义向量数据中提取X=${xCoordinate.toFixed(2)}处的光强值: ${extractedIntensity.toFixed(4)} mW/cm²`, 'success', 2000);
+        }, 500); // 500毫秒防抖动延迟
     } else {
         // 只有在自定义模式且数据应该存在时才显示警告
         const methodSelect = document.getElementById('intensity-method');
         if (methodSelect && methodSelect.value === 'custom' && 
             customIntensityData && customIntensityData.x && customIntensityData.x.length > 0) {
-            showNotification('无法从自定义向量数据中提取光强值，请检查数据或X坐标', 'warning');
+            // 防抖动处理警告通知
+            if (xCoordinateChangeTimeout) {
+                clearTimeout(xCoordinateChangeTimeout);
+            }
+            xCoordinateChangeTimeout = setTimeout(() => {
+                showNotification('无法从自定义向量数据中提取光强值，请检查数据或X坐标', 'warning');
+            }, 500);
         }
     }
 }

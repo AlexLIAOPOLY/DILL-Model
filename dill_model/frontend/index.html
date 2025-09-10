@@ -2072,7 +2072,7 @@ intensity3
                         </div>
                         
                         <!-- 参数5: I_avg -->
-                        <div class="parameter-item slider-fill">
+                        <div id="avg-intensity-param" class="parameter-item slider-fill">
                             <div class="parameter-label">
                                 <span class="parameter-name">平均入射光强度 (I<sub>avg</sub>) <span class="unit-label">mW/cm²</span></span>
                                 
@@ -2097,6 +2097,19 @@ intensity3
                                 <input type="number" class="number-input" value="0.0" min="-10" max="10" step="0.01" title="指定点X坐标数值输入" aria-label="指定点X坐标数值" oninput="handleXCoordinateChange()">
                             </div>
                             <div class="parameter-description">自定义向量模式：指定要提取光强值的X坐标位置，单位：μm</div>
+                        </div>
+                        
+                        <!-- 参数7: 指定入射光强度 (仅在自定义向量模式下显示) -->
+                        <div id="specified-intensity-param" class="parameter-item slider-fill" style="display: none;">
+                            <div class="parameter-label">
+                                <span class="parameter-name">指定入射光强度 (I<sub>avg</sub>) <span class="unit-label">mW/cm²</span></span>
+                                
+                                <span class="parameter-value">6.2958</span>
+                            </div>
+                            <div class="parameter-input">
+                                <input type="text" id="specified_intensity" class="number-input" value="6.2958" readonly title="从自定义向量中提取的光强值" aria-label="指定入射光强度" style="background-color: #f8f9fa; cursor: not-allowed;">
+                            </div>
+                            <div class="parameter-description">光强分布阶段：从自定义向量中提取的X坐标处的光强度，单位：mW/cm²</div>
                         </div>
                         
                         </div> <!-- End of formula-params-container -->
