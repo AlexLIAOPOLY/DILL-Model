@@ -1791,6 +1791,18 @@ function getParameterValues() {
                 custom_intensity_value: customIntensityData.outside_range_mode === 'custom' ? customIntensityData.custom_intensity_value || 0 : 0 // 自定义光强值
             };
             
+            // 新逻辑：添加指定点X坐标参数
+            const xCoordinateElem = document.getElementById('x_coordinate');
+            if (xCoordinateElem) {
+                const xCoordinate = parseFloat(xCoordinateElem.value) || 0.0;
+                params.x_coordinate = xCoordinate;
+                console.log(`🔍 自定义向量模式：X坐标参数 = ${xCoordinate}`);
+            } else {
+                // 如果找不到X坐标输入框，默认使用0
+                params.x_coordinate = 0.0;
+                console.log('🔍 自定义向量模式：未找到X坐标输入框，使用默认值0.0');
+            }
+            
             // === 🔍 前端调试自定义光强数据 ===
             console.log('🔍 前端调试 - 自定义光强数据传递检查:');
             console.log('   - customIntensityData.loaded:', customIntensityData.loaded);
@@ -7092,15 +7104,23 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             `;
         }
         else if (isUsingCustomData) {
-            // 仅自定义向量数据的光强分布
+            // 自定义向量模式 - 新逻辑：从向量数据提取I_avg，用公式计算
             valueLabel = '光强分布:';
-            valueUnit = '(自定义单位)';
-            formulaTitle = '1D DILL模型 - 自定义向量光强分布：';
+            valueUnit = '(mW/cm²)';
+            formulaTitle = '1D DILL模型 - 自定义向量指定点模式：';
             
             // 添加缺失的变量定义
             const K = params.K || 2.0;
             const V = params.V || 0.8;
-            formulaMath = '<strong>基于用户自定义数据</strong><br/>I<sub>0</sub>(x) = 用户提供的光强向量数据<br/>' +
+            const xCoordinateElem = document.getElementById('x_coordinate');
+            const specifiedX = xCoordinateElem ? parseFloat(xCoordinateElem.value) : 0.0;
+            
+            formulaMath = '<strong>基于自定义向量数据的指定点光强提取 + 公式计算</strong><br/>' +
+                          '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> 从自定义向量数据提取指定X坐标的光强值</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 4px;">指定X坐标: ' + specifiedX.toFixed(2) + ' μm</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 8px;">提取光强值: I<sub>specified</sub> = ' + (params.I_avg || 0.5).toFixed(4) + ' mW/cm²</div>' +
+                          '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 使用提取的光强值作为I<sub>avg</sub>进行公式计算</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 8px;">I<sub>0</sub>(x) = I<sub>specified</sub> × [1 + V × cos(K × x)]</div>' +
                           (() => {
                               let arcParams = null;
                               if (window.lastPlotData && window.lastPlotData.arc_parameters) {
@@ -7141,24 +7161,37 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             const nearestX = customIntensityData.x && nearestIndex < customIntensityData.x.length ? customIntensityData.x[nearestIndex] : x;
             const nearestIntensity = customIntensityData.intensity && nearestIndex < customIntensityData.intensity.length ? customIntensityData.intensity[nearestIndex] : y;
             
+            // 获取实际参数值
+            const iAvg = params.I_avg || 0.5;
+            const exposureTime = params.t_exp || 100;
+            const C = params.C || 0.022;
+            const threshold_cd = params.exposure_threshold || 20;
+            const actualIntensity = iAvg * (1 + V * Math.cos(K * x));
+            const dose = actualIntensity * exposureTime;
+            
             formulaExplanation = `
-                <div>📊 <strong>自定义向量数据信息：</strong></div>
+                <div>📊 <strong>自定义向量指定点模式参数：</strong></div>
                 <div>• 数据来源: 用户上传的文件或手动输入</div>
                 <div>• 数据点总数: ${totalDataPoints} 个</div>
                 <div>• X坐标范围: [${xRange[0].toFixed(3)}, ${xRange[1].toFixed(3)}]</div>
                 <div>• 光强范围: [${intensityRange[0].toFixed(6)}, ${intensityRange[1].toFixed(6)}]</div>
                 <div class="formula-separator"></div>
-                <div>📍 <strong>当前位置数据：</strong></div>
-                <div>• 点击位置: x = ${x.toFixed(3)}</div>
-                <div>• 显示光强: ${y.toFixed(6)}</div>
-                <div>• 数据点: 基于自定义向量数据</div>
-                <div>• 参数: K=${K}, V=${V}</div>
+                <div>🎯 <strong>指定点光强提取：</strong></div>
+                <div>• 指定X坐标: ${specifiedX.toFixed(2)} μm</div>
+                <div>• 提取的光强值: ${iAvg.toFixed(4)} mW/cm² (作为I<sub>avg</sub>)</div>
+                <div>• 干涉条纹可见度: V = ${V}</div>
+                <div>• 空间频率: K = ${K} rad/μm</div>
                 <div class="formula-separator"></div>
-                <div>💡 <strong>说明：</strong></div>
-                <div>• 此数据不是基于物理公式计算得出</div>
-                <div>• 光强值来自用户提供的真实测量或理论数据</div>
-                <div>• 系统使用插值方法处理非网格点的值</div>
-                <div>• 单位和物理意义取决于原始数据</div>
+                <div>📍 <strong>当前位置计算：</strong></div>
+                <div>• 点击位置: x = ${x.toFixed(3)} μm</div>
+                <div>• 计算光强: I(${x.toFixed(3)}) = ${iAvg.toFixed(4)} × [1 + ${V} × cos(${K} × ${x.toFixed(3)})] = ${actualIntensity.toFixed(6)} mW/cm²</div>
+                <div>• 曝光剂量: D = ${actualIntensity.toFixed(6)} × ${exposureTime} = ${dose.toFixed(3)} mJ/cm²</div>
+                <div class="formula-separator"></div>
+                <div>💡 <strong>计算模式说明：</strong></div>
+                <div>• 从自定义向量数据中提取指定X坐标的光强值作为基础光强I<sub>avg</sub></div>
+                <div>• 使用标准DILL公式计算整个空间的光强分布</div>
+                <div>• 结合了用户实测数据与理论计算的优势</div>
+                <div>• 保证了基于真实数据的物理模型计算</div>
             `;
         } else if (isIdealExposureModel) {
             // 理想曝光模型的强度分布公式
@@ -8064,23 +8097,32 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             `;
         }
         else if (isUsingCustomData) {
-            // 仅自定义向量数据的形貌分布
-            console.log('🔧 厚度图 - 进入: 仅自定义向量模式');
+            // 自定义向量模式 - 新逻辑：从向量数据提取I_avg，用公式计算厚度
+            console.log('🔧 厚度图 - 进入: 自定义向量指定点模式');
             valueLabel = '蚀刻深度/厚度:';
-            valueUnit = '(自定义单位)';
-            formulaTitle = '1D DILL模型 - 理想曝光蚀刻深度计算：';
+            valueUnit = '(归一化)';
+            formulaTitle = '1D DILL模型 - 自定义向量指定点厚度计算：';
             
             // 添加缺失的变量定义
             const I_avg = params.I_avg || 0.5;
             const V = params.V || 0.8;
             const K = params.K || 2.0;
+            const xCoordinateElem = document.getElementById('x_coordinate');
+            const specifiedX = xCoordinateElem ? parseFloat(xCoordinateElem.value) : 0.0;
             const baseIntensity = I_avg * (1 + V * Math.cos(K * x));
-            formulaMath = '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> I<sub>base</sub>(x) = I<sub>avg</sub> × (1 + V × cos(K·x))</div>';
-            formulaMath += '<div style="margin-bottom: 8px;">　　　　　D<sub>0</sub>(x) = I<sub>base</sub>(x) × t<sub>exp</sub></div>';
-            formulaMath += '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 阈值判断与抗蚀效果计算</div>';
-            formulaMath += '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>0</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>';
-            formulaMath += '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>0</sub>(x) - c<sub>d</sub>)</sup></div>';
-            formulaMath += '<div><strong>步骤3:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
+            
+            formulaMath = '<strong>基于自定义向量数据的指定点光强提取 + 厚度计算</strong><br/>' +
+                          '<div style="margin-bottom: 8px;"><strong>步骤1:</strong> 从自定义向量数据提取指定X坐标的光强值</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 4px;">指定X坐标: ' + specifiedX.toFixed(2) + ' μm</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 8px;">提取光强值: I<sub>specified</sub> = ' + I_avg.toFixed(4) + ' mW/cm²</div>' +
+                          '<div style="margin-bottom: 8px;"><strong>步骤2:</strong> 使用提取的光强值计算整个空间的光强分布</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 8px;">I<sub>0</sub>(x) = I<sub>specified</sub> × [1 + V × cos(K × x)]</div>' +
+                          '<div style="margin-bottom: 8px;"><strong>步骤3:</strong> 计算曝光剂量</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 8px;">D<sub>0</sub>(x) = I<sub>0</sub>(x) × t<sub>exp</sub></div>' +
+                          '<div style="margin-bottom: 8px;"><strong>步骤4:</strong> 阈值判断与抗蚀效果计算</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 4px;">if D<sub>0</sub>(x) < c<sub>d</sub>: M(x) = 1 (未曝光)</div>' +
+                          '<div style="margin-left: 20px; margin-bottom: 8px;">else: M(x) = e<sup>-C × (D<sub>0</sub>(x) - c<sub>d</sub>)</sup></div>' +
+                          '<div><strong>步骤5:</strong> H(x) = 1 - M(x) (蚀刻深度)</div>';
             formulaMath += (() => {
                 let arcParams = null;
                 if (window.lastPlotData && window.lastPlotData.arc_parameters) {
@@ -8126,8 +8168,9 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             const thresholdCd = params.exposure_threshold || 20;
             const exposureTime = params.t_exp || 100;
             
-            // 根据自定义光强计算理论曝光剂量
-            const exposureDose = nearestIntensity * exposureTime;
+            // 根据当前点位置计算光强和厚度
+            const actualIntensity = I_avg * (1 + V * Math.cos(K * x));
+            const exposureDose = actualIntensity * exposureTime;
             let theoreticalThickness;
             if (exposureDose < thresholdCd) {
                 theoreticalThickness = 1.0; // 未达阈值，完全抗蚀
@@ -8137,25 +8180,29 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
             }
             
             formulaExplanation = `
-                <div>🔧 <strong>DILL模型阈值机制参数：</strong></div>
-                <div>• C: 光敏速率常数 = ${exposureConstant}</div>
-                <div>• c<sub>d</sub>: 曝光阈值 = ${thresholdCd}</div>
-                <div>• t<sub>exp</sub>: 曝光时间 = ${exposureTime} s</div>
-                <div class="formula-separator"></div>
-                <div>📊 <strong>基于自定义向量的计算：</strong></div>
-                <div>• 光强数据来源: 用户自定义数据</div>
+                <div>🔧 <strong>自定义向量指定点模式厚度计算参数：</strong></div>
+                <div>• 数据来源: 用户上传的文件或手动输入</div>
                 <div>• 数据点总数: ${totalDataPoints} 个</div>
+                <div>• X坐标范围: [${xRange[0].toFixed(3)}, ${xRange[1].toFixed(3)}]</div>
+                <div>• 光强范围: [${intensityRange[0].toFixed(6)}, ${intensityRange[1].toFixed(6)}]</div>
                 <div class="formula-separator"></div>
-                <div>📍 <strong>当前位置分析：</strong></div>
-                <div>• 点击位置: x = ${x.toFixed(3)}</div>
-                <div>• 对应光强: I<sub>0</sub>(x) = ${nearestIntensity.toFixed(6)}</div>
-                <div>• 曝光剂量: D<sub>0</sub>(x) = ${exposureDose.toFixed(2)}</div>
-                <div>• 蚀刻深度: H(x) = ${theoreticalThickness.toFixed(6)}</div>
+                <div>🎯 <strong>指定点光强提取：</strong></div>
+                <div>• 指定X坐标: ${specifiedX.toFixed(2)} μm</div>
+                <div>• 提取的光强值: ${I_avg.toFixed(4)} mW/cm² (作为I<sub>avg</sub>)</div>
+                <div>• 干涉条纹可见度: V = ${V}</div>
+                <div>• 空间频率: K = ${K} rad/μm</div>
                 <div class="formula-separator"></div>
-                <div>💡 <strong>计算说明：</strong></div>
-                <div>• 步骤1: 根据自定义光强计算曝光剂量</div>
-                <div>• 步骤2: 判断是否超过曝光阈值</div>
-                <div>• 步骤3: 计算最终蚀刻深度</div>
+                <div>📍 <strong>当前位置计算：</strong></div>
+                <div>• 点击位置: x = ${x.toFixed(3)} μm</div>
+                <div>• 计算光强: I(${x.toFixed(3)}) = ${I_avg.toFixed(4)} × [1 + ${V} × cos(${K} × ${x.toFixed(3)})] = ${actualIntensity.toFixed(6)} mW/cm²</div>
+                <div>• 曝光剂量: D = ${actualIntensity.toFixed(6)} × ${exposureTime} = ${exposureDose.toFixed(3)} mJ/cm²</div>
+                <div>• 蚀刻深度: H(x) = ${theoreticalThickness.toFixed(6)} (归一化)</div>
+                <div class="formula-separator"></div>
+                <div>💡 <strong>计算模式说明：</strong></div>
+                <div>• 从自定义向量数据中提取指定X坐标的光强值作为基础光强I<sub>avg</sub></div>
+                <div>• 使用标准DILL公式计算整个空间的光强分布</div>
+                <div>• 应用理想曝光模型的阈值机制计算蚀刻深度</div>
+                <div>• 结合了用户实测数据与理论计算的优势</div>
                 ${(() => {
                     let arcParams = null;
                     if (window.lastPlotData && window.lastPlotData.arc_parameters) {
@@ -8457,6 +8504,21 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div class="info-item"><span class="info-label">数据点数:</span><span class="info-value">${customIntensityData.x ? customIntensityData.x.length : 0} 个</span></div>
                 <div class="info-item"><span class="info-label">X范围:</span><span class="info-value">[${customIntensityData.x ? Math.min(...customIntensityData.x).toFixed(3) : 0}, ${customIntensityData.x ? Math.max(...customIntensityData.x).toFixed(3) : 0}] ${customIntensityData.source === 'photo-recognition' ? 'μm' : (customIntensityData.x_unit || 'pixels')}</span></div>
                 <div class="info-item"><span class="info-label">光强范围:</span><span class="info-value">[${customIntensityData.intensity ? Math.min(...customIntensityData.intensity).toFixed(3) : 0}, ${customIntensityData.intensity ? Math.max(...customIntensityData.intensity).toFixed(3) : 0}]</span></div>
+                <div class="info-item"><span class="info-label">指定X坐标:</span><span class="info-value">${(() => {
+                    const xCoordInput = document.getElementById('x_coordinate');
+                    return xCoordInput ? parseFloat(xCoordInput.value).toFixed(2) : '0.00';
+                })()} ${customIntensityData.source === 'photo-recognition' ? 'μm' : (customIntensityData.x_unit || 'μm')}</span></div>
+                <div class="info-item"><span class="info-label">指定光强度:</span><span class="info-value">${(() => {
+                    const iAvgInput = document.getElementById('I_avg');
+                    return iAvgInput ? parseFloat(iAvgInput.value).toFixed(3) : (params.I_avg || 0.5).toFixed(3);
+                })()} mW/cm² (X=${(() => {
+                    const xCoordInput = document.getElementById('x_coordinate');
+                    return xCoordInput ? parseFloat(xCoordInput.value).toFixed(2) : '0.00';
+                })()})</span></div>
+                <div class="info-item"><span class="info-label">周期距离:</span><span class="info-value">${params.angle_a || 1.0} μm</span></div>
+                <div class="info-item"><span class="info-label">光波长:</span><span class="info-value">${params.wavelength || 405} nm</span></div>
+                <div class="info-item"><span class="info-label">干涉可见度:</span><span class="info-value">${params.V || 0.8}</span></div>
+                <div class="info-item"><span class="info-label">空间频率:</span><span class="info-value">${params.K || 2} rad/μm</span></div>
                 <div class="info-item"><span class="info-label">C常数:</span><span class="info-value">${params.C || 0.022}</span></div>
                 <div class="info-item"><span class="info-label">阈值(cd):</span><span class="info-value">${params.exposure_threshold || 20}</span></div>
                 <div class="info-item"><span class="info-label">曝光时间:</span><span class="info-value">${params.t_exp || 100} s</span></div>
@@ -15086,9 +15148,12 @@ function handleIntensityMethodChange() {
     console.log(`🔄 光强分布输入方式切换为: ${selectedMethod}`);
     
     if (selectedMethod === 'custom') {
-        // 显示自定义输入，隐藏公式参数
+        // 显示自定义输入，同时显示公式参数（新逻辑：自定义向量作为参考数据，仍需公式计算）
         customContainer.style.display = 'block';
-        formulaContainer.classList.add('hidden');
+        formulaContainer.classList.remove('hidden');
+        
+        // 更新界面标签以适配自定义向量模式
+        updateLabelsForCustomVectorMode();
         
         // 检查是否同时选择了多段曝光时间累积
         const exposureMethodSelect = document.getElementById('exposure_calculation_method');
@@ -15161,6 +15226,9 @@ function handleIntensityMethodChange() {
         // 显示公式参数，隐藏自定义输入
         customContainer.style.display = 'none';
         formulaContainer.classList.remove('hidden');
+        
+        // 恢复公式计算模式的标签
+        updateLabelsForFormulaMode();
         
         // 恢复显示三个控制框（如果不是多段曝光时间累计模式）
         const exposureMethodSelect = document.getElementById('exposure_calculation_method');
@@ -17485,6 +17553,17 @@ function previewIntensityData(data = null) {
         }
         
         console.log(`📈 光强分布预览图已更新 (单位: ${unitDisplay})`);
+        
+        // 如果是自定义向量模式，自动触发X坐标的光强提取
+        const methodSelect = document.getElementById('intensity_input_method');
+        if (methodSelect && methodSelect.value === 'custom') {
+            setTimeout(() => {
+                console.log('🔄 预览完成，自动提取当前X坐标的光强值');
+                if (typeof handleXCoordinateChange === 'function') {
+                    handleXCoordinateChange();
+                }
+            }, 200); // 短暂延迟确保界面更新完成
+        }
         
     } catch (error) {
         console.error('❌ 预览图生成失败:', error);
@@ -20929,6 +21008,14 @@ function setCustomIntensityData(vectorData) {
         if (methodSelect) {
             methodSelect.value = 'custom';
             handleIntensityMethodChange();
+            
+            // 数据加载完成后，自动触发一次X坐标的光强提取
+            setTimeout(() => {
+                console.log('🔄 自定义向量数据加载完成，自动提取当前X坐标的光强值');
+                if (typeof handleXCoordinateChange === 'function') {
+                    handleXCoordinateChange();
+                }
+            }, 100); // 短暂延迟确保界面更新完成
         }
         
         console.log('✅ 自定义光强数据设置完成');
@@ -20993,3 +21080,207 @@ function updateDataStatusDisplay() {
 // 将函数暴露到全局作用域
 window.setCustomIntensityData = setCustomIntensityData;
 window.updateDataStatusDisplay = updateDataStatusDisplay;
+
+// 更新界面标签以适配自定义向量模式
+function updateLabelsForCustomVectorMode() {
+    console.log('🔄 切换到自定义向量模式，更新界面标签');
+    
+    // 修改平均入射光强度标签为指定入射光强度
+    const iAvgLabel = document.querySelector('#formula-intensity-params .parameter-item:nth-child(5) .parameter-name');
+    if (iAvgLabel) {
+        iAvgLabel.innerHTML = '指定入射光强度 (I<sub>avg</sub>)';
+    }
+    
+    // 修改参数描述
+    const iAvgDesc = document.querySelector('#formula-intensity-params .parameter-item:nth-child(5) .parameter-description');
+    if (iAvgDesc) {
+        iAvgDesc.textContent = '光强分布阶段：从自定义向量数据中提取的指定点光强度，单位：mW/cm²';
+    }
+    
+    // 显示指定点X坐标参数（如果存在）
+    const xCoordParam = document.getElementById('x-coordinate-param');
+    if (xCoordParam) {
+        xCoordParam.style.display = 'block';
+    }
+}
+
+// 恢复公式计算模式的标签
+function updateLabelsForFormulaMode() {
+    console.log('🔄 切换到公式计算模式，恢复界面标签');
+    
+    // 恢复平均入射光强度标签
+    const iAvgLabel = document.querySelector('#formula-intensity-params .parameter-item:nth-child(5) .parameter-name');
+    if (iAvgLabel) {
+        iAvgLabel.innerHTML = '平均入射光强度 (I<sub>avg</sub>)';
+    }
+    
+    // 恢复参数描述
+    const iAvgDesc = document.querySelector('#formula-intensity-params .parameter-item:nth-child(5) .parameter-description');
+    if (iAvgDesc) {
+        iAvgDesc.textContent = '光强分布阶段：平均入射光强度，单位：mW/cm²';
+    }
+    
+    // 隐藏指定点X坐标参数（如果存在）
+    const xCoordParam = document.getElementById('x-coordinate-param');
+    if (xCoordParam) {
+        xCoordParam.style.display = 'none';
+    }
+}
+
+// 从自定义向量数据中提取指定点的光强值
+function extractIntensityAtXCoordinate(xCoordinate) {
+    if (!customIntensityData || !customIntensityData.x || !customIntensityData.intensity || 
+        customIntensityData.x.length === 0 || customIntensityData.intensity.length === 0) {
+        // 只有在自定义模式且用户主动操作时才显示警告
+        const methodSelect = document.getElementById('intensity-method');
+        if (methodSelect && methodSelect.value === 'custom') {
+            console.warn('❌ 没有可用的自定义向量数据');
+        }
+        return null;
+    }
+    
+    const x_data = customIntensityData.x;
+    const intensity_data = customIntensityData.intensity;
+    console.log(`🔍 从${x_data.length}个数据点中提取X=${xCoordinate}处的光强值`);
+    
+    // 如果恰好有匹配的X坐标
+    for (let i = 0; i < x_data.length; i++) {
+        if (Math.abs(x_data[i] - xCoordinate) < 1e-6) {
+            console.log(`✅ 找到精确匹配: X=${x_data[i]}, I=${intensity_data[i]}`);
+            return intensity_data[i];
+        }
+    }
+    
+    // 创建排序的点对数组进行插值
+    const points = x_data.map((x, i) => ({x: x, y: intensity_data[i]}));
+    const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+    
+    // 如果X坐标超出范围，使用边界值
+    if (xCoordinate <= sortedPoints[0].x) {
+        console.log(`📍 X坐标小于最小值，使用边界值: I=${sortedPoints[0].y}`);
+        return sortedPoints[0].y;
+    }
+    if (xCoordinate >= sortedPoints[sortedPoints.length - 1].x) {
+        console.log(`📍 X坐标大于最大值，使用边界值: I=${sortedPoints[sortedPoints.length - 1].y}`);
+        return sortedPoints[sortedPoints.length - 1].y;
+    }
+    
+    // 找到插值区间
+    for (let i = 0; i < sortedPoints.length - 1; i++) {
+        const p1 = sortedPoints[i];
+        const p2 = sortedPoints[i + 1];
+        
+        if (xCoordinate >= p1.x && xCoordinate <= p2.x) {
+            // 线性插值
+            const ratio = (xCoordinate - p1.x) / (p2.x - p1.x);
+            const interpolatedIntensity = p1.y + ratio * (p2.y - p1.y);
+            
+            console.log(`🔍 线性插值: X∈[${p1.x}, ${p2.x}], I∈[${p1.y}, ${p2.y}] → I=${interpolatedIntensity.toFixed(6)}`);
+            return interpolatedIntensity;
+        }
+    }
+    
+    console.warn('❌ 插值失败，返回null');
+    return null;
+}
+
+// 更新指定入射光强度参数值
+function updateSpecifiedIntensity(intensityValue) {
+    if (intensityValue === null || intensityValue === undefined) {
+        console.warn('❌ 无效的光强值，跳过更新');
+        return;
+    }
+    
+    const iAvgSlider = document.getElementById('I_avg');
+    // 使用更准确的选择器
+    const iAvgNumberInput = iAvgSlider ? iAvgSlider.parentElement.querySelector('.number-input') : null;
+    const iAvgValueSpan = iAvgSlider ? iAvgSlider.parentElement.parentElement.querySelector('.parameter-value') : null;
+    
+    const clampedValue = Math.max(0.1, Math.min(100, intensityValue)); // 限制在滑块范围内
+    
+    if (iAvgSlider) {
+        iAvgSlider.value = clampedValue;
+    }
+    if (iAvgNumberInput) {
+        iAvgNumberInput.value = clampedValue.toFixed(3);
+    }
+    if (iAvgValueSpan) {
+        iAvgValueSpan.textContent = clampedValue.toFixed(3);
+    }
+    
+    console.log(`✅ 已更新指定入射光强度: ${clampedValue.toFixed(3)} mW/cm²`);
+}
+
+// 处理X坐标变化
+function handleXCoordinateChange() {
+    const xCoordSlider = document.getElementById('x_coordinate');
+    const xCoordNumberInput = document.querySelector('#x-coordinate-param .number-input');
+    const xCoordValueSpan = document.querySelector('#x-coordinate-param .parameter-value');
+    
+    if (!xCoordSlider || !xCoordNumberInput) {
+        console.warn('❌ 找不到X坐标输入控件');
+        return;
+    }
+    
+    // 确定触发源并同步值
+    let xCoordinate;
+    if (event && event.target === xCoordSlider) {
+        // 滑块触发
+        xCoordinate = parseFloat(xCoordSlider.value);
+        xCoordNumberInput.value = xCoordinate.toFixed(2);
+    } else if (event && event.target === xCoordNumberInput) {
+        // 数值输入框触发
+        xCoordinate = parseFloat(xCoordNumberInput.value);
+        xCoordSlider.value = xCoordinate;
+    } else {
+        // 程序调用
+        xCoordinate = parseFloat(xCoordSlider.value);
+    }
+    
+    if (isNaN(xCoordinate)) {
+        console.warn('❌ 无效的X坐标值');
+        return;
+    }
+    
+    // 更新显示值
+    if (xCoordValueSpan) {
+        xCoordValueSpan.textContent = xCoordinate.toFixed(2);
+    }
+    
+    console.log(`🔄 X坐标变化: ${xCoordinate}`);
+    
+    // 检查是否处于自定义向量模式
+    const methodSelect = document.getElementById('intensity_input_method');
+    if (!methodSelect || methodSelect.value !== 'custom') {
+        console.log('🔄 非自定义向量模式，跳过光强提取');
+        return;
+    }
+    
+    // 从自定义向量数据中提取光强值
+    const extractedIntensity = extractIntensityAtXCoordinate(xCoordinate);
+    
+    if (extractedIntensity !== null) {
+        // 更新指定入射光强度
+        updateSpecifiedIntensity(extractedIntensity);
+        
+        // 显示提取状态（只在有数据变化时显示）
+        const currentIntensity = document.getElementById('I_avg').value;
+        if (Math.abs(extractedIntensity - parseFloat(currentIntensity)) > 1e-3) {
+            showNotification(`已从自定义向量数据中提取X=${xCoordinate}处的光强值: ${extractedIntensity.toFixed(3)} mW/cm²`, 'success', 2000);
+        }
+    } else {
+        // 只有在自定义模式且数据应该存在时才显示警告
+        const methodSelect = document.getElementById('intensity-method');
+        if (methodSelect && methodSelect.value === 'custom' && 
+            customIntensityData && customIntensityData.x && customIntensityData.x.length > 0) {
+            showNotification('无法从自定义向量数据中提取光强值，请检查数据或X坐标', 'warning');
+        }
+    }
+}
+
+// 导出新函数到全局作用域
+window.updateLabelsForCustomVectorMode = updateLabelsForCustomVectorMode;
+window.updateLabelsForFormulaMode = updateLabelsForFormulaMode;
+window.extractIntensityAtXCoordinate = extractIntensityAtXCoordinate;
+window.updateSpecifiedIntensity = updateSpecifiedIntensity;
+window.handleXCoordinateChange = handleXCoordinateChange;
