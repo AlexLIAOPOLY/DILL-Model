@@ -4195,7 +4195,10 @@ function createThicknessPlot(container, data) {
                             width: 2 
                         },
                         name: `t=${etchData.time}s`,
-                        hovertemplate: `位置: %{x:.3f} ${xUnit}<br>形貌深度: %{y:.6f}<br>曝光时间: ${etchData.time}s<extra></extra>`
+                        hovertemplate: (etchData.y_values && Array.isArray(etchData.y_values)) ? 
+                            `位置: %{x:.3f} ${xUnit}<br>形貌深度: %{y:.6f}<br>剩余厚度: %{customdata:.1f} nm<br>曝光时间: ${etchData.time}s<extra></extra>` :
+                            `位置: %{x:.3f} ${xUnit}<br>形貌深度: %{y:.6f}<br>曝光时间: ${etchData.time}s<extra></extra>`,
+                        customdata: (etchData.y_values && Array.isArray(etchData.y_values)) ? etchData.y_values.map(y => (1 + y) * 150) : null
                     });
                 }
             });
@@ -4309,7 +4312,8 @@ function createThicknessPlot(container, data) {
             line: { color: '#ff7f0e', width: 2 },
             marker: { size: 4, color: '#ff7f0e' },
             name: traceName,
-            hovertemplate: `位置: %{x}<br>${(window.LANGS && window.LANGS[currentLang] && window.LANGS[currentLang].hover_thickness_value) || '相对厚度值'}: %{y}<extra></extra>`
+            hovertemplate: `位置: %{x}<br>形貌深度: %{y:.6f} (归一化)<br>剩余厚度: %{customdata:.1f} nm<extra></extra>`,
+            customdata: Array.isArray(yData) ? yData.map(y => (1 + y) * 150) : null
         };
 
         // 根据模型类型和实际数据范围动态设置轴标签
@@ -8196,7 +8200,9 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div>• 点击位置: x = ${x.toFixed(3)} μm</div>
                 <div>• 计算光强: I(${x.toFixed(3)}) = ${I_avg.toFixed(4)} × [1 + ${V} × cos(${K} × ${x.toFixed(3)})] = ${actualIntensity.toFixed(6)} mW/cm²</div>
                 <div>• 曝光剂量: D = ${actualIntensity.toFixed(6)} × ${exposureTime} = ${exposureDose.toFixed(3)} mJ/cm²</div>
-                <div>• 蚀刻深度: H(x) = ${theoreticalThickness.toFixed(6)} (归一化)</div>
+                <div>• 形貌深度: ${theoreticalThickness.toFixed(6)} (归一化)</div>
+                <div>• 剩余厚度: ${((1 + theoreticalThickness) * 150).toFixed(1)} nm</div>
+                <div>• 蚀刻深度: ${(150 - (1 + theoreticalThickness) * 150).toFixed(1)} nm</div>
                 <div class="formula-separator"></div>
                 <div>💡 <strong>计算模式说明：</strong></div>
                 <div>• 从自定义向量数据中提取指定X坐标的光强值作为基础光强I<sub>avg</sub></div>
@@ -8317,7 +8323,9 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 })()}
                 <div>📍 <strong>当前位置 x=${x.toFixed(3)}mm 的计算：</strong></div>
                 <div>• I<sub>0</sub>(x): 该点光强 = ${I0_at_x.toFixed(6)} mW/cm²</div>
-                <div>• H(x): 形貌深度 (当前值: ${y.toFixed(6)})</div>
+                <div>• 形貌深度: ${y.toFixed(6)} (归一化)</div>
+                <div>• 剩余厚度: ${((1 + y) * 150).toFixed(1)} nm</div>
+                <div>• 蚀刻深度: ${(150 - (1 + y) * 150).toFixed(1)} nm</div>
                 <div class="formula-separator"></div>
                 <div>⚙️ <strong>不同曝光时间下的计算示例：</strong></div>
                 ${calculationDetails}
@@ -15165,6 +15173,8 @@ function handleIntensityMethodChange() {
         }
         if (specifiedIntensityParam) {
             specifiedIntensityParam.style.display = 'block';
+            // 检查是否有向量数据，如果没有则显示"暂无向量数据"
+            updateSpecifiedIntensityDisplay();
         }
         if (xCoordinateParam) {
             xCoordinateParam.style.display = 'block';
@@ -15680,6 +15690,9 @@ function parseFileContent(content, fileExtension, fileName) {
     if (statusDiv) {
         statusDiv.style.display = 'none';
     }
+    
+    // 立即更新指定入射光强度显示状态（从"暂无向量数据"变为具体数值）
+    updateSpecifiedIntensityDisplay();
     
     // 不在这里立即预览数据，而是显示单位选择提示
     showNotification(`成功加载文件: ${fileName}，包含 ${x.length} 个数据点。请确认坐标单位后点击"预览数据"按钮。`, 'success');
@@ -16999,6 +17012,9 @@ function previewManualInput() {
             dataStatusDiv.style.display = 'block';
         }
         
+        // 立即更新指定入射光强度显示状态（从"暂无向量数据"变为具体数值）
+        updateSpecifiedIntensityDisplay();
+        
         // 更新数据状态显示
         updateDataStatus();
         
@@ -17349,6 +17365,9 @@ function clearCustomIntensityData() {
         Plotly.purge(previewPlot);
         previewPlot.innerHTML = '';
     }
+    
+    // 更新指定入射光强度显示状态（显示"暂无向量数据"）
+    updateSpecifiedIntensityDisplay();
     
     showNotification('已卸载文件并清除自定义光强数据', 'info');
     console.log('🗑️ 自定义光强数据已清除，文件已卸载');
@@ -21039,9 +21058,12 @@ function setCustomIntensityData(vectorData) {
             methodSelect.value = 'custom';
             handleIntensityMethodChange();
             
-            // 数据加载完成后，自动触发一次X坐标的光强提取
+            // 数据加载完成后，自动更新指定入射光强度显示并提取X坐标的光强值
             setTimeout(() => {
-                console.log('🔄 自定义向量数据加载完成，自动提取当前X坐标的光强值');
+                console.log('🔄 自定义向量数据加载完成，更新指定入射光强度显示');
+                // 先更新显示状态
+                updateSpecifiedIntensityDisplay();
+                // 然后自动提取当前X坐标的光强值
                 if (typeof handleXCoordinateChange === 'function') {
                     handleXCoordinateChange();
                 }
@@ -21189,6 +21211,49 @@ function extractIntensityAtXCoordinate(xCoordinate) {
     return null;
 }
 
+// 更新指定入射光强度显示状态（检查是否有向量数据）
+function updateSpecifiedIntensityDisplay() {
+    const methodSelect = document.getElementById('intensity_input_method');
+    if (!methodSelect || methodSelect.value !== 'custom') {
+        return;
+    }
+    
+    const specifiedIntensityInput = document.getElementById('specified_intensity');
+    const specifiedIntensityValueSpan = document.querySelector('#specified-intensity-param .parameter-value');
+    
+    // 检查是否有向量数据
+    if (!customIntensityData || !customIntensityData.loaded || !customIntensityData.x || customIntensityData.x.length === 0) {
+        // 没有向量数据时显示"暂无向量数据"
+        if (specifiedIntensityInput) {
+            specifiedIntensityInput.value = "暂无向量数据";
+            specifiedIntensityInput.style.color = "#999";
+            specifiedIntensityInput.style.fontStyle = "italic";
+        }
+        if (specifiedIntensityValueSpan) {
+            specifiedIntensityValueSpan.textContent = "暂无向量数据";
+            specifiedIntensityValueSpan.style.color = "#999";
+            specifiedIntensityValueSpan.style.fontStyle = "italic";
+        }
+        console.log('📋 指定入射光强度显示: 暂无向量数据');
+    } else {
+        // 有向量数据时，恢复正常样式并触发光强提取
+        if (specifiedIntensityInput) {
+            specifiedIntensityInput.style.color = "";
+            specifiedIntensityInput.style.fontStyle = "";
+        }
+        if (specifiedIntensityValueSpan) {
+            specifiedIntensityValueSpan.style.color = "";
+            specifiedIntensityValueSpan.style.fontStyle = "";
+        }
+        
+        // 自动提取当前X坐标的光强值
+        if (typeof handleXCoordinateChange === 'function') {
+            handleXCoordinateChange();
+        }
+        console.log('📋 指定入射光强度显示: 已有向量数据，自动提取光强值');
+    }
+}
+
 // 更新指定入射光强度参数值
 function updateSpecifiedIntensity(intensityValue) {
     if (intensityValue === null || intensityValue === undefined) {
@@ -21211,9 +21276,15 @@ function updateSpecifiedIntensity(intensityValue) {
     
     if (specifiedIntensityInput) {
         specifiedIntensityInput.value = clampedValue.toFixed(4);
+        // 恢复正常样式
+        specifiedIntensityInput.style.color = "";
+        specifiedIntensityInput.style.fontStyle = "";
     }
     if (specifiedIntensityValueSpan) {
         specifiedIntensityValueSpan.textContent = clampedValue.toFixed(4);
+        // 恢复正常样式
+        specifiedIntensityValueSpan.style.color = "";
+        specifiedIntensityValueSpan.style.fontStyle = "";
     }
     
     // 同时更新原来的I_avg滑块（供计算使用）

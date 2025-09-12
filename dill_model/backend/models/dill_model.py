@@ -1327,19 +1327,24 @@ class DillModel:
                     if custom_intensity_data is not None:
                         custom_x = np.array(custom_intensity_data.get('x', []))
                         if len(custom_x) > 0:
-                            # 获取自定义数据的范围
+                            # 🚀 新逻辑：考虑周期距离参数，实现真正的空间尺度调整
+                            period_distance_um = angle_a  # angle_a现在表示周期距离(μm)
+                            
+                            # 计算理想显示范围（显示8个完整周期）
+                            total_range_um = period_distance_um * 8
+                            half_range_um = total_range_um / 2
+                            calc_x_min = -half_range_um
+                            calc_x_max = half_range_um
+                            
+                            # 获取自定义数据的范围（仅用于日志显示）
                             x_min_custom = np.min(custom_x)
                             x_max_custom = np.max(custom_x)
                             
-                            # 计算合适的坐标轴（扩展范围20%）
-                            x_range = x_max_custom - x_min_custom
-                            x_padding = x_range * 0.2  # 20% 的额外空间
-                            calc_x_min = x_min_custom - x_padding
-                            calc_x_max = x_max_custom + x_padding
-                            
-                            logger.info(f"🔸 使用基于自定义数据范围的计算网格:")
-                            logger.info(f"   - 自定义数据范围: [{x_min_custom:.6f}, {x_max_custom:.6f}]")
-                            logger.info(f"   - 计算网格范围: [{calc_x_min:.6f}, {calc_x_max:.6f}]")
+                            logger.info(f"🔸 使用周期距离感知的计算网格（自定义数据模式）:")
+                            logger.info(f"   - 周期距离: {period_distance_um:.3f} μm")
+                            logger.info(f"   - 理想显示范围: {total_range_um:.3f} μm (8个周期)")
+                            logger.info(f"   - 计算网格范围: [{calc_x_min:.3f}, {calc_x_max:.3f}] μm")
+                            logger.info(f"   - 自定义数据原始范围: [{x_min_custom:.6f}, {x_max_custom:.6f}] μm")
                         else:
                             # 如果没有范围信息，使用默认范围
                             calc_x_min = -1000
@@ -1463,21 +1468,25 @@ class DillModel:
                     # 检查自定义数据中是否有范围信息
                     custom_x = np.array(custom_intensity_data.get('x', []))
                     if len(custom_x) > 0:
-                        # 获取自定义数据的范围
+                        # 🚀 新逻辑：考虑周期距离参数，实现真正的空间尺度调整
+                        period_distance_um = angle_a  # angle_a现在表示周期距离(μm)
+                        
+                        # 计算理想显示范围（显示8个完整周期）
+                        total_range_um = period_distance_um * 8
+                        half_range_um = total_range_um / 2
+                        calc_x_min = -half_range_um
+                        calc_x_max = half_range_um
+                        
+                        # 获取自定义数据的范围（仅用于日志显示）
                         x_min_custom = np.min(custom_x)
                         x_max_custom = np.max(custom_x)
                         
-                        # 计算合适的坐标轴
-                        # 扩展范围，使坐标轴比数据点多20%
-                        x_range = x_max_custom - x_min_custom
-                        x_padding = x_range * 0.2  # 20% 的额外空间
-                        calc_x_min = x_min_custom - x_padding
-                        calc_x_max = x_max_custom + x_padding
-                        
                         # 打印坐标信息
-                        logger.info(f"🔸 使用基于自定义数据范围的计算网格:")
-                        logger.info(f"   - 自定义数据范围: [{x_min_custom:.3f}, {x_max_custom:.3f}]")
-                        logger.info(f"   - 计算网格范围: [{calc_x_min:.3f}, {calc_x_max:.3f}]")
+                        logger.info(f"🔸 使用周期距离感知的计算网格（自定义数据模式）:")
+                        logger.info(f"   - 周期距离: {period_distance_um:.3f} μm")
+                        logger.info(f"   - 理想显示范围: {total_range_um:.3f} μm (8个周期)")
+                        logger.info(f"   - 计算网格范围: [{calc_x_min:.3f}, {calc_x_max:.3f}] μm")
+                        logger.info(f"   - 自定义数据原始范围: [{x_min_custom:.3f}, {x_max_custom:.3f}] μm")
                     else:
                         # 如果没有范围信息，使用默认范围
                         calc_x_min = -1000
