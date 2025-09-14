@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "optimal_C": 0.49999999544251983,
+  "optimal_cd": 35.85782080901934,
+  "optimal_V": 0.9999999073813143,
+  "total_error": 29.78263902145705,
+  "top_distance": 105.75039420730587,
+  "bottom_distance": 67.83233427071724,
+  "sidewall_angle": 89.99999999999788,
+  "left_angle": null,
+  "right_angle": 89.99999999999788,
+  "top_error": 27.996119834550797,
+  "bottom_error": 37.99603814376852,
+  "angle_error": 0.8616793121335986,
+  "targets_met": true,
+  "optimization_time": 587.5712630748749
+}

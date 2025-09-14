@@ -1336,6 +1336,30 @@ intensity3
                                                 </div>
                                             </div>
                                         </div>
+                                        
+                                        <!-- 照片实际尺寸设置 -->
+                                        <div class="photo-dimensions-section">
+                                            <h5>照片实际尺寸设置 <span class="tooltip-icon" data-title="输入拍摄照片时对象的实际物理尺寸。系统将根据此信息计算像素与物理单位的比例关系，从而生成准确的物理坐标数据。例如：如果照片中的物体实际宽度为10毫米，请在实际宽度中输入10，并选择毫米单位。">?</span></h5>
+                                            <div class="dimensions-grid">
+                                                <div class="dimension-item">
+                                                    <label for="photo-width">实际宽度:</label>
+                                                    <input type="number" id="photo-width" value="" min="0.001" step="0.1" class="form-control" placeholder="例如: 10">
+                                                </div>
+                                                <div class="dimension-item">
+                                                    <label for="photo-height">实际高度:</label>
+                                                    <input type="number" id="photo-height" value="" min="0.001" step="0.1" class="form-control" placeholder="例如: 8">
+                                                </div>
+                                                <div class="dimension-item">
+                                                    <label for="photo-unit">单位:</label>
+                                                    <select id="photo-unit" class="form-control dimension-select">
+                                                        <option value="mm">毫米 (mm)</option>
+                                                        <option value="cm">厘米 (cm)</option>
+                                                        <option value="um">微米 (μm)</option>
+                                                        <option value="m">米 (m)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <!-- 图像处理参数 -->
@@ -1378,9 +1402,11 @@ intensity3
                                                     <option value="custom">自定义</option>
                                                 </select>
                                             </div>
-                                            <div class="param-item">
-                                                <label for="scale-factor">缩放因子: <span class="tooltip-icon" data-title="定义1个像素对应多少个物理单位。系统默认：毫米=0.1，微米=100，像素=1">ⓘ</span></label>
-                                                <input type="number" id="scale-factor" value="1" min="0.001" step="0.1" class="form-control">
+                                            <div class="param-item scale-factor-info">
+                                                <label for="scale-factor-display">缩放因子: <span class="tooltip-icon" data-title="基于上方输入的照片实际尺寸自动计算。1像素对应的物理单位。">ⓘ</span></label>
+                                                <div id="scale-factor-display" class="scale-factor-display">
+                                                    未设置照片实际尺寸
+                                                </div>
                                             </div>
                                             <div class="param-item">
                                                 <label for="smoothing-method">数据平滑: <span class="tooltip-icon" data-title="选择对提取的强度数据进行平滑处理的方法">ⓘ</span></label>
@@ -1991,8 +2017,8 @@ intensity3
                                 <span class="parameter-value">1.0</span>
                             </div>
                             <div class="parameter-input">
-                                <input type="range" id="angle_a" class="slider" min="0.628" max="6.28" step="0.01" value="1.0" title="周期距离滑块" aria-label="周期距离">
-                                <input type="number" class="number-input" value="1.0" min="0.628" max="6.28" step="0.01" title="周期距离数值输入" aria-label="周期距离数值">
+                                <input type="range" id="angle_a" class="slider" min="0.00001" max="6.28" step="0.00001" value="1.0" title="周期距离滑块" aria-label="周期距离">
+                                <input type="number" class="number-input" value="1.0" min="0.00001" max="6.28" step="0.00001" title="周期距离数值输入" aria-label="周期距离数值">
                             </div>
                             <div class="parameter-description" data-i18n="param_desc_angle_a">光强分布阶段：控制干涉条纹的真实周期距离（两个最低点间距，单位μm），周期小=条纹密集=空间频率高</div>
                         </div>
@@ -2124,8 +2150,8 @@ intensity3
                                 <span class="parameter-value">0.022</span>
                             </div>
                             <div class="parameter-input">
-                                <input type="range" id="C" class="slider" min="0.001" max="0.1" step="0.001" value="0.022" title="曝光常数滑块" aria-label="曝光常数">
-                                <input type="number" class="number-input" value="0.022" min="0.001" max="0.1" step="0.001" title="曝光常数数值输入" aria-label="曝光常数数值">
+                                <input type="range" id="C" class="slider" min="0.00001" max="1000" step="0.00001" value="0.022" title="曝光常数滑块" aria-label="曝光常数">
+                                <input type="number" class="number-input" value="0.022" min="0.00001" max="1000" step="0.00001" title="曝光常数数值输入" aria-label="曝光常数数值">
                             </div>
                             <div class="parameter-description" data-i18n="param_desc_C">曝光反应阶段：控制光刻胶曝光反应速度，值大=反应快=溶解度高，值小=反应慢</div>
                         </div>

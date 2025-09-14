@@ -74,6 +74,21 @@ class PhotoRecognition {
             coordinateUnit.addEventListener('change', () => this.handleUnitChange());
         }
         
+        // 照片尺寸输入监听
+        const photoWidth = document.getElementById('photo-width');
+        const photoHeight = document.getElementById('photo-height');
+        const photoUnit = document.getElementById('photo-unit');
+        
+        if (photoWidth) {
+            photoWidth.addEventListener('input', () => this.updateScaleFactorDisplay());
+        }
+        if (photoHeight) {
+            photoHeight.addEventListener('input', () => this.updateScaleFactorDisplay());
+        }
+        if (photoUnit) {
+            photoUnit.addEventListener('change', () => this.updateScaleFactorDisplay());
+        }
+        
         // 裁剪模式监听
         const cropMode = document.getElementById('crop-mode');
         if (cropMode) {
@@ -545,6 +560,9 @@ class PhotoRecognition {
             this.initializeCustomPosition();
         }
         
+        // 更新缩放因子显示
+        this.updateScaleFactorDisplay();
+        
         console.log('✅ 照片处理完成');
     }
 
@@ -570,21 +588,8 @@ class PhotoRecognition {
             // 根据选择的光强值类型计算等效的最大光强值
             const maxIntensityValue = this.calculateEffectiveMaxIntensity();
             
-            // 单位转换逻辑：定义1像素对应的物理长度
-            let scaleFactor = 0.1; // 默认：1像素 = 0.1毫米
-            
-            if (coordinateUnit === 'custom') {
-                scaleFactor = parseFloat(document.getElementById('scale-factor')?.value) || 0.1;
-            } else if (coordinateUnit === 'mm') {
-                // 1像素 = 0.1毫米（可根据实际设备调整）
-                scaleFactor = 0.1;
-            } else if (coordinateUnit === 'um') {
-                // 1像素 = 100微米（0.1毫米 = 100微米）
-                scaleFactor = 100;
-            } else if (coordinateUnit === 'pixels') {
-                // 保持像素单位
-                scaleFactor = 1;
-            }
+            // 单位转换逻辑：基于用户输入的照片实际尺寸计算缩放因子
+            let scaleFactor = this.calculateScaleFactor(coordinateUnit);
             
             console.log(`📏 单位转换设置: ${coordinateUnit}, scaleFactor=${scaleFactor}`);
             
@@ -1716,10 +1721,14 @@ class PhotoRecognition {
         // 主标题
         ctx.fillText('生成的向量数据', width / 2, 25);
         
-        // X轴标签
+        // 获取坐标单位
+        const coordinateUnit = this.vectorData?.parameters?.coordinateUnit || 'pixels';
+        const unitLabel = this.getUnitLabel(coordinateUnit);
+        
+        // X轴标签 - 显示具体单位
         ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.fillStyle = '#495057';
-        ctx.fillText('坐标位置', width / 2, height - 8);
+        ctx.fillText(`坐标位置 (${unitLabel})`, width / 2, height - 8);
         
         // Y轴标签
         ctx.save();
@@ -1727,6 +1736,25 @@ class PhotoRecognition {
         ctx.rotate(-Math.PI / 2);
         ctx.fillText('光强度', 0, 0);
         ctx.restore();
+    }
+    
+    /**
+     * 获取单位显示标签
+     */
+    getUnitLabel(unit) {
+        switch (unit) {
+            case 'mm':
+                return 'mm';
+            case 'cm':
+                return 'cm';
+            case 'um':
+                return 'μm';
+            case 'm':
+                return 'm';
+            case 'pixels':
+            default:
+                return '像素';
+        }
     }
     
 
@@ -2033,6 +2061,9 @@ class PhotoRecognition {
             
             console.log('✅ 中心裁剪预览应用完成');
             
+            // 更新缩放因子显示
+            this.updateScaleFactorDisplay();
+            
         } catch (error) {
             console.error('❌ 应用中心裁剪预览失败:', error);
         }
@@ -2057,6 +2088,9 @@ class PhotoRecognition {
             this.updateCanvasWithImageData('grayscale-photo-canvas', this.grayscaleImageData);
             
             console.log('✅ 原始图像显示已恢复');
+            
+            // 更新缩放因子显示
+            this.updateScaleFactorDisplay();
             
         } catch (error) {
             console.error('❌ 恢复原始图像显示失败:', error);
@@ -2419,6 +2453,9 @@ ${'-'.repeat(60)}
         } else {
             customContainer.style.display = 'none';
         }
+        
+        // 更新缩放因子显示
+        this.updateScaleFactorDisplay();
     }
 
     /**
@@ -2716,6 +2753,153 @@ ${'-'.repeat(60)}
     }
     
     /**
+     * 更新缩放因子显示
+     */
+    updateScaleFactorDisplay() {
+        const scaleFactorDisplay = document.getElementById('scale-factor-display');
+        if (!scaleFactorDisplay) return;
+        
+        const photoWidth = parseFloat(document.getElementById('photo-width')?.value);
+        const photoHeight = parseFloat(document.getElementById('photo-height')?.value);
+        const photoUnit = document.getElementById('photo-unit')?.value || 'mm';
+        const coordinateUnit = document.getElementById('coordinate-unit')?.value || 'pixels';
+        
+        // 检查图像数据，优先使用grayscaleImageData，其次originalImageData
+        const imageData = this.grayscaleImageData || this.originalImageData;
+        
+        if (!photoWidth || !photoHeight || !imageData) {
+            scaleFactorDisplay.textContent = '未设置照片实际尺寸';
+            scaleFactorDisplay.style.color = '#6b7280';
+            return;
+        }
+        
+        const imageWidthPx = imageData.width;
+        const photoWidthInTargetUnit = this.convertUnit(photoWidth, photoUnit, coordinateUnit);
+        const scaleFactor = photoWidthInTargetUnit / imageWidthPx;
+        
+        const unitLabel = this.getUnitLabel(coordinateUnit);
+        scaleFactorDisplay.textContent = `${scaleFactor.toFixed(6)} ${unitLabel}/像素`;
+        scaleFactorDisplay.style.color = '#374151';
+        
+        console.log('📏 缩放因子显示已更新:', {
+            照片尺寸: `${photoWidth}×${photoHeight} ${photoUnit}`,
+            图像像素: `${imageWidthPx}px`,
+            目标单位: coordinateUnit,
+            缩放因子: scaleFactor
+        });
+    }
+    
+    /**
+     * 根据用户输入的照片实际尺寸计算缩放因子
+     * @param {string} coordinateUnit - 坐标单位
+     * @returns {number} 缩放因子
+     */
+    calculateScaleFactor(coordinateUnit) {
+        // 获取用户输入的照片实际尺寸
+        const photoWidth = parseFloat(document.getElementById('photo-width')?.value);
+        const photoHeight = parseFloat(document.getElementById('photo-height')?.value);
+        const photoUnit = document.getElementById('photo-unit')?.value || 'mm';
+        
+        // 获取图像的像素尺寸，优先使用grayscaleImageData，其次originalImageData
+        const imageData = this.grayscaleImageData || this.originalImageData;
+        if (!imageData) {
+            console.warn('⚠️ 图像数据不可用，使用默认缩放因子');
+            return this.getDefaultScaleFactor(coordinateUnit);
+        }
+        
+        const imageWidthPx = imageData.width;
+        const imageHeightPx = imageData.height;
+        
+        // 如果用户没有输入照片尺寸，使用默认值
+        if (!photoWidth || !photoHeight) {
+            console.warn('⚠️ 用户未输入照片实际尺寸，使用默认缩放因子');
+            return this.getDefaultScaleFactor(coordinateUnit);
+        }
+        
+        // 将照片尺寸单位转换为目标单位
+        const photoWidthInTargetUnit = this.convertUnit(photoWidth, photoUnit, coordinateUnit);
+        const photoHeightInTargetUnit = this.convertUnit(photoHeight, photoUnit, coordinateUnit);
+        
+        // 计算缩放因子：使用宽度来计算
+        const scaleFactor = photoWidthInTargetUnit / imageWidthPx;
+        
+        console.log('📏 基于用户输入计算缩放因子:', {
+            照片实际宽度: `${photoWidth} ${photoUnit}`,
+            照片实际高度: `${photoHeight} ${photoUnit}`,
+            图像像素宽度: `${imageWidthPx}px`,
+            图像像素高度: `${imageHeightPx}px`,
+            目标单位: coordinateUnit,
+            转换后宽度: `${photoWidthInTargetUnit} ${coordinateUnit}`,
+            缩放因子: scaleFactor
+        });
+        
+        return scaleFactor;
+    }
+    
+    /**
+     * 获取默认缩放因子
+     */
+    getDefaultScaleFactor(coordinateUnit) {
+        switch (coordinateUnit) {
+            case 'mm':
+                return 0.1; // 1像素 = 0.1毫米
+            case 'um':
+                return 100; // 1像素 = 100微米
+            case 'cm':
+                return 0.01; // 1像素 = 0.01厘米
+            case 'm':
+                return 0.0001; // 1像素 = 0.0001米
+            case 'pixels':
+            default:
+                return 1; // 保持像素单位
+        }
+    }
+    
+    /**
+     * 单位转换函数
+     */
+    convertUnit(value, fromUnit, toUnit) {
+        if (fromUnit === toUnit) {
+            return value;
+        }
+        
+        // 所有单位先转换为毫米
+        let valueInMm;
+        switch (fromUnit) {
+            case 'mm':
+                valueInMm = value;
+                break;
+            case 'cm':
+                valueInMm = value * 10;
+                break;
+            case 'um':
+                valueInMm = value / 1000;
+                break;
+            case 'm':
+                valueInMm = value * 1000;
+                break;
+            default:
+                valueInMm = value;
+        }
+        
+        // 从毫米转换为目标单位
+        switch (toUnit) {
+            case 'mm':
+                return valueInMm;
+            case 'cm':
+                return valueInMm / 10;
+            case 'um':
+                return valueInMm * 1000;
+            case 'm':
+                return valueInMm / 1000;
+            case 'pixels':
+                return valueInMm; // 像素单位保持数值不变
+            default:
+                return valueInMm;
+        }
+    }
+    
+    /**
      * 获取指定像素位置的归一化灰度值 (0-1)
      */
     getPixelGrayValue(x, y) {
@@ -2756,16 +2940,31 @@ ${'-'.repeat(60)}
         }
         
         if (cropMode === 'manual') {
-            this.enableInteractiveCrop();
+            // 先滚动到图片预览区域，然后再启用交互式裁剪
+            this.scrollToImagePreview(() => {
+                // 隐藏其他高亮元素，只保留裁剪相关区域
+                this.hideCropModeHighlights();
+                // 延迟启用交互式裁剪，确保滚动完成
+                setTimeout(() => {
+                    this.enableInteractiveCrop();
+                }, 300);
+            });
         } else if (cropMode === 'center') {
             this.disableInteractiveCrop();
+            this.restoreCropModeHighlights();
             // 应用中心裁剪预览
             this.applyCenterCropPreview();
         } else {
             this.disableInteractiveCrop();
+            this.restoreCropModeHighlights();
             // 恢复原始图像显示
             this.restoreOriginalImageDisplay();
         }
+        
+        // 更新缩放因子显示，因为裁剪模式切换可能改变图像尺寸
+        setTimeout(() => {
+            this.updateScaleFactorDisplay();
+        }, 100);
     }
 
     /**
@@ -2806,7 +3005,7 @@ ${'-'.repeat(60)}
     }
     
     /**
-     * 只显示灰度图用于裁剪 - 新增函数
+     * 只显示灰度图用于裁剪 - 优化版
      */
     showOnlyGrayscaleForCrop() {
         const imageContainer = document.querySelector('.image-preview-container');
@@ -2815,24 +3014,92 @@ ${'-'.repeat(60)}
         
         if (!imageContainer || !originalColumn || !grayscaleColumn) return;
         
-        console.log('🎨 切换到裁剪模式UI...');
+        console.log('🎨 启动双图合并动画...');
         
-        // 隐藏原始图片列
+        // 添加标题过渡效果
+        const grayscaleTitle = grayscaleColumn.querySelector('h5');
+        if (grayscaleTitle) {
+            grayscaleTitle.classList.add('title-transition');
+        }
+        
+        // 使用requestAnimationFrame确保DOM更新后再开始动画
+        requestAnimationFrame(() => {
+            this.startMergeAnimation(imageContainer, originalColumn, grayscaleColumn, grayscaleTitle);
+        });
+    }
+
+    /**
+     * 开始合并动画 - 优化版，使用CSS动画事件
+     */
+    startMergeAnimation(imageContainer, originalColumn, grayscaleColumn, grayscaleTitle) {
+        // 监听原始图列淡出动画完成
+        const handleFadeOutEnd = (e) => {
+            if (e.target === originalColumn && e.animationName === 'fadeSlideOut') {
+                originalColumn.removeEventListener('animationend', handleFadeOutEnd);
+                this.completeMergeAnimation(imageContainer, originalColumn, grayscaleColumn, grayscaleTitle);
+            }
+        };
+        
+        // 监听容器合并动画完成
+        const handleMergeEnd = (e) => {
+            if (e.target === imageContainer && e.animationName === 'mergeToSingle') {
+                imageContainer.removeEventListener('animationend', handleMergeEnd);
+                this.finalizeMergeAnimation(grayscaleColumn, grayscaleTitle);
+            }
+        };
+        
+        originalColumn.addEventListener('animationend', handleFadeOutEnd);
+        imageContainer.addEventListener('animationend', handleMergeEnd);
+        
+        // 同时开始多个动画以增强视觉效果
+        originalColumn.classList.add('column-fade-out');
+        imageContainer.classList.add('crop-mode-transition', 'crop-mode-single');
+        
+        // 延迟启动灰度图聚焦效果，在原始图开始淡出后
+        setTimeout(() => {
+            grayscaleColumn.classList.add('grayscale-column-focus');
+        }, 150);
+    }
+
+    /**
+     * 完成合并动画 - 隐藏原始图列并调整布局
+     */
+    completeMergeAnimation(imageContainer, originalColumn, grayscaleColumn, grayscaleTitle) {
         originalColumn.style.display = 'none';
+        originalColumn.classList.remove('column-fade-out');
         
-        // 让灰度图列占满容器并居中
+        // 调整布局
         imageContainer.style.gridTemplateColumns = '1fr';
         imageContainer.style.justifyContent = 'center';
         grayscaleColumn.style.maxWidth = '600px';
         grayscaleColumn.style.margin = '0 auto';
         
         // 更新标题
-        const grayscaleTitle = grayscaleColumn.querySelector('h5');
         if (grayscaleTitle) {
             grayscaleTitle.textContent = '裁剪区域选择';
-            grayscaleTitle.style.color = '#2563eb';
-            grayscaleTitle.style.fontWeight = '600';
+            grayscaleTitle.classList.add('title-highlight');
         }
+    }
+
+    /**
+     * 完成合并动画的最后步骤
+     */
+    finalizeMergeAnimation(grayscaleColumn, grayscaleTitle) {
+        // 移除标题高亮效果
+        if (grayscaleTitle) {
+            setTimeout(() => {
+                grayscaleTitle.classList.remove('title-highlight');
+            }, 400);
+        }
+        
+        // 保持灰度图的聚焦效果一段时间后移除
+        setTimeout(() => {
+            if (grayscaleColumn) {
+                grayscaleColumn.classList.remove('grayscale-column-focus');
+            }
+        }, 800);
+        
+        console.log('✅ 双图→单图合并动画完成');
     }
     
     /**
@@ -2888,6 +3155,9 @@ ${'-'.repeat(60)}
         // 恢复双图显示布局
         this.restoreOriginalLayout();
         
+        // 恢复所有输入框的高亮状态（如果还没有恢复的话）
+        this.restoreCropModeHighlights();
+        
         this.removeCropEventListeners();
         this.cropActive = false;
         
@@ -2906,7 +3176,7 @@ ${'-'.repeat(60)}
     }
     
     /**
-     * 恢复原始双图布局 - 新增函数
+     * 恢复原始双图布局 - 优化版
      */
     restoreOriginalLayout() {
         const imageContainer = document.querySelector('.image-preview-container');
@@ -2915,24 +3185,92 @@ ${'-'.repeat(60)}
         
         if (!imageContainer || !originalColumn || !grayscaleColumn) return;
         
-        console.log('🎨 恢复双图显示布局...');
+        console.log('🎨 启动单图分离动画...');
         
-        // 恢复原始图片列的显示
-        originalColumn.style.display = 'block';
+        // 添加标题过渡效果
+        const grayscaleTitle = grayscaleColumn.querySelector('h5');
+        if (grayscaleTitle) {
+            grayscaleTitle.classList.add('title-transition');
+        }
         
-        // 恢复网格布局
-        imageContainer.style.gridTemplateColumns = '1fr 1fr';
+        // 立即准备布局变化
+        this.prepareLayoutRestore(imageContainer, originalColumn, grayscaleColumn);
+        
+        // 使用requestAnimationFrame确保DOM更新后再开始动画
+        requestAnimationFrame(() => {
+            this.startRestoreAnimation(imageContainer, originalColumn, grayscaleColumn, grayscaleTitle);
+        });
+    }
+
+    /**
+     * 准备布局恢复 - 减少DOM操作
+     */
+    prepareLayoutRestore(imageContainer, originalColumn, grayscaleColumn) {
+        // 清理之前的动画类
+        imageContainer.classList.remove('crop-mode-single', 'crop-mode-transition');
+        
+        // 重置内联样式，让CSS接管
+        imageContainer.style.gridTemplateColumns = '';
         imageContainer.style.justifyContent = '';
         grayscaleColumn.style.maxWidth = '';
         grayscaleColumn.style.margin = '';
         
+        // 准备原始图列
+        originalColumn.style.display = 'block';
+        originalColumn.style.opacity = '0';
+    }
+
+    /**
+     * 开始恢复动画 - 使用CSS动画事件
+     */
+    startRestoreAnimation(imageContainer, originalColumn, grayscaleColumn, grayscaleTitle) {
+        // 添加过渡类
+        imageContainer.classList.add('crop-mode-transition');
+        
+        // 监听动画完成事件
+        const handleAnimationEnd = (e) => {
+            if (e.target === imageContainer && e.animationName === 'splitToDouble') {
+                imageContainer.removeEventListener('animationend', handleAnimationEnd);
+                this.completeLayoutRestore(imageContainer, originalColumn, grayscaleTitle);
+            }
+        };
+        
+        imageContainer.addEventListener('animationend', handleAnimationEnd);
+        
+        // 开始分离动画
+        imageContainer.classList.add('crop-mode-double');
+        
+        // 在动画开始后立即开始原始图列的淡入
+        setTimeout(() => {
+            originalColumn.classList.add('column-fade-in');
+            originalColumn.style.opacity = '1';
+        }, 50);
+    }
+
+    /**
+     * 完成布局恢复 - 清理动画类
+     */
+    completeLayoutRestore(imageContainer, originalColumn, grayscaleTitle) {
+        const grayscaleColumn = imageContainer?.querySelector('.image-column:last-child');
+        
+        // 清理动画类
+        originalColumn.classList.remove('column-fade-in');
+        imageContainer.classList.remove('crop-mode-transition', 'crop-mode-double');
+        
+        // 清理灰度图的聚焦效果
+        if (grayscaleColumn) {
+            grayscaleColumn.classList.remove('grayscale-column-focus');
+        }
+        
         // 恢复标题
-        const grayscaleTitle = grayscaleColumn.querySelector('h5');
         if (grayscaleTitle) {
             grayscaleTitle.textContent = '灰度预览';
             grayscaleTitle.style.color = '';
             grayscaleTitle.style.fontWeight = '';
+            grayscaleTitle.classList.remove('title-transition', 'title-highlight');
         }
+        
+        console.log('✅ 单图→双图分离动画完成');
     }
 
     /**
@@ -3188,7 +3526,50 @@ ${'-'.repeat(60)}
     // 禁用裁剪控件（这会恢复双图显示）
     this.disableInteractiveCrop();
     
+    // 恢复所有输入框的高亮状态
+    this.restoreCropModeHighlights();
+    
+    // 更新照片尺寸（按裁剪比例）
+    this.updatePhotoDimensionsAfterCrop(safeWidth, safeHeight, maxWidth, maxHeight);
+    
     console.log('🎉 灰度预览已更新为裁剪后的图像');
+    }
+
+    /**
+     * 裁剪后按比例更新照片实际尺寸
+     */
+    updatePhotoDimensionsAfterCrop(croppedWidth, croppedHeight, originalWidth, originalHeight) {
+        const photoWidthInput = document.getElementById('photo-width');
+        const photoHeightInput = document.getElementById('photo-height');
+        
+        if (!photoWidthInput || !photoHeightInput) return;
+        
+        const currentWidth = parseFloat(photoWidthInput.value);
+        const currentHeight = parseFloat(photoHeightInput.value);
+        
+        // 如果用户没有设置原始尺寸，则不更新
+        if (!currentWidth || !currentHeight) return;
+        
+        // 计算裁剪比例
+        const widthRatio = croppedWidth / originalWidth;
+        const heightRatio = croppedHeight / originalHeight;
+        
+        // 按比例更新照片尺寸
+        const newWidth = currentWidth * widthRatio;
+        const newHeight = currentHeight * heightRatio;
+        
+        photoWidthInput.value = newWidth.toFixed(3);
+        photoHeightInput.value = newHeight.toFixed(3);
+        
+        // 更新缩放因子显示
+        this.updateScaleFactorDisplay();
+        
+        console.log('📐 照片尺寸已按裁剪比例更新:', {
+            裁剪比例: `${(widthRatio * 100).toFixed(1)}% × ${(heightRatio * 100).toFixed(1)}%`,
+            原始尺寸: `${currentWidth} × ${currentHeight}`,
+            新尺寸: `${newWidth.toFixed(3)} × ${newHeight.toFixed(3)}`,
+            像素变化: `${originalWidth}×${originalHeight} → ${croppedWidth}×${croppedHeight}`
+        });
     }
 
     /**
@@ -3427,6 +3808,119 @@ ${'-'.repeat(60)}
             width: actualWidth,
             height: actualHeight
         };
+    }
+
+    /**
+     * 滚动到图片预览区域
+     */
+    scrollToImagePreview(callback) {
+        console.log('📍 滚动到图片预览区域...');
+        
+        // 优先寻找图片预览标题作为滚动目标
+        const previewTitle = document.getElementById('photo-preview-title');
+        const imageContainer = document.querySelector('.image-preview-container');
+        
+        let targetElement = previewTitle || imageContainer;
+        
+        if (!targetElement) {
+            console.warn('⚠️  图片预览区域未找到');
+            if (callback) callback();
+            return;
+        }
+        
+        // 计算滚动位置，确保预览区域在视窗中央偏上的位置
+        const rect = targetElement.getBoundingClientRect();
+        const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetTop = rect.top + currentScrollTop;
+        
+        // 调整偏移量：让图片预览区域显示在视窗的适中位置
+        const viewportHeight = window.innerHeight;
+        const scrollToPosition = targetTop - (viewportHeight * 0.08); // 视窗高度的8%处，位置更靠下
+        
+        console.log('📐 滚动计算:', {
+            目标元素: targetElement.id || targetElement.className,
+            元素顶部: targetTop,
+            视窗高度: viewportHeight,
+            滚动位置: scrollToPosition
+        });
+        
+        // 使用平滑滚动
+        window.scrollTo({
+            top: Math.max(0, scrollToPosition), // 确保不会滚动到负数位置
+            behavior: 'smooth'
+        });
+        
+        // 等待滚动完成后执行回调
+        setTimeout(() => {
+            console.log('✅ 滚动到图片预览区域完成');
+            if (callback) callback();
+        }, 800); // 给足够时间让滚动动画完成
+    }
+
+    /**
+     * 隐藏裁剪模式下的其他高亮元素
+     */
+    hideCropModeHighlights() {
+        console.log('🔒 隐藏裁剪模式下的其他高亮元素...');
+        
+        // 隐藏图像处理参数区域的高亮
+        const processingParams = document.getElementById('photo-processing-params');
+        if (processingParams) {
+            processingParams.classList.add('crop-mode-dimmed');
+        }
+        
+        // 隐藏照片尺寸设置区域的高亮  
+        const dimensionsSection = document.querySelector('.photo-dimensions-section');
+        if (dimensionsSection) {
+            dimensionsSection.classList.add('crop-mode-dimmed');
+        }
+        
+        // 高亮裁剪相关的元素
+        const cropOverlay = document.getElementById('crop-overlay');
+        const confirmContainer = document.getElementById('crop-confirm-container');
+        
+        if (cropOverlay) {
+            cropOverlay.classList.add('crop-mode-highlight');
+        }
+        
+        if (confirmContainer) {
+            confirmContainer.classList.add('crop-mode-highlight');
+        }
+        
+        console.log('✅ 裁剪模式高亮设置完成');
+    }
+
+    /**
+     * 恢复裁剪模式下隐藏的高亮元素
+     */
+    restoreCropModeHighlights() {
+        console.log('🔓 恢复其他高亮元素...');
+        
+        // 恢复图像处理参数区域
+        const processingParams = document.getElementById('photo-processing-params');
+        if (processingParams && processingParams.classList.contains('crop-mode-dimmed')) {
+            processingParams.classList.remove('crop-mode-dimmed');
+        }
+        
+        // 恢复照片尺寸设置区域
+        const dimensionsSection = document.querySelector('.photo-dimensions-section');
+        if (dimensionsSection && dimensionsSection.classList.contains('crop-mode-dimmed')) {
+            dimensionsSection.classList.remove('crop-mode-dimmed');
+        }
+        
+        // 移除裁剪高亮
+        const cropOverlay = document.getElementById('crop-overlay');
+        const confirmContainer = document.getElementById('crop-confirm-container');
+        
+        if (cropOverlay && cropOverlay.classList.contains('crop-mode-highlight')) {
+            cropOverlay.classList.remove('crop-mode-highlight');
+        }
+        
+        if (confirmContainer && confirmContainer.classList.contains('crop-mode-highlight')) {
+            confirmContainer.classList.remove('crop-mode-highlight');
+        }
+        
+        console.log('✅ 高亮元素恢复完成');
     }
 
     /**

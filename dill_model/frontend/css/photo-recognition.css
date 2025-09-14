@@ -484,6 +484,272 @@ html {
     box-shadow: none;
 }
 
+/* 照片实际尺寸设置 */
+.photo-dimensions-section {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.photo-dimensions-section h5 {
+    margin: 0 0 16px 0;
+    color: #2c3e50;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.dimensions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.dimensions-grid .form-control {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.dimension-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dimension-item label {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+}
+
+.dimensions-help {
+    margin-top: 8px;
+}
+
+.dimensions-help small {
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.scale-factor-display {
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    color: #374151;
+    font-size: 14px;
+    min-height: 20px;
+}
+
+/* 裁剪模式切换动画 */
+.image-preview-container {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.image-column {
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 裁剪模式动画类 */
+.crop-mode-transition {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.crop-mode-single {
+    animation: mergeToSingle 0.6s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+.crop-mode-double {
+    animation: splitToDouble 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* 合并动画：双图→单图 - 优化版 */
+@keyframes mergeToSingle {
+    0% {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        transform: scale(1);
+        opacity: 1;
+    }
+    15% {
+        grid-template-columns: 0.8fr 1fr;
+        gap: 16px;
+        transform: scale(1.01);
+        opacity: 0.98;
+    }
+    35% {
+        grid-template-columns: 0.5fr 1fr;
+        gap: 12px;
+        transform: scale(1.02);
+        opacity: 0.95;
+    }
+    55% {
+        grid-template-columns: 0.2fr 1fr;
+        gap: 6px;
+        transform: scale(1.01);
+        opacity: 0.98;
+    }
+    75% {
+        grid-template-columns: 0.05fr 1fr;
+        gap: 2px;
+        transform: scale(1.005);
+        opacity: 0.99;
+    }
+    90% {
+        grid-template-columns: 1fr;
+        gap: 0px;
+        transform: scale(1.01);
+        opacity: 0.98;
+    }
+    100% {
+        grid-template-columns: 1fr;
+        gap: 0px;
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 确保动画缩放不会影响图片容器之外的其他元素 */
+.image-preview-container.crop-mode-transition {
+    /* 限制动画效果只影响图片容器本身，不影响其他元素 */
+    isolation: isolate;
+    transform-origin: center;
+    will-change: transform, opacity;
+}
+
+/* 增强容器过渡效果 */
+.image-preview-container {
+    perspective: 1000px;
+    backface-visibility: hidden;
+}
+
+/* 分离动画：单图→双图 */
+@keyframes splitToDouble {
+    0% {
+        grid-template-columns: 1fr;
+        gap: 0px;
+    }
+    25% {
+        grid-template-columns: 1fr 0.05fr;
+        gap: 2px;
+    }
+    50% {
+        grid-template-columns: 1fr 0.2fr;
+        gap: 8px;
+    }
+    75% {
+        grid-template-columns: 1fr 0.4fr;
+        gap: 12px;
+    }
+    100% {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+}
+
+/* 列消失动画 - 优化版 */
+.column-fade-out {
+    animation: fadeSlideOut 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.column-fade-in {
+    animation: fadeSlideIn 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* 灰度图聚焦效果 */
+.grayscale-column-focus {
+    animation: grayscaleFocus 0.6s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+@keyframes fadeSlideOut {
+    0% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    50% {
+        opacity: 0.3;
+        transform: translateX(-15px) scale(0.95);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-30px) scale(0.9);
+    }
+}
+
+@keyframes fadeSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-30px) scale(0.9);
+    }
+    50% {
+        opacity: 0.3;
+        transform: translateX(-15px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes grayscaleFocus {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+    }
+    30% {
+        transform: scale(1.02);
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
+    }
+    60% {
+        transform: scale(1.01);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
+    }
+}
+
+/* 标题变化动画 - 优化版 */
+.title-transition {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.title-highlight {
+    color: #2563eb !important;
+    font-weight: 600 !important;
+    text-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+    animation: titleHighlight 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes titleHighlight {
+    0% { 
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+    20% { 
+        transform: scale(1.08) translateY(-2px);
+        opacity: 0.9;
+    }
+    40% { 
+        transform: scale(1.05) translateY(-1px);
+        opacity: 0.95;
+    }
+    60% { 
+        transform: scale(1.02) translateY(-0.5px);
+        opacity: 0.98;
+    }
+    100% { 
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
 /* 图像处理参数 */
 .photo-processing-params {
     margin-bottom: 24px;
@@ -669,7 +935,8 @@ select option {
     visibility: visible !important;
 }
 
-.param-item .form-control {
+.param-item .form-control,
+.dimension-item .form-control {
     padding: 10px 12px;
     border: 1px solid #ced4da;
     border-radius: 6px;
@@ -681,8 +948,10 @@ select option {
     width: 100%;
 }
 
-/* 下拉框特殊样式 */
-.param-item select.form-control {
+/* 下拉框特殊样式 - 参数部分和照片尺寸部分统一样式 */
+.param-item select.form-control,
+.dimension-item select.form-control,
+select.dimension-select {
     background: white url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 4'%3E%3Cpath fill='%23666' d='M0 1 L2 3 L4 1 Z'/%3E%3C/svg%3E") no-repeat right 12px center;
     background-size: 12px;
     padding-right: 36px;
@@ -692,21 +961,28 @@ select option {
     cursor: pointer;
 }
 
-.param-item select.form-control::-ms-expand {
+.param-item select.form-control::-ms-expand,
+.dimension-item select.form-control::-ms-expand,
+select.dimension-select::-ms-expand {
     display: none;
 }
 
-.param-item select.form-control:hover {
+.param-item select.form-control:hover,
+.dimension-item select.form-control:hover,
+select.dimension-select:hover {
     background: white url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'%3E%3Cpath fill='%23333' d='m2 0-2 2h4zm0 5 2-2h-4z'/%3E%3C/svg%3E") no-repeat right 12px center;
     background-size: 12px;
 }
 
-.param-item select.form-control:focus {
+.param-item select.form-control:focus,
+.dimension-item select.form-control:focus,
+select.dimension-select:focus {
     background: white url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'%3E%3Cpath fill='%232563eb' d='m2 0-2 2h4zm0 5 2-2h-4z'/%3E%3C/svg%3E") no-repeat right 12px center;
     background-size: 12px;
 }
 
-.param-item .form-control:focus {
+.param-item .form-control:focus,
+.dimension-item .form-control:focus {
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
@@ -1397,6 +1673,56 @@ select option {
     }
 }
 
+/* 裁剪模式样式 */
+.crop-mode-dimmed {
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    position: relative;
+}
+
+.crop-mode-dimmed::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.1);
+    z-index: 1;
+    border-radius: 8px;
+}
+
+.crop-mode-highlight {
+    position: relative;
+    z-index: 10;
+}
+
+.crop-mode-highlight::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    background: linear-gradient(45deg, #007bff, #28a745);
+    border-radius: 10px;
+    z-index: -1;
+    opacity: 0.8;
+    animation: cropHighlightPulse 2s infinite ease-in-out;
+}
+
+@keyframes cropHighlightPulse {
+    0%, 100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.02);
+    }
+}
+
 /* 隐藏状态的平滑过渡 */
 .camera-preview-section,
 .photo-preview-section,
@@ -1664,6 +1990,34 @@ select option {
 /* 裁剪模式时的特殊样式 */
 .crop-overlay.active ~ .crop-confirm-container {
     animation: slideUpFadeIn 0.3s ease-out forwards;
+}
+
+/* 防止裁剪模式动画影响参数区域的亮度 */
+.crop-mode-transition .photo-processing-params,
+.crop-mode-transition .photo-processing-params *,
+.crop-mode-single .photo-processing-params,
+.crop-mode-single .photo-processing-params * {
+    filter: none !important;
+    transform: none !important;
+    brightness: 1 !important;
+    opacity: 1 !important;
+}
+
+/* 防止动画导致的缩放效果影响参数输入框 */
+.crop-mode-transition .photo-processing-params .form-control,
+.crop-mode-single .photo-processing-params .form-control,
+.crop-mode-transition .photo-processing-params .form-select,
+.crop-mode-single .photo-processing-params .form-select {
+    transform: scale(1) !important;
+    filter: none !important;
+    brightness: 1 !important;
+    background-color: #fff !important;
+}
+
+/* 确保只有确认裁剪按钮在裁剪模式时保持正常样式 */
+.crop-overlay.active ~ .crop-confirm-container .crop-confirm-btn {
+    filter: none !important;
+    opacity: 1 !important;
 }
 
 @keyframes slideUpFadeIn {
