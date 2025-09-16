@@ -131,6 +131,42 @@
             border-color: var(--car-accent-color);
             box-shadow: 0 0 0 2px rgba(230, 126, 34, 0.2);
         }
+        
+        /* 缩放因子呼吸灯动画 */
+        @keyframes breathe {
+            0% {
+                background-color: #f8f9fa;
+                box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+            }
+            50% {
+                background-color: #e3f2fd;
+                box-shadow: 0 0 0 8px rgba(52, 152, 219, 0.1);
+            }
+            100% {
+                background-color: #f8f9fa;
+                box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+            }
+        }
+        
+        .scale-factor-breathing {
+            animation: breathe 2s ease-in-out infinite;
+            border: 2px solid #3498db !important;
+            border-radius: 6px !important;
+            transition: all 0.3s ease;
+        }
+        
+        .scale-factor-display {
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            color: #6c757d;
+            font-size: 13px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
     </style>
     <!-- 引入Plotly.js -->
 <script src="https://cdn.plot.ly/plotly-2.25.2.min.js"></script>
@@ -1383,6 +1419,7 @@ intensity3
                                                     <option value="horizontal">水平方向</option>
                                                     <option value="vertical">垂直方向</option>
                                                     <option value="center">中心线</option>
+                                                    <option value="2d">2D识别</option>
                                                 </select>
                                             </div>
                                             <div class="param-item">
@@ -1501,7 +1538,9 @@ intensity3
                                             <div class="section-header" style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.06);">
                                                 <h4 style="color: #2c3e50; margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.3px;">数值查询工具</h4>
                                             </div>
-                                            <div class="xy-lookup-container" style="display: flex; gap: 32px;">
+                                            
+                                            <!-- 1D查询界面 -->
+                                            <div id="xy-lookup-1d" class="xy-lookup-container" style="display: flex; gap: 32px;">
                                                 <div class="lookup-item" style="flex: 1; padding: 20px; background: white; border-radius: 10px; border: 1px solid #e1e4e8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                                                     <div style="margin-bottom: 16px;">
                                                         <label style="display: block; color: #586069; font-size: 13px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">X 坐标查询</label>
@@ -1512,7 +1551,7 @@ intensity3
                                                     </div>
                                                     <div style="display: flex; flex-direction: column; gap: 12px;">
                                                         <button id="lookup-by-x-btn" style="padding: 8px 16px; background: linear-gradient(135deg, #56ccf2 0%, #2f80ed 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(47,128,237,0.25);">
-                                                            查询对应 Y 值
+                                                            查询对应强度值
                                                         </button>
                                                         <div style="padding: 10px 14px; background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 100%); border: 1px solid #d1d5da; border-radius: 6px; min-height: 38px; display: flex; align-items: center; justify-content: center;">
                                                             <span id="lookup-y-result" style="color: #24292e; font-size: 14px; font-weight: 500;">等待查询</span>
@@ -1521,18 +1560,48 @@ intensity3
                                                 </div>
                                                 <div class="lookup-item" style="flex: 1; padding: 20px; background: white; border-radius: 10px; border: 1px solid #e1e4e8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                                                     <div style="margin-bottom: 16px;">
-                                                        <label style="display: block; color: #586069; font-size: 13px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Y 光强查询</label>
+                                                        <label style="display: block; color: #586069; font-size: 13px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">强度值查询</label>
                                                         <div style="display: flex; align-items: center; gap: 8px;">
-                                                            <input type="number" id="lookup-y-input" style="flex: 1; padding: 8px 12px; border: 2px solid #e1e4e8; border-radius: 6px; font-size: 14px; transition: all 0.2s ease; outline: none;" placeholder="输入 Y 值">
+                                                            <input type="number" id="lookup-y-input" style="flex: 1; padding: 8px 12px; border: 2px solid #e1e4e8; border-radius: 6px; font-size: 14px; transition: all 0.2s ease; outline: none;" placeholder="输入强度值">
                                                             <span id="lookup-y-unit-label" style="color: #8b949e; font-size: 13px; font-weight: 500; min-width: 45px;">强度</span>
                                                         </div>
                                                     </div>
                                                     <div style="display: flex; flex-direction: column; gap: 12px;">
                                                         <button id="lookup-by-y-btn" style="padding: 8px 16px; background: linear-gradient(135deg, #56ccf2 0%, #2f80ed 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(47,128,237,0.25);">
-                                                            查询对应 X 值
+                                                            查询对应坐标
                                                         </button>
                                                         <div style="padding: 10px 14px; background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 100%); border: 1px solid #d1d5da; border-radius: 6px; min-height: 38px; display: flex; align-items: center; justify-content: center;">
                                                             <span id="lookup-x-result" style="color: #24292e; font-size: 14px; font-weight: 500;">等待查询</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- 2D查询界面 -->
+                                            <div id="xy-lookup-2d" class="xy-lookup-container" style="display: none;">
+                                                <div class="lookup-item" style="width: 100%; padding: 20px; background: white; border-radius: 10px; border: 1px solid #e1e4e8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                                                    <div style="display: flex; gap: 20px; margin-bottom: 16px;">
+                                                        <div style="flex: 1;">
+                                                            <label style="display: block; color: #586069; font-size: 13px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">X 坐标</label>
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <input type="number" id="lookup-2d-x-input" style="flex: 1; padding: 8px 12px; border: 2px solid #e1e4e8; border-radius: 6px; font-size: 14px; transition: all 0.2s ease; outline: none;" placeholder="输入 X 坐标值">
+                                                                <span id="lookup-2d-x-unit-label" style="color: #8b949e; font-size: 13px; font-weight: 500; min-width: 30px;">μm</span>
+                                                            </div>
+                                                        </div>
+                                                        <div style="flex: 1;">
+                                                            <label style="display: block; color: #586069; font-size: 13px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Y 坐标</label>
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <input type="number" id="lookup-2d-y-input" style="flex: 1; padding: 8px 12px; border: 2px solid #e1e4e8; border-radius: 6px; font-size: 14px; transition: all 0.2s ease; outline: none;" placeholder="输入 Y 坐标值">
+                                                                <span id="lookup-2d-y-unit-label" style="color: #8b949e; font-size: 13px; font-weight: 500; min-width: 30px;">μm</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                                                        <button id="lookup-2d-btn" style="padding: 12px 20px; background: linear-gradient(135deg, #56ccf2 0%, #2f80ed 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(47,128,237,0.25);">
+                                                            查询该坐标的强度值
+                                                        </button>
+                                                        <div style="padding: 15px 20px; background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 100%); border: 1px solid #d1d5da; border-radius: 6px; min-height: 45px; display: flex; align-items: center; justify-content: center;">
+                                                            <span id="lookup-2d-result" style="color: #24292e; font-size: 14px; font-weight: 500;">等待查询 - 请输入X和Y坐标</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1545,12 +1614,12 @@ intensity3
                                                 box-shadow: 0 6px 16px rgba(116,185,255,0.35) !important;
                                             }
 
-                                            #lookup-by-x-btn:hover, #lookup-by-y-btn:hover {
+                                            #lookup-by-x-btn:hover, #lookup-by-y-btn:hover, #lookup-2d-btn:hover {
                                                 transform: translateY(-1px);
                                                 box-shadow: 0 4px 12px rgba(47,128,237,0.35) !important;
                                             }
 
-                                            #lookup-x-input:focus, #lookup-y-input:focus {
+                                            #lookup-x-input:focus, #lookup-y-input:focus, #lookup-2d-x-input:focus, #lookup-2d-y-input:focus {
                                                 border-color: #2f80ed;
                                                 box-shadow: 0 0 0 3px rgba(47,128,237,0.1);
                                             }
@@ -4159,6 +4228,47 @@ intensity3
         } else {
             carFullDetails.classList.add('details-visible');
             this.innerHTML = '收起详情 <i class="fas fa-chevron-up"></i>';
+        }
+    });
+    </script>
+    
+    <!-- 1D/2D查询界面切换功能 -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 向量提取方向选择器
+        const vectorDirectionSelect = document.getElementById('vector-direction');
+        const xyLookup1D = document.getElementById('xy-lookup-1d');
+        const xyLookup2D = document.getElementById('xy-lookup-2d');
+        
+        if (vectorDirectionSelect && xyLookup1D && xyLookup2D) {
+            // 监听向量提取方向的变化
+            vectorDirectionSelect.addEventListener('change', function() {
+                const selectedDirection = this.value;
+                
+                if (selectedDirection === '2d') {
+                    // 显示2D查询界面，隐藏1D界面
+                    xyLookup1D.style.display = 'none';
+                    xyLookup2D.style.display = 'block';
+                    console.log('🔄 切换到2D查询界面');
+                } else {
+                    // 显示1D查询界面，隐藏2D界面
+                    xyLookup1D.style.display = 'flex';
+                    xyLookup2D.style.display = 'none';
+                    console.log('🔄 切换到1D查询界面');
+                }
+            });
+            
+            // 初始化：根据当前选择的方向设置界面显示状态
+            const initialDirection = vectorDirectionSelect.value;
+            if (initialDirection === '2d') {
+                xyLookup1D.style.display = 'none';
+                xyLookup2D.style.display = 'block';
+            } else {
+                xyLookup1D.style.display = 'flex';
+                xyLookup2D.style.display = 'none';
+            }
+            
+            console.log('✅ 1D/2D查询界面切换功能已初始化');
         }
     });
     </script>

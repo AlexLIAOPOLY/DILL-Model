@@ -4763,6 +4763,11 @@ def process_photo():
         grayscale_array = convert_to_grayscale_numpy(image_array, grayscale_method)
         add_progress_log('system', f'灰度转换完成，方法: {grayscale_method}')
         
+        # 检查图像大小，对于2D处理给出警告
+        if vector_direction == '2d' and (width * height > 1000000):  # 超过100万像素
+            add_error_log('system', f'图像过大 ({width}×{height}={width*height} 像素)，可能导致处理缓慢或内存不足')
+            print(f"⚠️ [WARNING] 大图像2D处理: {width}×{height}={width*height} 像素，建议使用较小图像")
+        
         # 从灰度图像提取向量
         vector_data = extract_vector_from_grayscale(
             grayscale_array, 
@@ -4770,16 +4775,22 @@ def process_photo():
             coordinate_unit, 
             scale_factor
         )
-        add_progress_log('system', f'向量提取完成，数据点数: {len(vector_data["intensity"])}')
         
-        # 应用平滑处理
-        if smoothing_method != 'none':
+        # 记录提取完成日志 - 支持1D和2D数据
+        if vector_data.get('is2D'):
+            data_points = vector_data['width'] * vector_data['height']
+            add_progress_log('system', f'向量提取完成，2D数据点数: {data_points} ({vector_data["width"]}x{vector_data["height"]})')
+        else:
+            add_progress_log('system', f'向量提取完成，数据点数: {len(vector_data["intensity"])}')
+        
+        # 应用平滑处理 - 仅对1D数据
+        if smoothing_method != 'none' and not vector_data.get('is2D'):
             vector_data['intensity'] = apply_smoothing(vector_data['intensity'], smoothing_method)
             add_progress_log('system', f'数据平滑完成，方法: {smoothing_method}')
         
         # 应用光强缩放：将归一化的强度值(0-1)缩放到用户指定的最大光强值
-        if max_intensity_value != 1.0:
-            # 找到当前最大强度值（应该是1.0或接近1.0）
+        if max_intensity_value != 1.0 and not vector_data.get('is2D'):
+            # 仅对1D数据进行光强缩放
             current_max = max(vector_data['intensity'])
             if current_max > 0:
                 # 按比例缩放到用户指定的最大值
@@ -4787,25 +4798,57 @@ def process_photo():
                 add_progress_log('system', f'光强缩放完成: 最大值从 {current_max:.3f} 缩放到 {max_intensity_value}')
         
         # 获取坐标验证结果
-        coord_range = max(vector_data['x']) - min(vector_data['x'])
-        validation_result = validate_coordinate_range(coord_range, coordinate_unit, len(vector_data['x']))
+        if vector_data.get('is2D'):
+            coord_range = max(vector_data['x']) - min(vector_data['x'])
+            validation_result = validate_coordinate_range(coord_range, coordinate_unit, vector_data['width'])
+        else:
+            coord_range = max(vector_data['x']) - min(vector_data['x'])
+            validation_result = validate_coordinate_range(coord_range, coordinate_unit, len(vector_data['x']))
         
-        # 计算用户光强设置的相关信息（新增）
-        intensity_marker_info = calculate_intensity_marker_info(
-            vector_data, intensity_value_type, 
-            max_intensity_value, center_intensity_value, custom_intensity_value,
-            custom_position_x, custom_position_y, scale_factor
-        )
-        add_progress_log('system', f'光强标记信息计算完成: {intensity_value_type}')
+        # 计算用户光强设置的相关信息（仅对1D数据）
+        if not vector_data.get('is2D'):
+            intensity_marker_info = calculate_intensity_marker_info(
+                vector_data, intensity_value_type, 
+                max_intensity_value, center_intensity_value, custom_intensity_value,
+                custom_position_x, custom_position_y, scale_factor
+            )
+            add_progress_log('system', f'光强标记信息计算完成: {intensity_value_type}')
+        else:
+            intensity_marker_info = None  # 2D数据暂不支持光强标记
         
-        # 生成响应数据
-        response_data = {
-            'success': True,
-            'vector_data': {
-                'x': vector_data['x'],
-                'intensity': vector_data['intensity']
-            },
-            'metadata': {
+        # 生成响应数据 - 支持1D和2D数据
+        if vector_data.get('is2D'):
+            response_data = {
+                'success': True,
+                'vector_data': vector_data,  # 直接返回完整的2D数据结构
+                'metadata': {
+                    'original_size': f"{width}x{height}",
+                    'grayscale_method': grayscale_method,
+                    'vector_direction': vector_direction,
+                    'coordinate_unit': coordinate_unit,
+                    'scale_factor': scale_factor,
+                    'data_type': '2D',
+                    'matrix_size': f"{vector_data['width']}x{vector_data['height']}",
+                    'total_data_points': vector_data['width'] * vector_data['height'],
+                    'coordinate_range_x': float(max(vector_data['x']) - min(vector_data['x'])),
+                    'coordinate_range_y': float(max(vector_data['y']) - min(vector_data['y'])),
+                    'unit_validation': validation_result,
+                    'processing_info': {
+                        'pixel_to_unit_ratio': f'1px = {scale_factor}{coordinate_unit}',
+                        'total_pixels_processed': width * height,
+                        'vector_extraction_direction': vector_direction,
+                        'data_dimensions': '2D'
+                    }
+                }
+            }
+        else:
+            response_data = {
+                'success': True,
+                'vector_data': {
+                    'x': vector_data['x'],
+                    'intensity': vector_data['intensity']
+                },
+                'metadata': {
                 'original_size': f"{width}x{height}",
                 'grayscale_method': grayscale_method,
                 'vector_direction': vector_direction,
@@ -4829,7 +4872,12 @@ def process_photo():
             }
         }
         
-        add_success_log('system', f'照片处理完成，生成{len(vector_data["x"])}个数据点')
+        # 记录处理完成日志 - 支持1D和2D数据
+        if vector_data.get('is2D'):
+            total_points = vector_data['width'] * vector_data['height']
+            add_success_log('system', f'照片处理完成，生成{total_points}个2D数据点 ({vector_data["width"]}x{vector_data["height"]})')
+        else:
+            add_success_log('system', f'照片处理完成，生成{len(vector_data["x"])}个数据点')
         
         return jsonify(response_data)
         
@@ -4921,6 +4969,19 @@ def convert_to_grayscale_numpy(image_array, method='weighted'):
     """
     使用numpy进行彩色转灰度转换
     """
+    # 调试输出：检查输入图像数组的统计信息
+    print(f"🔍 [DEBUG] 灰度转换输入统计:")
+    print(f"   - 输入数组形状: {image_array.shape}")
+    print(f"   - 输入数组数据类型: {image_array.dtype}")
+    
+    # 安全地获取RGB通道统计信息
+    try:
+        print(f"   - R通道统计: 最小值={image_array[:,:,0].min()}, 最大值={image_array[:,:,0].max()}, 平均值={image_array[:,:,0].mean():.1f}")
+        print(f"   - G通道统计: 最小值={image_array[:,:,1].min()}, 最大值={image_array[:,:,1].max()}, 平均值={image_array[:,:,1].mean():.1f}")
+        print(f"   - B通道统计: 最小值={image_array[:,:,2].min()}, 最大值={image_array[:,:,2].max()}, 平均值={image_array[:,:,2].mean():.1f}")
+    except Exception as e:
+        print(f"   - RGB通道统计获取失败: {e}")
+    
     if method == 'weighted':
         # 加权平均法（推荐）
         grayscale = 0.299 * image_array[:, :, 0] + 0.587 * image_array[:, :, 1] + 0.114 * image_array[:, :, 2]
@@ -4937,7 +4998,20 @@ def convert_to_grayscale_numpy(image_array, method='weighted'):
         # 默认使用加权平均法
         grayscale = 0.299 * image_array[:, :, 0] + 0.587 * image_array[:, :, 1] + 0.114 * image_array[:, :, 2]
     
-    return grayscale.astype(np.uint8)
+    result = grayscale.astype(np.uint8)
+    
+    # 调试输出：检查灰度转换结果
+    print(f"🔍 [DEBUG] 灰度转换输出统计:")
+    print(f"   - 转换方法: {method}")
+    print(f"   - 输出数组形状: {result.shape}")
+    print(f"   - 输出数组数据类型: {result.dtype}")
+    print(f"   - 灰度值统计: 最小值={result.min()}, 最大值={result.max()}, 平均值={result.mean():.1f}")
+    print(f"   - 非零像素数量: {np.count_nonzero(result)} / {result.size}")
+    
+    if result.max() == 0:
+        print(f"⚠️ [WARNING] 灰度转换结果全为0！这可能意味着输入图像是全黑的")
+    
+    return result
 
 
 def extract_vector_from_grayscale(grayscale_array, direction, coordinate_unit, scale_factor):
@@ -4965,6 +5039,40 @@ def extract_vector_from_grayscale(grayscale_array, direction, coordinate_unit, s
         diagonal2 = np.array([grayscale_array[i, min_size-1-i] for i in range(min_size)])
         intensity_values = (diagonal1 + diagonal2) / (2 * 255.0)  # 归一化
         data_length = min_size
+        
+    elif direction == '2d':
+        # 2D识别：返回整个2D强度矩阵
+        intensity_2d = grayscale_array / 255.0  # 归一化到0-1
+        
+        # 调试输出：检查输入的灰度数据和输出的强度数据
+        print(f"🔍 [DEBUG] 2D数据处理统计:")
+        print(f"   - 输入图像尺寸: {width}×{height}")
+        print(f"   - 灰度数组统计: 最小值={grayscale_array.min()}, 最大值={grayscale_array.max()}, 平均值={grayscale_array.mean():.3f}")
+        print(f"   - 非零像素数量: {np.count_nonzero(grayscale_array)} / {width*height}")
+        print(f"   - 强度数组统计: 最小值={intensity_2d.min():.6f}, 最大值={intensity_2d.max():.6f}, 平均值={intensity_2d.mean():.6f}")
+        # 安全地显示前10个值，避免处理过大数组时的问题
+        flat_gray = grayscale_array.flatten()
+        flat_intensity = intensity_2d.flatten()
+        print(f"   - 前10个像素的灰度值: {[float(v) for v in flat_gray[:10]]}")
+        print(f"   - 前10个像素的强度值: {[float(v) for v in flat_intensity[:10]]}")
+        
+        if intensity_2d.max() == 0:
+            print(f"⚠️ [WARNING] 所有强度值都为0！检查输入图像是否为全黑图像")
+        
+        # 生成X和Y坐标
+        x_coords = generate_coordinates(width, coordinate_unit, scale_factor)
+        y_coords = generate_coordinates(height, coordinate_unit, scale_factor)
+        
+        return {
+            'is2D': True,
+            'x': x_coords.tolist(),
+            'y': y_coords.tolist(),
+            'intensity2D': intensity_2d.tolist(),
+            'width': width,
+            'height': height,
+            'scaleFactorX': scale_factor,
+            'scaleFactorY': scale_factor
+        }
         
     else:
         # 默认水平方向

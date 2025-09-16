@@ -80,13 +80,22 @@ class PhotoRecognition {
         const photoUnit = document.getElementById('photo-unit');
         
         if (photoWidth) {
-            photoWidth.addEventListener('input', () => this.updateScaleFactorDisplay());
+            photoWidth.addEventListener('input', () => {
+                this.updateScaleFactorDisplay();
+                this.validateGenerateButton();
+            });
         }
         if (photoHeight) {
-            photoHeight.addEventListener('input', () => this.updateScaleFactorDisplay());
+            photoHeight.addEventListener('input', () => {
+                this.updateScaleFactorDisplay();
+                this.validateGenerateButton();
+            });
         }
         if (photoUnit) {
-            photoUnit.addEventListener('change', () => this.updateScaleFactorDisplay());
+            photoUnit.addEventListener('change', () => {
+                this.updateScaleFactorDisplay();
+                this.validateGenerateButton();
+            });
         }
         
         // 裁剪模式监听
@@ -107,6 +116,46 @@ class PhotoRecognition {
             intensityValueType.addEventListener('change', () => this.handleIntensityValueTypeChange());
             // 初始化时也要设置一次
             this.handleIntensityValueTypeChange();
+        }
+        
+        // 2D查询按钮监听
+        const lookup2DBtn = document.getElementById('lookup-2d-btn');
+        if (lookup2DBtn) {
+            lookup2DBtn.addEventListener('click', () => {
+                console.log('🔍 2D查询按钮被点击');
+                
+                if (!this.vectorData || !this.vectorData.is2D) {
+                    this.display2DLookupResult('请先生成2D向量数据', false);
+                    return;
+                }
+                
+                const xInput = document.getElementById('lookup-2d-x-input');
+                const yInput = document.getElementById('lookup-2d-y-input');
+                
+                if (xInput && yInput) {
+                    const xValue = parseFloat(xInput.value);
+                    const yValue = parseFloat(yInput.value);
+                    
+                    console.log('📍 查询坐标:', { x: xValue, y: yValue });
+                    
+                    if (!isNaN(xValue) && !isNaN(yValue)) {
+                        const intensity = this.lookupYByX(xValue, yValue);
+                        console.log('📊 查询结果:', intensity);
+                        
+                        if (intensity !== null && intensity !== undefined) {
+                            const unit = this.getCoordinateUnit();
+                            this.display2DLookupResult(
+                                `坐标 (${xValue}, ${yValue}) ${unit} 处的强度值: ${intensity.toFixed(6)}`,
+                                true
+                            );
+                        } else {
+                            this.display2DLookupResult('查询失败：坐标超出数据范围或数据无效', false);
+                        }
+                    } else {
+                        this.display2DLookupResult('请输入有效的X和Y坐标值', false);
+                    }
+                }
+            });
         }
         
         // 标签页切换监听由main.js处理
@@ -224,6 +273,9 @@ class PhotoRecognition {
                 
                          // 显示处理结果
          this.displayUploadedPhoto(canvas);
+         
+         // 验证生成向量按钮状态
+         this.validateGenerateButton();
          
          // 自动处理照片并显示参数区域
          this.processPhoto();
@@ -407,6 +459,9 @@ class PhotoRecognition {
             
                          // 显示拍摄结果
              this.displayCapturedPhoto(canvas);
+             
+             // 验证生成向量按钮状态
+             this.validateGenerateButton();
              
              // 隐藏相机预览，显示照片预览
              document.getElementById('camera-preview-section').style.display = 'none';
@@ -698,10 +753,8 @@ class PhotoRecognition {
                 throw new Error(result.message || '后端处理失败');
             }
             
-            // 保存向量数据
+            // 保存向量数据 - 支持1D和2D数据
             this.vectorData = {
-                x: result.vector_data.x,
-                intensity: result.vector_data.intensity,
                 method: 'photo-recognition',
                 parameters: {
                     grayscaleMethod: grayscaleMethod,
@@ -715,6 +768,62 @@ class PhotoRecognition {
                 },
                 metadata: result.metadata
             };
+
+            // 根据是否为2D数据来保存不同的字段
+            if (result.vector_data.is2D) {
+                // 2D数据
+                this.vectorData.is2D = true;
+                this.vectorData.x = result.vector_data.x;
+                this.vectorData.y = result.vector_data.y;
+                this.vectorData.intensity2D = result.vector_data.intensity2D;
+                this.vectorData.width = result.vector_data.width;
+                this.vectorData.height = result.vector_data.height;
+                this.vectorData.scaleFactorX = result.vector_data.scaleFactorX;
+                this.vectorData.scaleFactorY = result.vector_data.scaleFactorY;
+                
+                // 调试输出：检查2D数据的统计信息
+                if (this.vectorData.intensity2D && this.vectorData.intensity2D.length > 0) {
+                    let minVal = Infinity;
+                    let maxVal = -Infinity;
+                    let sumVal = 0;
+                    let totalCount = 0;
+                    let nonZeroCount = 0;
+                    
+                    // 避免使用扩展运算符处理大数组，改用逐行处理
+                    for (let row of this.vectorData.intensity2D) {
+                        for (let val of row) {
+                            minVal = Math.min(minVal, val);
+                            maxVal = Math.max(maxVal, val);
+                            sumVal += val;
+                            totalCount++;
+                            if (val !== 0) nonZeroCount++;
+                        }
+                    }
+                    
+                    const avgVal = totalCount > 0 ? sumVal / totalCount : 0;
+                    
+                    console.log('🔍 2D数据统计信息:', {
+                        尺寸: `${this.vectorData.width}×${this.vectorData.height}`,
+                        总数据点: totalCount,
+                        最小值: minVal,
+                        最大值: maxVal,
+                        平均值: avgVal.toFixed(6),
+                        非零值数量: nonZeroCount,
+                        零值数量: totalCount - nonZeroCount
+                    });
+                    
+                    if (maxVal === 0) {
+                        console.error('❌ 检测到所有强度值都为0！这可能是数据处理问题');
+                    }
+                } else {
+                    console.error('❌ intensity2D数据为空或未定义');
+                }
+            } else {
+                // 1D数据
+                this.vectorData.is2D = false;
+                this.vectorData.x = result.vector_data.x;
+                this.vectorData.intensity = result.vector_data.intensity;
+            }
             
             // 验证坐标范围的合理性
             this.validateCoordinateRange(result.vector_data.x, coordinateUnit);
@@ -816,6 +925,20 @@ class PhotoRecognition {
                 // 取对角线平均值
                 for (let i = 0; i < diagonal1.length; i++) {
                     vector.push((diagonal1[i] + diagonal2[i]) / 2);
+                }
+                break;
+                
+            case '2d':
+                // 2D识别：提取整个2D矩阵的强度值
+                vector = [];
+                for (let y = 0; y < height; y++) {
+                    const row = [];
+                    for (let x = 0; x < width; x++) {
+                        const index = (y * width + x) * 4;
+                        const grayValue = data[index]; // R通道值（灰度图中RGB相同）
+                        row.push(grayValue / 255); // 归一化到0-1
+                    }
+                    vector.push(row);
                 }
                 break;
         }
@@ -1062,13 +1185,24 @@ class PhotoRecognition {
         // 清空canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // 绘制向量数据 (使用CSS尺寸进行绘制计算)
-        this.drawVectorChart(ctx, this.vectorData.x, this.vectorData.intensity, targetWidth, targetHeight);
+        // 检查数据类型并绘制相应内容
+        if (this.vectorData.is2D) {
+            // 2D数据：显示2D数据提示
+            this.draw2DDataPreview(ctx, targetWidth, targetHeight);
+        } else {
+            // 1D数据：绘制向量图表
+            this.drawVectorChart(ctx, this.vectorData.x, this.vectorData.intensity, targetWidth, targetHeight);
+        }
         
         // 更新统计信息
         const countElement = document.getElementById('vector-data-count');
         if (countElement) {
-            countElement.textContent = `数据点: ${this.vectorData.x.length}`;
+            if (this.vectorData.is2D) {
+                const totalPoints = this.vectorData.width * this.vectorData.height;
+                countElement.textContent = `2D数据点: ${totalPoints} (${this.vectorData.width}×${this.vectorData.height})`;
+            } else {
+                countElement.textContent = `数据点: ${this.vectorData.x.length}`;
+            }
         }
         
         // 显示向量预览区域
@@ -1150,8 +1284,14 @@ class PhotoRecognition {
         ctx.scale(dpr, dpr);
         
         if (this.vectorData) {
-            this.drawVectorChart(ctx, this.vectorData.x, this.vectorData.intensity, 
-                                zoomedCanvas.width / dpr, zoomedCanvas.height / dpr);
+            if (this.vectorData.is2D) {
+                // 2D数据：显示2D数据提示
+                this.draw2DDataPreview(ctx, zoomedCanvas.width / dpr, zoomedCanvas.height / dpr);
+            } else {
+                // 1D数据：绘制向量图表
+                this.drawVectorChart(ctx, this.vectorData.x, this.vectorData.intensity, 
+                                    zoomedCanvas.width / dpr, zoomedCanvas.height / dpr);
+            }
         }
         
         container.appendChild(closeBtn);
@@ -1175,7 +1315,353 @@ class PhotoRecognition {
         };
         document.addEventListener('keydown', handleEsc);
     }
-
+    
+    /**
+     * 绘制2D数据预览 - 矩形绘制热力图
+     */
+    draw2DDataPreview(ctx, width, height) {
+        // 清空画布
+        ctx.clearRect(0, 0, width, height);
+        
+        // 设置背景
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, '#f8f9fa');
+        gradient.addColorStop(1, '#e9ecef');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+        
+        const intensity2D = this.vectorData.intensity2D;
+        const imgWidth = this.vectorData.width;
+        const imgHeight = this.vectorData.height;
+        
+        // 计算显示区域
+        const titleHeight = 40;
+        const padding = 30;
+        const footerHeight = 40;
+        const colorBarWidth = 60;
+        
+        // 可用显示区域
+        const availableWidth = width - colorBarWidth - padding * 3;
+        const availableHeight = height - titleHeight - footerHeight;
+        
+        // 计算每个像素的显示尺寸
+        const pixelWidth = availableWidth / imgWidth;
+        const pixelHeight = availableHeight / imgHeight;
+        const pixelSize = Math.min(pixelWidth, pixelHeight);
+        
+        // 实际绘制尺寸
+        const drawWidth = pixelSize * imgWidth;
+        const drawHeight = pixelSize * imgHeight;
+        
+        // 居中定位
+        const startX = padding + (availableWidth - drawWidth) / 2;
+        const startY = titleHeight + (availableHeight - drawHeight) / 2;
+        
+        // 找到强度范围
+        let minIntensity = Infinity;
+        let maxIntensity = -Infinity;
+        
+        for (let y = 0; y < imgHeight; y++) {
+            for (let x = 0; x < imgWidth; x++) {
+                const intensity = intensity2D[y][x];
+                minIntensity = Math.min(minIntensity, intensity);
+                maxIntensity = Math.max(maxIntensity, intensity);
+            }
+        }
+        
+        const range = maxIntensity - minIntensity;
+        
+        // 绘制每个像素为一个矩形
+        for (let y = 0; y < imgHeight; y++) {
+            for (let x = 0; x < imgWidth; x++) {
+                const intensity = intensity2D[y][x];
+                const normalizedIntensity = range > 0 ? (intensity - minIntensity) / range : 0;
+                
+                // 热力图配色 - 更简洁的蓝白红渐变
+                let r, g, b;
+                if (normalizedIntensity < 0.5) {
+                    // 蓝到白
+                    const t = normalizedIntensity * 2;
+                    r = Math.floor(30 + t * 225);
+                    g = Math.floor(144 + t * 111);
+                    b = 255;
+                } else {
+                    // 白到红
+                    const t = (normalizedIntensity - 0.5) * 2;
+                    r = 255;
+                    g = Math.floor(255 - t * 255);
+                    b = Math.floor(255 - t * 255);
+                }
+                
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.fillRect(
+                    startX + x * pixelSize,
+                    startY + y * pixelSize,
+                    pixelSize,
+                    pixelSize
+                );
+            }
+        }
+        
+        // 绘制边框
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, drawWidth, drawHeight);
+        
+        // 绘制美化的色彩标尺
+        const colorBarX = startX + drawWidth + 20;
+        const colorBarY = startY;
+        this.drawColorScale(ctx, colorBarX, colorBarY, 25, drawHeight, minIntensity, maxIntensity);
+        
+        // 标题
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`2D强度热力图 (${imgWidth}×${imgHeight})`, width / 2, 25);
+        
+        // 找到最大强度点并添加标注
+        let maxIntensityX = 0, maxIntensityY = 0;
+        let maxVal = -Infinity;
+        
+        for (let y = 0; y < imgHeight; y++) {
+            for (let x = 0; x < imgWidth; x++) {
+                if (intensity2D[y][x] > maxVal) {
+                    maxVal = intensity2D[y][x];
+                    maxIntensityX = x;
+                    maxIntensityY = y;
+                }
+            }
+        }
+        
+        // 绘制最大强度点标记
+        const markerX = startX + maxIntensityX * pixelSize + pixelSize / 2;
+        const markerY = startY + maxIntensityY * pixelSize + pixelSize / 2;
+        
+        // 外圈 - 白色边框
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 8, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // 内圈 - 红色填充
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // 中心点 - 白色
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 2, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // 获取最大点的实际坐标
+        const maxPointCoordX = this.vectorData.x[maxIntensityX];
+        const maxPointCoordY = this.vectorData.y[maxIntensityY];
+        
+        // 标注文字
+        const unit = this.getCoordinateUnit();
+        ctx.font = 'bold 11px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 3;
+        ctx.textAlign = 'center';
+        
+        const labelText = `最大值: ${maxVal.toFixed(3)}`;
+        const coordText = `(${maxPointCoordX.toFixed(2)}, ${maxPointCoordY.toFixed(2)} ${unit})`;
+        
+        // 计算标签位置（避免超出边界）
+        let labelX = markerX;
+        let labelY = markerY - 15;
+        
+        // 如果标记点在顶部，标签放在下方
+        if (markerY < startY + 30) {
+            labelY = markerY + 25;
+        }
+        
+        // 如果标记点在左边或右边边缘，调整X位置
+        if (markerX < startX + 60) {
+            labelX = startX + 60;
+        } else if (markerX > startX + drawWidth - 60) {
+            labelX = startX + drawWidth - 60;
+        }
+        
+        // 绘制标注文字（带描边）
+        ctx.strokeText(labelText, labelX, labelY);
+        ctx.fillText(labelText, labelX, labelY);
+        
+        ctx.strokeText(coordText, labelX, labelY + 12);
+        ctx.fillText(coordText, labelX, labelY + 12);
+        
+        // 绘制中心点标记
+        const centerX = Math.floor(imgWidth / 2);
+        const centerY = Math.floor(imgHeight / 2);
+        const centerMarkerX = startX + centerX * pixelSize + pixelSize / 2;
+        const centerMarkerY = startY + centerY * pixelSize + pixelSize / 2;
+        const centerIntensity = intensity2D[centerY][centerX];
+        
+        // 中心点标记 - 橙色
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerMarkerX, centerMarkerY, 6, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#ff9800';
+        ctx.beginPath();
+        ctx.arc(centerMarkerX, centerMarkerY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // 中心点白色小点
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(centerMarkerX, centerMarkerY, 1.5, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // 中心点标注文字
+        const centerCoordX = this.vectorData.x[centerX];
+        const centerCoordY = this.vectorData.y[centerY];
+        
+        ctx.font = 'bold 10px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 2;
+        ctx.textAlign = 'center';
+        
+        const centerLabelText = `中心: ${centerIntensity.toFixed(3)}`;
+        const centerCoordText = `(${centerCoordX.toFixed(2)}, ${centerCoordY.toFixed(2)} ${unit})`;
+        
+        // 计算中心点标签位置（与最大值标签错开）
+        let centerLabelX = centerMarkerX;
+        let centerLabelY = centerMarkerY + 20;
+        
+        // 如果中心点在底部，标签放在上方
+        if (centerMarkerY > startY + drawHeight - 30) {
+            centerLabelY = centerMarkerY - 15;
+        }
+        
+        // 避免与最大值标签重叠
+        if (Math.abs(centerMarkerX - markerX) < 100 && Math.abs(centerMarkerY - markerY) < 50) {
+            centerLabelX += (centerMarkerX > markerX) ? 50 : -50;
+        }
+        
+        // 绘制中心点标注文字（带描边）
+        ctx.strokeText(centerLabelText, centerLabelX, centerLabelY);
+        ctx.fillText(centerLabelText, centerLabelX, centerLabelY);
+        
+        ctx.strokeText(centerCoordText, centerLabelX, centerLabelY + 10);
+        ctx.fillText(centerCoordText, centerLabelX, centerLabelY + 10);
+        
+        // X轴坐标范围标签（底部横轴）
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#5a6c7d';
+        ctx.textAlign = 'center';
+        const xRange = `X: ${this.vectorData.x[0].toFixed(2)} ~ ${this.vectorData.x[this.vectorData.x.length-1].toFixed(2)} ${unit}`;
+        ctx.fillText(xRange, startX + drawWidth / 2, startY + drawHeight + 20);
+        
+        // Y轴坐标范围标签（左侧纵轴，旋转显示）
+        const yRange = `Y: ${this.vectorData.y[0].toFixed(2)} ~ ${this.vectorData.y[this.vectorData.y.length-1].toFixed(2)} ${unit}`;
+        ctx.save();
+        ctx.translate(15, startY + drawHeight / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.fillText(yRange, 0, 0);
+        ctx.restore();
+    }
+    
+    /**
+     * 获取坐标单位
+     */
+    getCoordinateUnit() {
+        const coordinateUnitSelect = document.getElementById('coordinate-unit');
+        if (coordinateUnitSelect) {
+            const unit = coordinateUnitSelect.value;
+            const unitLabels = {
+                'pixels': 'px',
+                'nm': 'nm', 
+                'μm': 'μm',
+                'mm': 'mm',
+                'cm': 'cm',
+                'm': 'm'
+            };
+            return unitLabels[unit] || unit;
+        }
+        return 'px';
+    }
+    
+    /**
+     * 绘制美化的色彩标尺
+     */
+    drawColorScale(ctx, x, y, width, height, minVal, maxVal) {
+        // 绘制渐变条 - 蓝白红渐变
+        const gradient = ctx.createLinearGradient(0, y, 0, y + height);
+        gradient.addColorStop(0, 'rgb(255, 255, 255)'); // 白（高值）
+        gradient.addColorStop(0.5, 'rgb(135, 206, 255)'); // 浅蓝
+        gradient.addColorStop(1, 'rgb(30, 144, 255)'); // 深蓝（低值）
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x, y, width, height);
+        
+        // 美化边框
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, width, height);
+        
+        // 内阴影效果
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 1, y + 1, width - 2, height - 2);
+        
+        // 刻度线和标签
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'left';
+        
+        // 最大值标签
+        ctx.fillText(maxVal.toFixed(3), x + width + 8, y + 5);
+        
+        // 中间值标签
+        const midVal = (maxVal + minVal) / 2;
+        ctx.fillText(midVal.toFixed(3), x + width + 8, y + height/2 + 3);
+        
+        // 最小值标签
+        ctx.fillText(minVal.toFixed(3), x + width + 8, y + height + 3);
+        
+        // 强度标签
+        ctx.font = 'bold 11px Arial';
+        ctx.fillStyle = '#34495e';
+        ctx.textAlign = 'center';
+        
+        // 旋转文字绘制"强度"
+        ctx.save();
+        ctx.translate(x + width + 50, y + height/2); // 从35增加到50，向右移动
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText('强度', 0, 0);
+        ctx.restore();
+        
+        // 刻度线
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 1;
+        // 顶部刻度
+        ctx.beginPath();
+        ctx.moveTo(x + width, y);
+        ctx.lineTo(x + width + 5, y);
+        ctx.stroke();
+        
+        // 中间刻度
+        ctx.beginPath();
+        ctx.moveTo(x + width, y + height/2);
+        ctx.lineTo(x + width + 5, y + height/2);
+        ctx.stroke();
+        
+        // 底部刻度
+        ctx.beginPath();
+        ctx.moveTo(x + width, y + height);
+        ctx.lineTo(x + width + 5, y + height);
+        ctx.stroke();
+    }
+    
     /**
      * 绘制向量图表 - 增强版美化设计
      */
@@ -1816,7 +2302,12 @@ class PhotoRecognition {
             // 更新数据统计
             const dataCountElement = document.getElementById('preview-data-count');
             if (dataCountElement) {
-                dataCountElement.textContent = `${this.vectorData.x.length} 个数据点`;
+                if (this.vectorData.is2D) {
+                    const totalPoints = this.vectorData.width * this.vectorData.height;
+                    dataCountElement.textContent = `${totalPoints.toLocaleString()} 个数据点`;
+                } else {
+                    dataCountElement.textContent = `${this.vectorData.x.length.toLocaleString()} 个数据点`;
+                }
             }
 
             // 填充数据表格
@@ -1851,11 +2342,53 @@ class PhotoRecognition {
 
         // 清空现有内容
         tbody.innerHTML = '';
+        
+        // 更新表格标题
+        this.updateDataTableHeaders();
 
+        if (this.vectorData.is2D) {
+            // 2D数据处理
+            this.populate2DDataTable(tbody);
+        } else {
+            // 1D数据处理
+            this.populate1DDataTable(tbody);
+        }
+    }
+    
+    /**
+     * 更新数据表格标题
+     */
+    updateDataTableHeaders() {
+        const table = document.querySelector('#vector-data-tbody').closest('table');
+        if (!table) return;
+        
+        const thead = table.querySelector('thead tr');
+        if (!thead) return;
+        
+        if (this.vectorData.is2D) {
+            // 2D数据表头：序号, X坐标, Y坐标, 强度值
+            thead.innerHTML = `
+                <th>序号</th>
+                <th>X坐标</th>
+                <th>Y坐标</th>
+                <th>光强度</th>
+            `;
+        } else {
+            // 1D数据表头：序号, 坐标位置, 光强度
+            thead.innerHTML = `
+                <th>序号</th>
+                <th>坐标位置</th>
+                <th>光强度</th>
+            `;
+        }
+    }
+    
+    /**
+     * 填充1D数据表格
+     */
+    populate1DDataTable(tbody) {
         const xData = this.vectorData.x;
         const intensityData = this.vectorData.intensity;
-
-        // 显示所有数据，不再省略
         const dataLength = xData.length;
 
         // 生成所有数据行
@@ -1872,7 +2405,71 @@ class PhotoRecognition {
             tbody.appendChild(row);
         }
 
-        console.log(`📊 数据表格填充完成，显示 ${dataLength} 行数据`);
+        console.log(`📊 1D数据表格填充完成，显示 ${dataLength} 行数据`);
+    }
+    
+    /**
+     * 填充2D数据表格
+     */
+    populate2DDataTable(tbody) {
+        const xData = this.vectorData.x;
+        const yData = this.vectorData.y;
+        const intensity2D = this.vectorData.intensity2D;
+        
+        // 计算总数据点数量
+        const totalPoints = xData.length * yData.length;
+        
+        // 如果数据量很大，显示提示信息
+        if (totalPoints > 10000) {
+            const infoRow = document.createElement('tr');
+            infoRow.className = 'data-info-warning';
+            infoRow.innerHTML = `
+                <td colspan="4" style="text-align: center; background-color: #e8f5e8; color: #2e7d2e; padding: 12px; border-radius: 6px; border-left: 4px solid #4caf50;">
+                    📊 显示完整数据：${totalPoints.toLocaleString()} 个数据点<br>
+                    <small style="color: #666; font-size: 11px;">数据量较大，页面滚动可能较慢，建议使用浏览器搜索功能快速定位数据</small>
+                </td>
+            `;
+            tbody.appendChild(infoRow);
+            
+            // 8秒后自动消失
+            setTimeout(() => {
+                if (infoRow.parentNode) {
+                    infoRow.style.opacity = '0';
+                    setTimeout(() => {
+                        if (infoRow.parentNode) {
+                            infoRow.parentNode.removeChild(infoRow);
+                        }
+                    }, 500);
+                }
+            }, 8000);
+        }
+        
+        let rowCount = 0;
+        
+        // 遍历所有2D数据点（完整显示）
+        for (let j = 0; j < yData.length; j++) {
+            for (let i = 0; i < xData.length; i++) {
+                const row = document.createElement('tr');
+                row.className = 'data-row';
+                
+                row.innerHTML = `
+                    <td>${rowCount + 1}</td>
+                    <td>${xData[i].toFixed(6)}</td>
+                    <td>${yData[j].toFixed(6)}</td>
+                    <td>${intensity2D[j][i].toFixed(6)}</td>
+                `;
+                
+                tbody.appendChild(row);
+                rowCount++;
+                
+                // 每1000行显示一次进度（仅在大数据量时）
+                if (totalPoints > 10000 && rowCount % 1000 === 0) {
+                    console.log(`📊 已渲染 ${rowCount.toLocaleString()} / ${totalPoints.toLocaleString()} 行数据...`);
+                }
+            }
+        }
+        
+        console.log(`✅ 2D数据表格填充完成，显示全部 ${rowCount.toLocaleString()} 行数据`);
     }
 
     /**
@@ -1881,6 +2478,12 @@ class PhotoRecognition {
     applyVectorData() {
         if (!this.vectorData) {
             alert('请先生成向量数据');
+            return;
+        }
+
+        // 检查是否为2D数据
+        if (this.vectorData.is2D) {
+            alert('2D数据暂不支持应用到主系统\n请使用"数据导出"功能保存2D数据，或切换为1D识别模式。');
             return;
         }
 
@@ -2154,7 +2757,7 @@ class PhotoRecognition {
     }
 
     /**
-     * 导出向量数据
+     * 导出向量数据 - 支持1D和2D数据
      */
     exportVectorData() {
         if (!this.vectorData) {
@@ -2167,22 +2770,39 @@ class PhotoRecognition {
             const now = new Date();
             const timestamp = now.toISOString().slice(0, 19).replace('T', ' ');
             
-            // 计算统计信息
-            const xMin = Math.min(...this.vectorData.x);
-            const xMax = Math.max(...this.vectorData.x);
-            const intensityMin = Math.min(...this.vectorData.intensity);
-            const intensityMax = Math.max(...this.vectorData.intensity);
-            const avgIntensity = this.vectorData.intensity.reduce((a, b) => a + b, 0) / this.vectorData.intensity.length;
-            const xRange = xMax - xMin;
-            
-            // 获取用户选择的光强类型和相关信息
-            const intensityInfo = this.getIntensityTypeInfo();
-            
-            // 创建TXT格式的数据，包含详细注释
-            let txtContent = `# 照片识别向量数据导出文件
+            // 检查是否为2D数据
+            if (this.vectorData.is2D) {
+                this.export2DVectorData(timestamp);
+            } else {
+                this.export1DVectorData(timestamp);
+            }
+        } catch (error) {
+            console.error('❌ 数据导出失败:', error);
+            alert('数据导出失败：' + error.message);
+        }
+    }
+
+    /**
+     * 导出1D向量数据
+     */
+    export1DVectorData(timestamp) {
+        // 计算统计信息
+        const xMin = Math.min(...this.vectorData.x);
+        const xMax = Math.max(...this.vectorData.x);
+        const intensityMin = Math.min(...this.vectorData.intensity);
+        const intensityMax = Math.max(...this.vectorData.intensity);
+        const avgIntensity = this.vectorData.intensity.reduce((a, b) => a + b, 0) / this.vectorData.intensity.length;
+        const xRange = xMax - xMin;
+        
+        // 获取用户选择的光强类型和相关信息
+        const intensityInfo = this.getIntensityTypeInfo();
+        
+        // 创建TXT格式的数据，包含详细注释
+        let txtContent = `# 1D照片识别向量数据导出文件
 # ================================================
 # 导出时间: ${timestamp}
 # 数据来源: 照片识别系统
+# 数据类型: 1D向量数据
 # 
 # 【用户光强设置】重点信息:
 # ★ 光强值类型: ${intensityInfo.type}
@@ -2221,46 +2841,175 @@ ${' '.repeat(12)}X坐标${' '.repeat(12)}光强度值${' '.repeat(8)}标记
 ${'-'.repeat(60)}
 `;
 
-            // 添加数据行，使用固定宽度格式化，并标记用户选择的光强位置
-            for (let i = 0; i < this.vectorData.x.length; i++) {
-                const xValue = this.vectorData.x[i].toFixed(6).padStart(18);
-                const intensityValue = this.vectorData.intensity[i].toFixed(6).padStart(15);
-                
-                // 检查是否是用户选择的光强位置
-                const isMarkedPosition = this.isIntensityMarkerPosition(i, intensityInfo);
-                const marker = isMarkedPosition ? '  ★' : '   ';
-                
-                txtContent += `${xValue}    ${intensityValue}${marker}\n`;
-            }
+        // 添加数据行，使用固定宽度格式化，并标记用户选择的光强位置
+        for (let i = 0; i < this.vectorData.x.length; i++) {
+            const xValue = this.vectorData.x[i].toFixed(6).padStart(18);
+            const intensityValue = this.vectorData.intensity[i].toFixed(6).padStart(15);
             
-            // 添加文件尾部信息
-            txtContent += `\n${'-'.repeat(60)}\n`;
-            txtContent += `# ★ 标记说明: 该行对应用户设定的光强位置\n`;
-            txtContent += `# 用户光强设置: ${intensityInfo.type} = ${intensityInfo.value.toFixed(6)}\n`;
-            txtContent += `# 位置坐标: ${intensityInfo.coordinates}\n`;
-            txtContent += `# 数据导出完成，共 ${this.vectorData.x.length} 个数据点\n`;
-            txtContent += `# 文件生成时间: ${timestamp}\n`;
-            txtContent += `# ================================================`;
+            // 检查是否是用户选择的光强位置
+            const isMarkedPosition = this.isIntensityMarkerPosition(i, intensityInfo);
+            const marker = isMarkedPosition ? '  ★' : '   ';
+            
+            txtContent += `${xValue}    ${intensityValue}${marker}\n`;
+        }
+        
+        // 添加文件尾部信息
+        txtContent += `\n${'-'.repeat(60)}\n`;
+        txtContent += `# ★ 标记说明: 该行对应用户设定的光强位置\n`;
+        txtContent += `# 用户光强设置: ${intensityInfo.type} = ${intensityInfo.value.toFixed(6)}\n`;
+        txtContent += `# 位置坐标: ${intensityInfo.coordinates}\n`;
+        txtContent += `# 数据导出完成，共 ${this.vectorData.x.length} 个数据点\n`;
+        txtContent += `# 文件生成时间: ${timestamp}\n`;
+        txtContent += `# ================================================`;
 
-            // 创建下载链接
-            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
-            const link = document.createElement('a');
+        // 创建下载链接
+        const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+        const link = document.createElement('a');
+        
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `photo_vector_data_1D_${new Date().getTime()}.txt`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download', `photo_vector_data_${new Date().getTime()}.txt`);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                console.log('✅ 向量数据导出成功（含光强标记的TXT格式）');
+            console.log('✅ 1D向量数据导出成功（含光强标记的TXT格式）');
+        }
+    }
+
+    /**
+     * 导出2D向量数据
+     */
+    export2DVectorData(timestamp) {
+        const matrix = this.vectorData.intensity2D;
+        const xCoords = this.vectorData.x;
+        const yCoords = this.vectorData.y;
+        const width = this.vectorData.width;
+        const height = this.vectorData.height;
+        
+        // 调试输出：检查导出时的数据状态
+        if (matrix && matrix.length > 0) {
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+            let totalCount = 0;
+            let nonZeroCount = 0;
+            
+            // 避免堆栈溢出，逐行处理而非使用扩展运算符
+            for (let row of matrix) {
+                for (let val of row) {
+                    minVal = Math.min(minVal, val);
+                    maxVal = Math.max(maxVal, val);
+                    totalCount++;
+                    if (val !== 0) nonZeroCount++;
+                }
             }
             
-        } catch (error) {
-            console.error('❌ 数据导出失败:', error);
-            alert('数据导出失败：' + error.message);
+            console.log('📤 导出2D数据统计:', {
+                尺寸: `${width}×${height}`,
+                最小值: minVal,
+                最大值: maxVal,
+                非零值数量: nonZeroCount,
+                总数据点: totalCount
+            });
+            
+            if (maxVal === 0) {
+                console.warn('⚠️ 导出数据全为0值！');
+            }
+        } else {
+            console.error('❌ 导出时matrix为空或未定义');
+        }
+
+        // 计算2D统计信息（避免堆栈溢出）
+        let intensityMin = Infinity;
+        let intensityMax = -Infinity;
+        let intensitySum = 0;
+        let totalPoints = 0;
+        
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const val = matrix[y][x];
+                intensityMin = Math.min(intensityMin, val);
+                intensityMax = Math.max(intensityMax, val);
+                intensitySum += val;
+                totalPoints++;
+            }
+        }
+        
+        const avgIntensity = totalPoints > 0 ? intensitySum / totalPoints : 0;
+        
+        // 安全地计算坐标范围
+        const xMin = xCoords.length > 0 ? Math.min.apply(null, xCoords) : 0;
+        const xMax = xCoords.length > 0 ? Math.max.apply(null, xCoords) : 0;
+        const yMin = yCoords.length > 0 ? Math.min.apply(null, yCoords) : 0;
+        const yMax = yCoords.length > 0 ? Math.max.apply(null, yCoords) : 0;
+
+        // 创建TXT格式的数据，包含详细注释
+        let txtContent = `# 2D照片识别向量数据导出文件
+# ================================================
+# 导出时间: ${timestamp}
+# 数据来源: 照片识别系统
+# 数据类型: 2D向量数据（完整强度矩阵）
+# 
+# 2D数据统计信息:
+# - 图像尺寸: ${width} × ${height} 像素
+# - 总数据点: ${width * height} 个
+# - X坐标范围: ${xMin.toFixed(6)} 至 ${xMax.toFixed(6)}
+# - Y坐标范围: ${yMin.toFixed(6)} 至 ${yMax.toFixed(6)}
+# - 光强度范围: ${intensityMin.toFixed(6)} 至 ${intensityMax.toFixed(6)}
+# - 平均光强度: ${avgIntensity.toFixed(6)}
+# 
+# 处理参数:
+# - 灰度转换方法: ${this.vectorData.parameters.grayscaleMethod}
+# - 向量提取方向: 2D识别（完整矩阵）
+# - 坐标单位: ${this.vectorData.parameters.coordinateUnit}
+# - X方向缩放因子: ${this.vectorData.scaleFactorX}
+# - Y方向缩放因子: ${this.vectorData.scaleFactorY}
+# ================================================
+# 
+# 数据格式说明:
+# 第1列: X坐标 (${this.vectorData.parameters.coordinateUnit})
+# 第2列: Y坐标 (${this.vectorData.parameters.coordinateUnit})
+# 第3列: 归一化光强度值 (0-1范围)
+# 
+# 数据内容:
+${' '.repeat(15)}X坐标${' '.repeat(15)}Y坐标${' '.repeat(12)}强度值
+${'-'.repeat(70)}
+`;
+
+        // 添加2D数据行，每行包含X、Y坐标和对应的强度值
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const xValue = xCoords[x].toFixed(6).padStart(20);
+                const yValue = yCoords[y].toFixed(6).padStart(20);
+                const intensityValue = matrix[y][x].toFixed(6).padStart(15);
+                
+                txtContent += `${xValue}    ${yValue}    ${intensityValue}\n`;
+            }
+        }
+        
+        // 添加文件尾部信息
+        txtContent += `\n${'-'.repeat(70)}\n`;
+        txtContent += `# 2D数据导出完成，共 ${width * height} 个数据点\n`;
+        txtContent += `# 矩阵尺寸: ${width} × ${height}\n`;
+        txtContent += `# 文件生成时间: ${timestamp}\n`;
+        txtContent += `# ================================================`;
+
+        // 创建下载链接
+        const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+        const link = document.createElement('a');
+        
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `photo_vector_data_2D_${new Date().getTime()}.txt`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            console.log('✅ 2D向量数据导出成功（完整强度矩阵TXT格式）');
         }
     }
     
@@ -2396,6 +3145,9 @@ ${'-'.repeat(60)}
         this.grayscaleImageData = null;
         this.vectorData = null;
         
+        // 验证生成向量按钮状态（清除数据后应禁用按钮）
+        this.validateGenerateButton();
+        
         console.log('🔄 准备重新输入图片');
     }
 
@@ -2462,12 +3214,13 @@ ${'-'.repeat(60)}
     }
 
     /**
-     * 更新坐标查询界面的单位标签
+     * 更新坐标查询界面的单位标签 - 支持1D和2D
      */
     updateLookupUnitLabels() {
         const currentUnit = document.getElementById('coordinate-unit')?.value || 'pixels';
         const unitLabel = this.getUnitLabel(currentUnit);
 
+        // 更新1D查询界面的单位标签
         const xUnitLabel = document.getElementById('lookup-x-unit-label');
         const yUnitLabel = document.getElementById('lookup-y-unit-label');
 
@@ -2477,6 +3230,57 @@ ${'-'.repeat(60)}
 
         if (yUnitLabel) {
             yUnitLabel.textContent = '强度'; // Y输入始终是光强度，无单位
+        }
+
+        // 更新2D查询界面的单位标签
+        const lookup2DXUnitLabel = document.getElementById('lookup-2d-x-unit-label');
+        const lookup2DYUnitLabel = document.getElementById('lookup-2d-y-unit-label');
+
+        if (lookup2DXUnitLabel) {
+            lookup2DXUnitLabel.textContent = unitLabel;
+        }
+
+        if (lookup2DYUnitLabel) {
+            lookup2DYUnitLabel.textContent = unitLabel; // 2D中Y坐标也是空间坐标，使用相同单位
+        }
+    }
+
+    /**
+     * 验证生成向量按钮的可用性
+     */
+    validateGenerateButton() {
+        const generateBtn = document.getElementById('generate-vector-btn');
+        const photoWidth = document.getElementById('photo-width');
+        const photoHeight = document.getElementById('photo-height');
+        
+        if (!generateBtn || !photoWidth || !photoHeight) return;
+        
+        const width = parseFloat(photoWidth.value);
+        const height = parseFloat(photoHeight.value);
+        const hasImage = this.originalImageData !== null;
+        
+        // 检查是否有图像数据且输入了有效的长宽
+        const isValid = hasImage && !isNaN(width) && !isNaN(height) && width > 0 && height > 0;
+        
+        if (isValid) {
+            // 启用按钮
+            generateBtn.disabled = false;
+            generateBtn.style.opacity = '1';
+            generateBtn.style.cursor = 'pointer';
+            generateBtn.style.backgroundColor = '';
+            generateBtn.title = '';
+        } else {
+            // 禁用按钮
+            generateBtn.disabled = true;
+            generateBtn.style.opacity = '0.5';
+            generateBtn.style.cursor = 'not-allowed';
+            generateBtn.style.backgroundColor = '#cccccc';
+            
+            if (!hasImage) {
+                generateBtn.title = '请先上传或拍摄照片';
+            } else {
+                generateBtn.title = '请先输入照片的实际长宽尺寸';
+            }
         }
     }
 
@@ -2789,11 +3593,24 @@ ${'-'.repeat(60)}
         // 检查图像数据，优先使用grayscaleImageData，其次originalImageData
         const imageData = this.grayscaleImageData || this.originalImageData;
         
-        if (!photoWidth || !photoHeight || !imageData) {
-            scaleFactorDisplay.textContent = '未设置照片实际尺寸';
-            scaleFactorDisplay.style.color = '#6b7280';
+        const hasAllData = photoWidth && photoHeight && imageData;
+        
+        if (!hasAllData) {
+            // 缺少必要数据 - 添加呼吸灯效果
+            scaleFactorDisplay.classList.add('scale-factor-breathing');
+            
+            // 设置提示文本
+            let missingItems = [];
+            if (!imageData) missingItems.push('图像');
+            if (!photoWidth || !photoHeight) missingItems.push('照片尺寸');
+            
+            scaleFactorDisplay.textContent = `请先设置${missingItems.join('和')}`;
+            scaleFactorDisplay.style.color = '#3498db';
             return;
         }
+        
+        // 有完整数据 - 移除呼吸灯效果
+        scaleFactorDisplay.classList.remove('scale-factor-breathing');
         
         const imageWidthPx = imageData.width;
         const photoWidthInTargetUnit = this.convertUnit(photoWidth, photoUnit, coordinateUnit);
@@ -3949,11 +4766,31 @@ ${'-'.repeat(60)}
      * 计算高斯分布参数
      */
     calculateGaussianParams() {
-        if (!this.vectorData || !this.vectorData.x || !this.vectorData.intensity) {
+        if (!this.vectorData) {
             console.error('没有可用的向量数据');
             return null;
         }
 
+        // 检查是否为2D数据
+        const is2D = this.vectorData.is2D || false;
+        
+        if (is2D) {
+            // 处理2D高斯拟合
+            return this.calculate2DGaussianParams();
+        } else {
+            // 处理1D高斯拟合
+            if (!this.vectorData.x || !this.vectorData.intensity) {
+                console.error('没有可用的1D向量数据');
+                return null;
+            }
+            return this.calculate1DGaussianParams();
+        }
+    }
+    
+    /**
+     * 计算1D高斯参数
+     */
+    calculate1DGaussianParams() {
         const x = this.vectorData.x;
         const y = this.vectorData.intensity;
 
@@ -4009,6 +4846,97 @@ ${'-'.repeat(60)}
             formula: `f(x) = ${amplitude.toFixed(3)} * exp(-(x - ${mu.toFixed(3)})² / (2 * ${sigma.toFixed(3)}²))`
         };
     }
+    
+    /**
+     * 计算2D高斯参数
+     */
+    calculate2DGaussianParams() {
+        if (!this.vectorData.intensity2D) {
+            console.error('没有可用的2D强度数据');
+            return null;
+        }
+
+        const matrix = this.vectorData.intensity2D;
+        const height = matrix.length;
+        const width = matrix[0].length;
+
+        // 找到2D矩阵中的最大值及其位置
+        let maxValue = 0;
+        let maxX = 0, maxY = 0;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (matrix[y][x] > maxValue) {
+                    maxValue = matrix[y][x];
+                    maxX = x;
+                    maxY = y;
+                }
+            }
+        }
+
+        // 计算X方向的半高全宽（FWHM_x）
+        let halfMax = maxValue / 2;
+        let leftX = -1, rightX = -1;
+        
+        // 沿最大值行查找X方向半高位置
+        for (let x = maxX; x >= 0; x--) {
+            if (matrix[maxY][x] <= halfMax) {
+                leftX = x;
+                break;
+            }
+        }
+        for (let x = maxX; x < width; x++) {
+            if (matrix[maxY][x] <= halfMax) {
+                rightX = x;
+                break;
+            }
+        }
+
+        // 计算Y方向的半高全宽（FWHM_y）
+        let topY = -1, bottomY = -1;
+        
+        // 沿最大值列查找Y方向半高位置
+        for (let y = maxY; y >= 0; y--) {
+            if (matrix[y][maxX] <= halfMax) {
+                topY = y;
+                break;
+            }
+        }
+        for (let y = maxY; y < height; y++) {
+            if (matrix[y][maxX] <= halfMax) {
+                bottomY = y;
+                break;
+            }
+        }
+
+        // 计算FWHM和标准差
+        let fwhmX = 0, fwhmY = 0;
+        if (leftX >= 0 && rightX >= 0) {
+            fwhmX = rightX - leftX;
+        }
+        if (topY >= 0 && bottomY >= 0) {
+            fwhmY = bottomY - topY;
+        }
+
+        // 高斯分布: FWHM = 2.355 * σ
+        let sigmaX = fwhmX / 2.3548;
+        let sigmaY = fwhmY / 2.3548;
+
+        // 中心位置（相对于图像中心）
+        const centerX = (maxX - width/2) * (this.vectorData.scaleFactorX || 1);
+        const centerY = (maxY - height/2) * (this.vectorData.scaleFactorY || 1);
+
+        return {
+            amplitude: maxValue,
+            centerX: centerX,
+            centerY: centerY,
+            sigmaX: sigmaX,
+            sigmaY: sigmaY,
+            fwhmX: fwhmX,
+            fwhmY: fwhmY,
+            formula: `f(x,y) = ${maxValue.toFixed(3)} * exp(-((x - ${centerX.toFixed(3)})² / (2 * ${sigmaX.toFixed(3)}²) + (y - ${centerY.toFixed(3)})² / (2 * ${sigmaY.toFixed(3)}²)))`
+        };
+    }
 
     /**
      * 线性插值找半高位置
@@ -4026,10 +4954,20 @@ ${'-'.repeat(60)}
     }
 
     /**
-     * 根据X值查找Y值（光强度）
+     * 根据X值查找Y值（光强度）- 支持1D和2D数据
      */
-    lookupYByX(targetX) {
-        if (!this.vectorData || !this.vectorData.x || !this.vectorData.intensity) {
+    lookupYByX(targetX, targetY = null) {
+        if (!this.vectorData) {
+            return null;
+        }
+
+        // 检查是否为2D数据
+        if (this.vectorData.is2D) {
+            return this.lookup2DIntensity(targetX, targetY);
+        }
+
+        // 1D数据处理
+        if (!this.vectorData.x || !this.vectorData.intensity) {
             return null;
         }
 
@@ -4074,6 +5012,119 @@ ${'-'.repeat(60)}
             let x1 = x[closestIndex], x2 = x[closestIndex + 1];
             let y1 = y[closestIndex], y2 = y[closestIndex + 1];
             return y1 + (convertedTargetX - x1) * (y2 - y1) / (x2 - x1);
+        }
+    }
+
+    /**
+     * 2D数据强度查询
+     */
+    lookup2DIntensity(targetX, targetY) {
+        if (!this.vectorData || !this.vectorData.intensity2D) {
+            console.warn('⚠️ 没有可用的2D数据');
+            return null;
+        }
+
+        if (targetY === null || targetY === undefined) {
+            console.error('❌ 2D数据查询需要提供X和Y坐标');
+            return null;
+        }
+
+        const matrix = this.vectorData.intensity2D;
+        const xCoords = this.vectorData.x;
+        const yCoords = this.vectorData.y;
+        
+        // 数据有效性检查
+        if (!matrix || matrix.length === 0 || !matrix[0] || matrix[0].length === 0) {
+            console.error('❌ 2D强度矩阵数据无效');
+            return null;
+        }
+        
+        if (!xCoords || !yCoords || xCoords.length === 0 || yCoords.length === 0) {
+            console.error('❌ 坐标数据无效');
+            return null;
+        }
+
+        // 获取当前坐标单位和图表数据单位
+        const currentUnit = document.getElementById('coordinate-unit')?.value || 'pixels';
+        const chartUnit = this.vectorData?.parameters?.coordinateUnit || 'pixels';
+
+        // 转换坐标单位
+        let convertedTargetX = targetX;
+        let convertedTargetY = targetY;
+        if (currentUnit !== chartUnit) {
+            convertedTargetX = this.convertUnit(targetX, currentUnit, chartUnit);
+            convertedTargetY = this.convertUnit(targetY, currentUnit, chartUnit);
+        }
+
+        console.log('🔍 坐标转换:', {
+            原始坐标: `(${targetX}, ${targetY}) ${currentUnit}`,
+            转换后坐标: `(${convertedTargetX}, ${convertedTargetY}) ${chartUnit}`,
+            数据范围X: `${xCoords[0]} ~ ${xCoords[xCoords.length-1]}`,
+            数据范围Y: `${yCoords[0]} ~ ${yCoords[yCoords.length-1]}`
+        });
+
+        // 找到最接近的X和Y索引
+        let xIndex = this.findClosestIndex(xCoords, convertedTargetX);
+        let yIndex = this.findClosestIndex(yCoords, convertedTargetY);
+
+        // 边界检查
+        if (xIndex < 0 || xIndex >= matrix[0].length || yIndex < 0 || yIndex >= matrix.length) {
+            console.warn('⚠️ 坐标超出数据范围:', {
+                xIndex, yIndex,
+                矩阵尺寸: `${matrix.length} × ${matrix[0].length}`
+            });
+            return null;
+        }
+
+        // 返回该位置的强度值
+        const intensity = matrix[yIndex][xIndex];
+        console.log('✅ 查询成功:', {
+            索引: `[${yIndex}][${xIndex}]`,
+            实际坐标: `(${xCoords[xIndex]}, ${yCoords[yIndex]})`,
+            强度值: intensity
+        });
+        
+        return intensity;
+    }
+
+    /**
+     * 找到最接近目标值的索引
+     */
+    findClosestIndex(array, target) {
+        let closestIndex = 0;
+        let minDiff = Math.abs(array[0] - target);
+
+        for (let i = 1; i < array.length; i++) {
+            let diff = Math.abs(array[i] - target);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIndex = i;
+            }
+        }
+
+        return closestIndex;
+    }
+    
+    /**
+     * 显示2D查询结果
+     */
+    display2DLookupResult(message, isSuccess = true) {
+        const resultElement = document.getElementById('lookup-2d-result');
+        if (resultElement) {
+            resultElement.textContent = message;
+            
+            // 根据成功/失败设置样式
+            if (isSuccess) {
+                resultElement.style.color = '#0d7377';
+                resultElement.style.fontWeight = '600';
+            } else {
+                resultElement.style.color = '#dc3545';
+                resultElement.style.fontWeight = '500';
+            }
+            
+            console.log('📝 2D查询结果已显示:', message);
+        } else {
+            console.error('❌ 找不到2D查询结果显示元素');
         }
     }
 
