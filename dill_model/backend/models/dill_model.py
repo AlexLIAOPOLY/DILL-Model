@@ -2394,6 +2394,48 @@ class DillModel:
         
         # === 步骤3: 计算抗蚀效果 M 和厚度分布 H ===
         logger.info(f"🔍 计算抗蚀效果和厚度分布...")
+        
+        # 🔧 智能阈值调整逻辑：确保有合理的显示效果
+        dose_min, dose_max = D.min(), D.max()
+        dose_range = dose_max - dose_min
+        
+        # 🚨 强制调试日志
+        logger.info(f"🚨 DEBUG: 进入阈值调整逻辑，D.shape={D.shape}")
+        logger.info(f"🚨 DEBUG: dose_min={dose_min:.6f}, dose_max={dose_max:.6f}, threshold_cd={threshold_cd:.6f}")
+        
+        # 🔧 改进的智能阈值调整逻辑
+        # 计算阈值合理性指标
+        threshold_ratio = threshold_cd / dose_max if dose_max > 0 else float('inf')
+        coverage_ratio = max(0, min(100, (threshold_cd - dose_min) / dose_range * 100)) if dose_range > 0 else 0
+        
+        logger.info(f"🔍 阈值合理性分析:")
+        logger.info(f"   - 剂量范围: [{dose_min:.6f}, {dose_max:.6f}] (变化幅度: {dose_range:.6f})")
+        logger.info(f"   - 原阈值: {threshold_cd:.3f}")
+        logger.info(f"   - 阈值/最大剂量比: {threshold_ratio:.2f}")
+        logger.info(f"   - 阈值覆盖范围: {coverage_ratio:.1f}%")
+        
+        # 更宽松的调整条件
+        needs_adjustment = False
+        if threshold_ratio > 2.0:  # 阈值超过最大剂量2倍
+            adjusted_threshold = dose_min + dose_range * 0.4  # 40%位置
+            logger.warning(f"⚠️  阈值过高（{threshold_ratio:.1f}x最大剂量）")
+            needs_adjustment = True
+        elif dose_min > threshold_cd:  # 最小剂量都超过阈值
+            adjusted_threshold = dose_min + dose_range * 0.6  # 60%位置  
+            logger.warning(f"⚠️  阈值过低（小于最小剂量）")
+            needs_adjustment = True
+        elif dose_range > 0 and coverage_ratio < 10:  # 阈值覆盖范围太小
+            adjusted_threshold = dose_min + dose_range * 0.3  # 30%位置
+            logger.warning(f"⚠️  阈值覆盖范围太小（{coverage_ratio:.1f}%）")
+            needs_adjustment = True
+        
+        if needs_adjustment:
+            logger.info(f"🔧 智能阈值调整：{threshold_cd:.6f} → {adjusted_threshold:.6f}")
+            logger.info(f"   - 新阈值位于剂量范围的 {((adjusted_threshold-dose_min)/dose_range*100):.1f}% 位置")
+            threshold_cd = adjusted_threshold
+        else:
+            logger.info(f"✅ 阈值在合理范围内")
+        
         M = np.zeros_like(D)
         H = np.zeros_like(D)
         
