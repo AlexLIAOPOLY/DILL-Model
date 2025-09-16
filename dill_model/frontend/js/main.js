@@ -294,9 +294,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化自定义向量控制框状态
     initCustomVectorControlsState();
-    
+
     // 初始化应用
     initApp();
+
+    // 初始化指定点X坐标单位显示
+    setTimeout(() => {
+        updateXCoordinateUnitDisplay();
+    }, 100);
     
     // 延迟设置初始化标志为false，确保所有初始化完成
     setTimeout(() => {
@@ -1791,12 +1796,24 @@ function getParameterValues() {
                 custom_intensity_value: customIntensityData.outside_range_mode === 'custom' ? customIntensityData.custom_intensity_value || 0 : 0 // 自定义光强值
             };
             
-            // 新逻辑：添加指定点X坐标参数
+            // 新逻辑：添加指定点X坐标参数（需要单位转换）
             const xCoordinateElem = document.getElementById('x_coordinate');
             if (xCoordinateElem) {
-                const xCoordinate = parseFloat(xCoordinateElem.value) || 0.0;
-                params.x_coordinate = xCoordinate;
-                console.log(`🔍 自定义向量模式：X坐标参数 = ${xCoordinate}`);
+                const displayedXCoordinate = parseFloat(xCoordinateElem.value) || 0.0;
+                
+                // 获取X坐标滑块当前显示的单位和数据源的原始单位
+                const displayUnit = getCurrentXCoordinateDisplayUnit();
+                const originalUnit = getCurrentDataSourceUnit();
+                
+                // 将前端显示的坐标值转换回原始数据的单位系统
+                const convertedXCoordinate = convertXCoordinateValueToOriginalUnit(displayedXCoordinate, displayUnit, originalUnit);
+                
+                params.x_coordinate = convertedXCoordinate;
+                console.log(`🔍 自定义向量模式：X坐标单位转换详情:`);
+                console.log(`   - 前端显示值: ${displayedXCoordinate} ${displayUnit}`);
+                console.log(`   - 数据源原始单位: ${originalUnit}`);
+                console.log(`   - 转换后发送给后端: ${convertedXCoordinate} ${originalUnit}`);
+                console.log(`   - 数据来源: ${customIntensityData.source || 'unknown'}`);
             } else {
                 // 如果找不到X坐标输入框，默认使用0
                 params.x_coordinate = 0.0;
@@ -8515,7 +8532,7 @@ function getDillPopupHtmlContent(x, y, setName, params, plotType) {
                 <div class="info-item"><span class="info-label">指定X坐标:</span><span class="info-value">${(() => {
                     const xCoordInput = document.getElementById('x_coordinate');
                     return xCoordInput ? parseFloat(xCoordInput.value).toFixed(2) : '0.00';
-                })()} ${customIntensityData.source === 'photo-recognition' ? 'μm' : (customIntensityData.x_unit || 'μm')}</span></div>
+                })()} ${getCurrentCustomVectorUnit()}</span></div>
                 <div class="info-item"><span class="info-label">指定光强度:</span><span class="info-value">${(() => {
                     const iAvgInput = document.getElementById('I_avg');
                     return iAvgInput ? parseFloat(iAvgInput.value).toFixed(3) : (params.I_avg || 0.5).toFixed(3);
@@ -15243,7 +15260,10 @@ function handleIntensityMethodChange() {
             showNotification('已切换到自定义向量模式，请上传文件或手动输入光强分布数据。三个控制框已隐藏', 'info');
             console.log('🔒 已隐藏三个控制框：曝光时间窗口控制、1D时间动画控制、1D对比度评估控制');
         }
-        
+
+        // 更新指定点X坐标的单位显示
+        updateXCoordinateUnitDisplay();
+
         // 清空图表
         clearAllCharts();
         
@@ -17014,10 +17034,13 @@ function previewManualInput() {
         
         // 立即更新指定入射光强度显示状态（从"暂无向量数据"变为具体数值）
         updateSpecifiedIntensityDisplay();
-        
+
+        // 更新指定点X坐标的单位显示
+        updateXCoordinateUnitDisplay();
+
         // 更新数据状态显示
         updateDataStatus();
-        
+
         // 显示预览
         previewIntensityData();
         
@@ -17911,9 +17934,16 @@ function initUnitSelection() {
         return;
     }
     
+    // 跟踪上一次选择的单位，确保初始化时正确获取
+    let previousUnit = unitSelect.value || 'mm';
+    
     // 单位选择变化时的处理
     unitSelect.addEventListener('change', function() {
         const selectedUnit = this.value;
+        const oldUnit = previousUnit;
+        
+        // 更新上一次的单位记录
+        previousUnit = selectedUnit;
         
         // 清除当前预览图但保留数据
         const previewPlot = document.getElementById('intensity-preview-plot');
@@ -17941,6 +17971,9 @@ function initUnitSelection() {
                 case 'mm':
                     scaleFactor = 1.0; // 毫米
                     break;
+                case 'pixels':
+                    scaleFactor = 1.0; // 像素，具体转换依赖缩放因子
+                    break;
                 default:
                     scaleFactor = 1.0;
             }
@@ -17964,6 +17997,9 @@ function initUnitSelection() {
         
         // 更新数据状态信息中的单位显示
         updateUnitDisplayInStatus(selectedUnit);
+
+        // 更新指定点X坐标的单位显示，传递旧单位进行数值转换
+        updateXCoordinateUnitDisplay(oldUnit === 'um' ? 'μm' : oldUnit);
     });
     
     // 自定义比例因子变化时的处理
@@ -18026,6 +18062,18 @@ function initUnitSelection() {
     
     // 暴露更新函数，以便在数据加载后调用
     window.updateUnitSelectionUI = updateUnitSelectionUI;
+    
+    // 初始化时立即更新X坐标单位显示
+    setTimeout(() => {
+        updateXCoordinateUnitDisplay();
+        // 同时初始化选择器的简短显示形式
+        const xCoordUnitSelect = document.getElementById('x-coordinate-unit-select');
+        if (xCoordUnitSelect) {
+            updateUnitSelectDisplay(xCoordUnitSelect);
+        }
+        // 初始化事件监听器
+        initUnitSelectEvents();
+    }, 100);
 }
 
 // 初始化tooltip功能
@@ -18110,9 +18158,16 @@ function initManualUnitSelection() {
         return;
     }
     
+    // 跟踪上一次选择的单位，确保初始化时正确获取
+    let previousManualUnit = unitSelect.value || 'mm';
+    
     // 单位选择变化时的处理
     unitSelect.addEventListener('change', function() {
         const selectedUnit = this.value;
+        const oldUnit = previousManualUnit;
+        
+        // 更新上一次的单位记录
+        previousManualUnit = selectedUnit;
         
         // 清除当前预览图但保留数据
         const previewPlot = document.getElementById('intensity-preview-plot');
@@ -18139,6 +18194,9 @@ function initManualUnitSelection() {
                     break;
                 case 'mm':
                     factor = 1.0; // 毫米
+                    break;
+                case 'pixels':
+                    factor = 1.0; // 像素，具体转换依赖缩放因子
                     break;
                 default:
                     factor = 1.0;
@@ -18168,6 +18226,9 @@ function initManualUnitSelection() {
                 updateManualUnitDisplayInStatus(selectedUnit);
             }
         }
+
+        // 更新指定点X坐标的单位显示，传递旧单位进行数值转换
+        updateXCoordinateUnitDisplay(oldUnit === 'um' ? 'μm' : oldUnit);
     });
     
     // 自定义缩放因子变化时处理
@@ -18221,11 +18282,24 @@ function initManualUnitSelection() {
             case 'nm': factor = 0.000001; break;
             case 'um': factor = 0.001; break;
             case 'mm': factor = 1.0; break;
+            case 'pixels': factor = 1.0; break;
         }
         
         // 确保缩放因子字段与选择的单位匹配
         scaleFactor.value = factor;
     }
+    
+    // 初始化时立即更新X坐标单位显示
+    setTimeout(() => {
+        updateXCoordinateUnitDisplay();
+        // 同时初始化选择器的简短显示形式
+        const xCoordUnitSelect = document.getElementById('x-coordinate-unit-select');
+        if (xCoordUnitSelect) {
+            updateUnitSelectDisplay(xCoordUnitSelect);
+        }
+        // 初始化事件监听器
+        initUnitSelectEvents();
+    }, 100);
     
     console.log('✅ 手动输入单位选择功能初始化完成');
 }
@@ -18390,6 +18464,10 @@ function applyManualUnitSettings() {
         case 'mm':
             unit = 'mm';
             factor = 1.0; // 毫米
+            break;
+        case 'pixels':
+            unit = 'pixels';
+            factor = 1.0; // 像素，具体转换依赖缩放因子
             break;
         case 'custom':
             unit = 'custom';
@@ -18619,6 +18697,374 @@ function updateUnitDisplayInStatus(unitType, customFactor = null) {
     }
 }
 
+// 获取当前X坐标滑块选择的显示单位
+function getCurrentXCoordinateDisplayUnit() {
+    const xCoordUnitSelect = document.getElementById('x-coordinate-unit-select');
+    if (xCoordUnitSelect) {
+        const unitValue = xCoordUnitSelect.value;
+        return unitValue === 'um' ? 'μm' : unitValue;
+    }
+    return 'μm'; // 默认单位
+}
+
+// 获取当前自定义向量模式下选择的单位（用于其他用途，保持兼容性）
+function getCurrentCustomVectorUnit() {
+    // 对于X坐标显示，使用独立的单位选择器
+    return getCurrentXCoordinateDisplayUnit();
+}
+
+// 获取当前激活数据源的原始单位
+function getCurrentDataSourceUnit() {
+    // 检查当前是否处于自定义向量模式
+    const methodSelect = document.getElementById('intensity_input_method');
+    const isCustomMode = methodSelect && methodSelect.value === 'custom';
+
+    if (!isCustomMode) {
+        return 'μm'; // 非自定义向量模式，返回默认单位
+    }
+
+    // 如果有已加载的数据，优先使用数据的原始单位
+    if (customIntensityData && customIntensityData.loaded && customIntensityData.x_unit) {
+        const dataUnit = customIntensityData.x_unit;
+        // 标准化单位显示
+        if (dataUnit === 'um' || dataUnit === 'μm') return 'μm';
+        if (dataUnit === 'pixels') return 'pixels';
+        if (dataUnit === 'mm') return 'mm';
+        if (dataUnit === 'nm') return 'nm';
+        if (dataUnit === 'custom') return 'custom';
+        return dataUnit; // 其他自定义单位
+    }
+
+    // 检查当前激活的标签页来确定数据源
+    const fileTab = document.querySelector('[data-tab="file"]');
+    const manualTab = document.querySelector('[data-tab="manual"]');
+    const photoTab = document.querySelector('[data-tab="photo"]');
+
+    let activeSource = null;
+    if (fileTab && fileTab.classList.contains('active')) activeSource = 'file';
+    else if (manualTab && manualTab.classList.contains('active')) activeSource = 'manual';
+    else if (photoTab && photoTab.classList.contains('active')) activeSource = 'photo-recognition';
+
+    // 从数据源的单位选择器获取单位
+    switch (activeSource) {
+        case 'file':
+            const fileUnitSelect = document.getElementById('custom-data-unit');
+            if (fileUnitSelect) {
+                const unitValue = fileUnitSelect.value;
+                return unitValue === 'um' ? 'μm' : unitValue;
+            }
+            break;
+        case 'manual':
+            const manualUnitSelect = document.getElementById('manual-data-unit');
+            if (manualUnitSelect) {
+                const unitValue = manualUnitSelect.value;
+                return unitValue === 'um' ? 'μm' : unitValue;
+            }
+            break;
+        case 'photo-recognition':
+            const photoUnitSelect = document.getElementById('coordinate-unit');
+            if (photoUnitSelect) {
+                const unitValue = photoUnitSelect.value;
+                return unitValue === 'um' ? 'μm' : unitValue;
+            }
+            break;
+    }
+
+    return 'μm'; // 默认单位
+}
+
+// 更新指定点X坐标的单位显示和滑块范围
+function updateXCoordinateUnitDisplay(oldUnit = null) {
+    const xCoordUnitSelect = document.getElementById('x-coordinate-unit-select');
+    const xCoordSlider = document.getElementById('x_coordinate');
+    const xCoordNumberInput = document.querySelector('#x-coordinate-param .number-input');
+
+    if (!xCoordUnitSelect) {
+        return;
+    }
+
+    // 获取当前数据源的原始单位，用于设置合适的默认显示单位
+    const dataSourceUnit = getCurrentDataSourceUnit();
+    
+    // 如果当前选择器的值与数据源单位不匹配，则更新为合适的默认值
+    const currentSelectValue = xCoordUnitSelect.value;
+    let targetUnit = currentSelectValue;
+    
+    // 如果是初始化或者数据源单位改变，设置合适的默认单位
+    if (!oldUnit || oldUnit !== dataSourceUnit) {
+        // 优先选择与数据源单位匹配的显示单位
+        if (dataSourceUnit === 'pixels') {
+            targetUnit = 'pixels';
+        } else if (dataSourceUnit === 'nm') {
+            targetUnit = 'nm';
+        } else if (dataSourceUnit === 'mm') {
+            targetUnit = 'mm';
+        } else {
+            targetUnit = 'um'; // 默认微米
+        }
+        
+        // 更新选择器的值
+        if (targetUnit !== currentSelectValue) {
+            xCoordUnitSelect.value = targetUnit;
+        }
+    }
+
+    const displayUnit = targetUnit === 'um' ? 'μm' : targetUnit;
+
+    // 根据单位调整滑块范围和步长
+    if (xCoordSlider && xCoordNumberInput) {
+        adjustXCoordinateSliderRange(displayUnit, oldUnit, xCoordSlider, xCoordNumberInput);
+        // 记录当前单位
+        xCoordSlider.setAttribute('data-current-unit', displayUnit);
+    }
+
+    console.log(`🔄 指定点X坐标单位已更新为: ${displayUnit} (数据源单位: ${dataSourceUnit})`);
+}
+
+// 调整X坐标滑块的范围和步长
+function adjustXCoordinateSliderRange(currentUnit, oldUnit, xCoordSlider, xCoordNumberInput) {
+    // 获取当前X坐标值
+    let currentValue = parseFloat(xCoordSlider.value) || 0.0;
+    
+    // 如果有旧单位，进行单位转换
+    if (oldUnit && oldUnit !== currentUnit) {
+        currentValue = convertXCoordinateValue(currentValue, oldUnit, currentUnit);
+        console.log(`🔄 X坐标单位转换: ${oldUnit} → ${currentUnit}, 值: ${parseFloat(xCoordSlider.value)} → ${currentValue}`);
+    }
+
+    // 根据单位设置滑块范围和步长
+    let minValue, maxValue, stepValue;
+    
+    switch (currentUnit) {
+        case 'nm':
+            // 纳米范围: -50000 到 50000 nm (对应 -50 到 50 μm)
+            minValue = -50000;
+            maxValue = 50000;
+            stepValue = 10; // 10 nm 精度
+            break;
+        case 'μm':
+        case 'um':
+            // 微米范围: -50 到 50 μm
+            minValue = -50;
+            maxValue = 50;
+            stepValue = 0.01; // 0.01 μm 精度
+            break;
+        case 'mm':
+            // 毫米范围: -0.05 到 0.05 mm (对应 -50 到 50 μm)
+            minValue = -0.05;
+            maxValue = 0.05;
+            stepValue = 0.00001; // 0.01 μm 精度
+            break;
+        case 'pixels':
+            // 像素范围: -1000 到 1000 pixels
+            minValue = -1000;
+            maxValue = 1000;
+            stepValue = 1; // 1 pixel 精度
+            break;
+        case 'custom':
+            // 自定义单位，使用较大的范围
+            minValue = -1000;
+            maxValue = 1000;
+            stepValue = 0.01;
+            break;
+        default:
+            // 默认范围 (μm)
+            minValue = -50;
+            maxValue = 50;
+            stepValue = 0.01;
+    }
+
+    // 确保转换后的值在新范围内
+    if (currentValue < minValue) currentValue = minValue;
+    if (currentValue > maxValue) currentValue = maxValue;
+
+    // 更新滑块属性
+    xCoordSlider.min = minValue;
+    xCoordSlider.max = maxValue;
+    xCoordSlider.step = stepValue;
+    xCoordSlider.value = currentValue;
+
+    // 更新数值输入框
+    xCoordNumberInput.min = minValue;
+    xCoordNumberInput.max = maxValue;
+    xCoordNumberInput.step = stepValue;
+    xCoordNumberInput.value = currentValue.toFixed(getDecimalPlaces(stepValue));
+
+    // 更新显示值
+    const xCoordValueSpan = document.querySelector('#x-coordinate-param .parameter-value');
+    if (xCoordValueSpan) {
+        xCoordValueSpan.textContent = currentValue.toFixed(getDecimalPlaces(stepValue));
+    }
+
+    console.log(`📐 X坐标滑块范围已调整: [${minValue}, ${maxValue}], 步长: ${stepValue}, 当前值: ${currentValue}`);
+}
+
+// 在不同单位间转换X坐标值
+function convertXCoordinateValue(value, fromUnit, toUnit) {
+    if (fromUnit === toUnit) return value;
+
+    // 先转换为微米作为中间单位
+    let valueInMicrons = value;
+    
+    // 从原单位转换为微米
+    switch (fromUnit) {
+        case 'nm':
+            valueInMicrons = value / 1000.0; // nm → μm
+            break;
+        case 'mm':
+            valueInMicrons = value * 1000.0; // mm → μm
+            break;
+        case 'pixels':
+            // 像素到微米的转换，尝试获取照片识别的缩放因子
+            const scaleFactor = getPhotoRecognitionScaleFactor();
+            if (scaleFactor && scaleFactor > 0) {
+                valueInMicrons = value * scaleFactor; // pixels → μm
+            } else {
+                // 如果没有缩放因子，假设1像素=1微米
+                valueInMicrons = value;
+            }
+            break;
+        case 'μm':
+        case 'um':
+            valueInMicrons = value; // 已经是微米
+            break;
+        case 'custom':
+            // 自定义单位，尝试获取自定义缩放因子
+            const customFactor = getCustomScaleFactor();
+            if (customFactor && customFactor > 0) {
+                // 假设自定义单位先转换为毫米，再转微米
+                valueInMicrons = value * customFactor * 1000.0;
+            } else {
+                valueInMicrons = value; // 默认1:1
+            }
+            break;
+    }
+
+    // 从微米转换为目标单位
+    switch (toUnit) {
+        case 'nm':
+            return valueInMicrons * 1000.0; // μm → nm
+        case 'mm':
+            return valueInMicrons / 1000.0; // μm → mm
+        case 'pixels':
+            // 微米到像素的转换
+            const scaleFactor = getPhotoRecognitionScaleFactor();
+            if (scaleFactor && scaleFactor > 0) {
+                return valueInMicrons / scaleFactor; // μm → pixels
+            } else {
+                // 如果没有缩放因子，假设1微米=1像素
+                return valueInMicrons;
+            }
+        case 'μm':
+        case 'um':
+            return valueInMicrons; // 已经是微米
+        case 'custom':
+            // 自定义单位转换
+            const customFactor = getCustomScaleFactor();
+            if (customFactor && customFactor > 0) {
+                // 微米先转毫米，再转自定义单位
+                return (valueInMicrons / 1000.0) / customFactor;
+            } else {
+                return valueInMicrons; // 默认1:1
+            }
+            break;
+        default:
+            return valueInMicrons;
+    }
+}
+
+// 将前端显示的X坐标值转换回原始数据的单位系统
+function convertXCoordinateValueToOriginalUnit(displayedValue, displayUnit, originalUnit) {
+    if (displayUnit === originalUnit) return displayedValue;
+    
+    console.log(`🔄 单位转换: ${displayedValue} ${displayUnit} → ${originalUnit}`);
+    
+    // 处理像素单位的特殊情况
+    if (originalUnit === 'pixels') {
+        // 如果原始数据是像素，需要根据照片识别的映射关系转换
+        // 从终端日志看，照片数据是"像素坐标直接映射为微米单位"
+        switch (displayUnit) {
+            case 'nm':
+                // 1像素 ≈ 1μm，所以 1000nm ≈ 1像素
+                return displayedValue / 1000.0; // nm → pixels
+            case 'μm':
+            case 'um':
+                // 1像素 ≈ 1μm，直接1:1映射
+                return displayedValue; // μm → pixels
+            case 'mm':
+                // 1像素 ≈ 1μm，所以 1mm ≈ 1000像素
+                return displayedValue * 1000.0; // mm → pixels
+            case 'pixels':
+                return displayedValue; // 已经是像素
+            default:
+                return displayedValue;
+        }
+    }
+    
+    // 其他情况使用通用转换函数
+    return convertXCoordinateValue(displayedValue, displayUnit, originalUnit);
+}
+
+// 获取照片识别的缩放因子
+function getPhotoRecognitionScaleFactor() {
+    if (typeof window.photoRecognition !== 'undefined' && window.photoRecognition) {
+        const scaleFactor = window.photoRecognition.calculateScaleFactor('um'); // 获取像素到微米的缩放因子
+        return scaleFactor;
+    }
+    return null;
+}
+
+// 根据单位获取合适的步长值
+function getStepValueForUnit(unit) {
+    switch (unit) {
+        case 'nm':
+            return 1; // 纳米精度为1
+        case 'μm':
+        case 'um':
+            return 0.01; // 微米精度为0.01
+        case 'mm':
+            return 0.0001; // 毫米精度为0.0001
+        case 'pixels':
+            return 0.1; // 像素精度为0.1
+        default:
+            return 0.01;
+    }
+}
+
+// 获取小数位数
+function getDecimalPlaces(stepValue) {
+    if (stepValue >= 1) return 0;
+    if (stepValue >= 0.1) return 1;
+    if (stepValue >= 0.01) return 2;
+    if (stepValue >= 0.001) return 3;
+    return 4;
+}
+
+// 获取自定义缩放因子
+function getCustomScaleFactor() {
+    // 尝试获取当前激活标签页的自定义缩放因子
+    const fileScaleFactor = document.getElementById('custom-scale-factor')?.value;
+    const manualScaleFactor = document.getElementById('manual-scale-factor')?.value;
+    
+    if (fileScaleFactor && !isNaN(parseFloat(fileScaleFactor))) {
+        return parseFloat(fileScaleFactor);
+    }
+    
+    if (manualScaleFactor && !isNaN(parseFloat(manualScaleFactor))) {
+        return parseFloat(manualScaleFactor);
+    }
+    
+    return null;
+}
+
+// 根据步长获取小数位数
+function getDecimalPlaces(step) {
+    const stepStr = step.toString();
+    const decimalIndex = stepStr.indexOf('.');
+    if (decimalIndex === -1) return 0;
+    return stepStr.length - decimalIndex - 1;
+}
+
 // 应用单位设置
 function applyUnitSettings() {
     // 获取单位选择元素
@@ -18646,6 +19092,10 @@ function applyUnitSettings() {
         case 'mm':
             unit = 'mm';
             factor = 1.0; // 毫米
+            break;
+        case 'pixels':
+            unit = 'pixels';
+            factor = 1.0; // 像素，具体转换依赖缩放因子
             break;
         case 'custom':
             unit = 'custom';
@@ -21063,6 +21513,8 @@ function setCustomIntensityData(vectorData) {
                 console.log('🔄 自定义向量数据加载完成，更新指定入射光强度显示');
                 // 先更新显示状态
                 updateSpecifiedIntensityDisplay();
+                // 更新指定点X坐标的单位显示
+                updateXCoordinateUnitDisplay();
                 // 然后自动提取当前X坐标的光强值
                 if (typeof handleXCoordinateChange === 'function') {
                     handleXCoordinateChange();
@@ -21307,6 +21759,114 @@ function updateSpecifiedIntensity(intensityValue) {
 
 // 防抖动计时器
 let xCoordinateChangeTimeout = null;
+
+// 处理X坐标单位变化
+function handleXCoordinateUnitChange() {
+    const xCoordUnitSelect = document.getElementById('x-coordinate-unit-select');
+    const xCoordSlider = document.getElementById('x_coordinate');
+    const xCoordNumberInput = document.querySelector('#x-coordinate-param .number-input');
+    
+    if (!xCoordUnitSelect || !xCoordSlider || !xCoordNumberInput) {
+        console.warn('❌ 找不到X坐标单位选择器或输入控件');
+        return;
+    }
+    
+    // 更新选择器显示为简短形式
+    updateUnitSelectDisplay(xCoordUnitSelect);
+    
+    const oldUnit = xCoordSlider.getAttribute('data-current-unit') || 'μm';
+    const newUnit = xCoordUnitSelect.value === 'um' ? 'μm' : xCoordUnitSelect.value;
+    
+    console.log(`🔄 X坐标单位变化: ${oldUnit} → ${newUnit}`);
+    
+    if (oldUnit !== newUnit) {
+        // 获取当前显示的X坐标值
+        const currentValue = parseFloat(xCoordSlider.value) || 0.0;
+        
+        // 进行单位转换
+        const convertedValue = convertXCoordinateValue(currentValue, oldUnit, newUnit);
+        
+        // 更新滑块和输入框的值
+        xCoordSlider.value = convertedValue;
+        xCoordNumberInput.value = convertedValue;
+        
+        // 更新显示值
+        const xCoordValueSpan = document.querySelector('#x-coordinate-param .parameter-value');
+        if (xCoordValueSpan) {
+            const stepValue = getStepValueForUnit(newUnit);
+            xCoordValueSpan.textContent = convertedValue.toFixed(getDecimalPlaces(stepValue));
+        }
+        
+        // 根据新单位调整滑块范围和步长
+        adjustXCoordinateSliderRange(newUnit, oldUnit, xCoordSlider, xCoordNumberInput);
+        
+        // 记录当前单位
+        xCoordSlider.setAttribute('data-current-unit', newUnit);
+        
+        console.log(`📐 X坐标值转换: ${currentValue} ${oldUnit} → ${convertedValue} ${newUnit}`);
+    }
+    
+    // 触发X坐标变化处理，更新相关显示
+    handleXCoordinateChange();
+}
+
+// 更新单位选择器的显示形式（选中后显示简短形式）
+function updateUnitSelectDisplay(selectElement) {
+    if (!selectElement) return;
+    
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const shortForm = selectedOption.getAttribute('data-short');
+    
+    if (shortForm) {
+        // 临时保存完整选项文本
+        if (!selectedOption.hasAttribute('data-full')) {
+            selectedOption.setAttribute('data-full', selectedOption.textContent);
+        }
+        
+        // 将选中的选项文本设置为简短形式
+        selectedOption.textContent = shortForm;
+        
+        // 恢复其他选项的完整文本
+        Array.from(selectElement.options).forEach(option => {
+            if (option !== selectedOption && option.hasAttribute('data-full')) {
+                option.textContent = option.getAttribute('data-full');
+            }
+        });
+    }
+}
+
+// 初始化单位选择器的事件监听器
+function initUnitSelectEvents() {
+    const xCoordUnitSelect = document.getElementById('x-coordinate-unit-select');
+    if (!xCoordUnitSelect) return;
+    
+    // 监听焦点事件，在展开时恢复完整文本
+    xCoordUnitSelect.addEventListener('focus', function() {
+        // 恢复所有选项的完整文本以便用户选择
+        Array.from(this.options).forEach(option => {
+            if (option.hasAttribute('data-full')) {
+                option.textContent = option.getAttribute('data-full');
+            }
+        });
+    });
+    
+    // 监听失去焦点事件，在收起时回到简短形式
+    xCoordUnitSelect.addEventListener('blur', function() {
+        setTimeout(() => {
+            updateUnitSelectDisplay(this);
+        }, 100); // 延迟以确保change事件已触发
+    });
+    
+    // 监听点击事件
+    xCoordUnitSelect.addEventListener('click', function() {
+        // 恢复所有选项的完整文本
+        Array.from(this.options).forEach(option => {
+            if (option.hasAttribute('data-full')) {
+                option.textContent = option.getAttribute('data-full');
+            }
+        });
+    });
+}
 
 // 处理X坐标变化
 function handleXCoordinateChange() {

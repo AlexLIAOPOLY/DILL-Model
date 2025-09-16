@@ -1038,6 +1038,7 @@
                                             <option value="um">微米 (μm)</option>
                                             <option value="mm" selected>毫米 (mm)</option>
                                             <option value="nm">纳米 (nm)</option>
+                                            <option value="pixels">像素 (pixels)</option>
                                             <option value="custom">自定义</option>
                                         </select>
                                         <span class="help-icon" style="display: inline-flex; margin-left: 8px; color: #0277bd; cursor: help; font-size: 16px;" title="选择上传数据的坐标单位。系统会根据选择的单位进行适当的坐标转换，确保计算结果准确。选择'自定义'可以手动设置转换比例。"><i class="fas fa-info-circle"></i></span>
@@ -1184,6 +1185,7 @@ Lithography (.ldf): 光刻数据格式<br>
                 <option value="um">微米 (μm)</option>
                 <option value="mm" selected>毫米 (mm)</option>
                 <option value="nm">纳米 (nm)</option>
+                <option value="pixels">像素 (pixels)</option>
                 <option value="custom">自定义</option>
             </select>
             <span class="help-icon" style="display: inline-flex; margin-left: 8px; color: #0277bd; cursor: help; font-size: 16px;" title="选择手动输入数据的坐标单位。系统会根据选择的单位进行适当的坐标转换，确保计算结果准确。选择'自定义'可以手动设置转换比例。"><i class="fas fa-info-circle"></i></span>
@@ -2266,7 +2268,14 @@ intensity3
                         <!-- 参数6: X坐标 (仅在自定义向量模式下显示) -->
                         <div id="x-coordinate-param" class="parameter-item slider-fill" style="display: none;">
                             <div class="parameter-label">
-                                <span class="parameter-name">指定点X坐标 <span class="unit-label">μm</span></span>
+                                <span class="parameter-name">指定点X坐标 
+                                    <select id="x-coordinate-unit-select" class="unit-select" onchange="handleXCoordinateUnitChange()">
+                                        <option value="nm" data-short="nm">纳米 (nm)</option>
+                                        <option value="um" data-short="μm" selected>微米 (μm)</option>
+                                        <option value="mm" data-short="mm">毫米 (mm)</option>
+                                        <option value="pixels" data-short="pixels">像素 (pixels)</option>
+                                    </select>
+                                </span>
                                 
                                 <span class="parameter-value">0.0</span>
                             </div>
@@ -2274,7 +2283,7 @@ intensity3
                                 <input type="range" id="x_coordinate" class="slider" min="-10" max="10" step="0.01" value="0.0" title="指定点X坐标滑块" aria-label="指定点X坐标" oninput="handleXCoordinateChange()">
                                 <input type="number" class="number-input" value="0.0" min="-10" max="10" step="0.01" title="指定点X坐标数值输入" aria-label="指定点X坐标数值" oninput="handleXCoordinateChange()">
                             </div>
-                            <div class="parameter-description">自定义向量模式：指定要提取光强值的X坐标位置，单位：μm</div>
+                            <div class="parameter-description">自定义向量模式：指定要提取光强值的X坐标位置，当前显示单位可独立调整</div>
                         </div>
                         
                         <!-- 参数7: 指定入射光强度 (仅在自定义向量模式下显示) -->

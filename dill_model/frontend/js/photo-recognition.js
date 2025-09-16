@@ -6,6 +6,8 @@
 class PhotoRecognition {
     constructor() {
         this.video = null;
+        // 初始化坐标单位跟踪
+        this.previousCoordinateUnit = null;
         this.stream = null;
         this.originalImageData = null;
         this.grayscaleImageData = null;
@@ -71,6 +73,8 @@ class PhotoRecognition {
         // 参数变化监听
         const coordinateUnit = document.getElementById('coordinate-unit');
         if (coordinateUnit) {
+            // 初始化previousCoordinateUnit为当前值
+            this.previousCoordinateUnit = coordinateUnit.value;
             coordinateUnit.addEventListener('change', () => this.handleUnitChange());
         }
         
@@ -3199,6 +3203,10 @@ ${'-'.repeat(70)}
     handleUnitChange() {
         const unit = document.getElementById('coordinate-unit').value;
         const customContainer = document.getElementById('custom-scale-container');
+        
+        // 获取旧单位（如果存在）
+        const oldUnit = this.previousCoordinateUnit || unit;
+        this.previousCoordinateUnit = unit;
 
         if (unit === 'custom') {
             customContainer.style.display = 'block';
@@ -3211,6 +3219,12 @@ ${'-'.repeat(70)}
 
         // 更新坐标查询界面的单位标签
         this.updateLookupUnitLabels();
+
+        // 更新指定点X坐标的单位显示，传递旧单位进行数值转换
+        if (typeof updateXCoordinateUnitDisplay === 'function') {
+            const convertedOldUnit = oldUnit === 'um' ? 'μm' : oldUnit;
+            updateXCoordinateUnitDisplay(convertedOldUnit);
+        }
     }
 
     /**

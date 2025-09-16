@@ -260,6 +260,72 @@ header::before {
     border: 1px solid #e8edf5;
 }
 
+/* X坐标单位选择器样式 - 模仿unit-label外观 */
+.unit-select {
+    display: inline-block;
+    background: #f5f7fa;
+    color: #8b9dc3;
+    font-size: 0.7em;
+    font-weight: 400;
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-left: 3px;
+    vertical-align: middle;
+    letter-spacing: 0.2px;
+    border: 1px solid #e8edf5;
+    cursor: pointer;
+    
+    /* 紧凑宽度设置 - 只比文本稍宽一点以容纳箭头 */
+    width: auto;
+    min-width: auto;
+    max-width: fit-content;
+    text-overflow: clip;
+    
+    /* 隐藏默认下拉箭头 */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    /* 添加小箭头 - 紧贴内容 */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a3b1c2' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 2px center;
+    background-repeat: no-repeat;
+    background-size: 6px;
+    padding-right: 10px;
+    
+    /* 过渡效果 */
+    transition: all 0.2s ease-in-out;
+}
+
+/* 悬停效果 */
+.unit-select:hover {
+    background: #eef2f7;
+    border-color: #d1dae8;
+    color: #6c7b95;
+    /* 悬停时箭头稍微突出 */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236c7b95' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-size: 7px;
+}
+
+/* 聚焦效果 */
+.unit-select:focus {
+    outline: none;
+    background: #eef2f7;
+    border-color: #2196F3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+    /* 聚焦时箭头变为蓝色 */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%232196F3' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-size: 7px;
+}
+
+/* 选项样式 */
+.unit-select option {
+    background: #ffffff;
+    color: #333333;
+    padding: 4px 8px;
+    font-size: 1.2em; /* 相对于select的字体大小放大 */
+}
+
 /* 响应式设计优化 */
 @media (max-width: 1200px) {
     .container {
