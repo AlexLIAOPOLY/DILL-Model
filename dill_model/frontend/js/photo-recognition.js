@@ -936,7 +936,7 @@ class PhotoRecognition {
         switch (method) {
             case 'gaussian':
                 return this.gaussianSmooth(data, 2);
-            case 'moving-average':
+            case 'moving_average':
                 return this.movingAverageSmooth(data, 3);
             default:
                 return data;
@@ -2447,15 +2447,37 @@ ${'-'.repeat(60)}
     handleUnitChange() {
         const unit = document.getElementById('coordinate-unit').value;
         const customContainer = document.getElementById('custom-scale-container');
-        
+
         if (unit === 'custom') {
             customContainer.style.display = 'block';
         } else {
             customContainer.style.display = 'none';
         }
-        
+
         // 更新缩放因子显示
         this.updateScaleFactorDisplay();
+
+        // 更新坐标查询界面的单位标签
+        this.updateLookupUnitLabels();
+    }
+
+    /**
+     * 更新坐标查询界面的单位标签
+     */
+    updateLookupUnitLabels() {
+        const currentUnit = document.getElementById('coordinate-unit')?.value || 'pixels';
+        const unitLabel = this.getUnitLabel(currentUnit);
+
+        const xUnitLabel = document.getElementById('lookup-x-unit-label');
+        const yUnitLabel = document.getElementById('lookup-y-unit-label');
+
+        if (xUnitLabel) {
+            xUnitLabel.textContent = unitLabel;
+        }
+
+        if (yUnitLabel) {
+            yUnitLabel.textContent = '强度'; // Y输入始终是光强度，无单位
+        }
     }
 
     /**
@@ -3924,13 +3946,203 @@ ${'-'.repeat(60)}
     }
 
     /**
+     * 计算高斯分布参数
+     */
+    calculateGaussianParams() {
+        if (!this.vectorData || !this.vectorData.x || !this.vectorData.intensity) {
+            console.error('没有可用的向量数据');
+            return null;
+        }
+
+        const x = this.vectorData.x;
+        const y = this.vectorData.intensity;
+
+        // 找到最大值及其位置（均值 μ）
+        let maxY = Math.max(...y);
+        let maxIndex = y.indexOf(maxY);
+        let mu = x[maxIndex];
+
+        // 计算半高全宽（FWHM）来估算标准差
+        let halfMax = maxY / 2;
+        let leftIndex = -1, rightIndex = -1;
+
+        // 从最大值位置向左找半高位置
+        for (let i = maxIndex; i >= 0; i--) {
+            if (y[i] <= halfMax) {
+                leftIndex = i;
+                break;
+            }
+        }
+
+        // 从最大值位置向右找半高位置
+        for (let i = maxIndex; i < y.length; i++) {
+            if (y[i] <= halfMax) {
+                rightIndex = i;
+                break;
+            }
+        }
+
+        // 计算FWHM和标准差
+        let fwhm = 0;
+        if (leftIndex >= 0 && rightIndex >= 0) {
+            // 线性插值找到更精确的半高位置
+            let leftX = this.interpolateHalfMax(x, y, leftIndex, leftIndex + 1, halfMax);
+            let rightX = this.interpolateHalfMax(x, y, rightIndex - 1, rightIndex, halfMax);
+            fwhm = Math.abs(rightX - leftX);
+        } else if (rightIndex >= 0) {
+            fwhm = 2 * Math.abs(x[rightIndex] - mu);
+        } else if (leftIndex >= 0) {
+            fwhm = 2 * Math.abs(mu - x[leftIndex]);
+        }
+
+        // 高斯分布: FWHM = 2.355 * σ (2*sqrt(2*ln(2)) ≈ 2.3548)
+        let sigma = fwhm / 2.3548;
+
+        // 振幅 A
+        let amplitude = maxY;
+
+        return {
+            amplitude: amplitude,
+            mu: mu,
+            sigma: sigma,
+            fwhm: fwhm,
+            formula: `f(x) = ${amplitude.toFixed(3)} * exp(-(x - ${mu.toFixed(3)})² / (2 * ${sigma.toFixed(3)}²))`
+        };
+    }
+
+    /**
+     * 线性插值找半高位置
+     */
+    interpolateHalfMax(x, y, i1, i2, halfMax) {
+        if (i1 < 0 || i2 >= x.length) return x[Math.max(0, Math.min(i1, i2, x.length - 1))];
+
+        let x1 = x[i1], x2 = x[i2];
+        let y1 = y[i1], y2 = y[i2];
+
+        if (y1 === y2) return (x1 + x2) / 2;
+
+        // 线性插值
+        return x1 + (halfMax - y1) * (x2 - x1) / (y2 - y1);
+    }
+
+    /**
+     * 根据X值查找Y值（光强度）
+     */
+    lookupYByX(targetX) {
+        if (!this.vectorData || !this.vectorData.x || !this.vectorData.intensity) {
+            return null;
+        }
+
+        const x = this.vectorData.x;
+        const y = this.vectorData.intensity;
+
+        // 获取当前坐标单位和图表数据单位
+        const currentUnit = document.getElementById('coordinate-unit')?.value || 'pixels';
+        const chartUnit = this.vectorData?.parameters?.coordinateUnit || 'pixels';
+
+        // 将输入的X值转换为图表数据的单位
+        let convertedTargetX = targetX;
+        if (currentUnit !== chartUnit) {
+            convertedTargetX = this.convertUnit(targetX, currentUnit, chartUnit);
+        }
+
+        // 找到最接近的两个点进行线性插值
+        let closestIndex = 0;
+        let minDiff = Math.abs(x[0] - convertedTargetX);
+
+        for (let i = 1; i < x.length; i++) {
+            let diff = Math.abs(x[i] - convertedTargetX);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIndex = i;
+            }
+        }
+
+        // 如果非常接近某个点，直接返回该点的值
+        if (minDiff < 0.001) {
+            return y[closestIndex];
+        }
+
+        // 线性插值
+        if (convertedTargetX < x[closestIndex]) {
+            if (closestIndex === 0) return y[0];
+            let x1 = x[closestIndex - 1], x2 = x[closestIndex];
+            let y1 = y[closestIndex - 1], y2 = y[closestIndex];
+            return y1 + (convertedTargetX - x1) * (y2 - y1) / (x2 - x1);
+        } else {
+            if (closestIndex === x.length - 1) return y[closestIndex];
+            let x1 = x[closestIndex], x2 = x[closestIndex + 1];
+            let y1 = y[closestIndex], y2 = y[closestIndex + 1];
+            return y1 + (convertedTargetX - x1) * (y2 - y1) / (x2 - x1);
+        }
+    }
+
+    /**
+     * 根据Y值查找X值（可能有多个）
+     */
+    lookupXByY(targetY, tolerance = 0.001) {
+        if (!this.vectorData || !this.vectorData.x || !this.vectorData.intensity) {
+            return [];
+        }
+
+        const x = this.vectorData.x;
+        const y = this.vectorData.intensity;
+        const results = [];
+
+        // 获取当前坐标单位和图表数据单位
+        const currentUnit = document.getElementById('coordinate-unit')?.value || 'pixels';
+        const chartUnit = this.vectorData?.parameters?.coordinateUnit || 'pixels';
+
+        // 扫描所有相邻点对，找到Y值穿越目标值的位置
+        for (let i = 0; i < y.length - 1; i++) {
+            let y1 = y[i], y2 = y[i + 1];
+
+            // 检查是否在这两点之间
+            if ((y1 <= targetY && targetY <= y2) || (y2 <= targetY && targetY <= y1)) {
+                if (Math.abs(y1 - targetY) < tolerance) {
+                    // 非常接近y1
+                    let resultX = x[i];
+                    // 将结果从图表单位转换为当前显示单位
+                    if (currentUnit !== chartUnit) {
+                        resultX = this.convertUnit(resultX, chartUnit, currentUnit);
+                    }
+                    results.push(resultX);
+                } else if (Math.abs(y2 - targetY) < tolerance) {
+                    // 非常接近y2
+                    if (i === y.length - 2) {
+                        let resultX = x[i + 1];
+                        // 将结果从图表单位转换为当前显示单位
+                        if (currentUnit !== chartUnit) {
+                            resultX = this.convertUnit(resultX, chartUnit, currentUnit);
+                        }
+                        results.push(resultX);
+                    }
+                } else if (y1 !== y2) {
+                    // 线性插值
+                    let x1 = x[i], x2 = x[i + 1];
+                    let interpolatedX = x1 + (targetY - y1) * (x2 - x1) / (y2 - y1);
+                    // 将结果从图表单位转换为当前显示单位
+                    if (currentUnit !== chartUnit) {
+                        interpolatedX = this.convertUnit(interpolatedX, chartUnit, currentUnit);
+                    }
+                    results.push(interpolatedX);
+                }
+            }
+        }
+
+        // 去重并排序
+        const uniqueResults = [...new Set(results.map(val => Math.round(val * 1000) / 1000))];
+        return uniqueResults.sort((a, b) => a - b);
+    }
+
+    /**
      * 清理资源
      */
     cleanup() {
         if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop());
         }
-        
+
         this.hideCustomTooltip();
         this.originalImageData = null;
         this.grayscaleImageData = null;

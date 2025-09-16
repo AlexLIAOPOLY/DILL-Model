@@ -1480,6 +1480,89 @@ intensity3
                                             <button id="preview-vector-data-btn" class="camera-btn">预览数据</button>
                                             <button id="export-vector-data-btn" class="camera-btn">导出数据</button>
                                         </div>
+
+                                        <!-- 高斯分布参数计算区域 -->
+                                        <div id="gaussian-params-section" class="gaussian-params-section" style="margin-top: 25px; padding: 24px; background: linear-gradient(135deg, #fafbfc 0%, #f3f5f7 100%); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06);">
+                                            <div class="section-header" style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.06);">
+                                                <h4 style="color: #2c3e50; margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.3px;">高斯分布参数分析</h4>
+                                            </div>
+                                            <div class="gaussian-params-container" style="display: flex; gap: 24px; align-items: stretch;">
+                                                <button id="calculate-gaussian-btn" style="padding: 10px 24px; background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(116,185,255,0.25); white-space: nowrap;">
+                                                    计算高斯参数
+                                                </button>
+                                                <div id="gaussian-formula" style="display: none; flex: 1; padding: 12px 16px; background: white; border-radius: 8px; border: 1px solid #e1e4e8; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                                    <span style="color: #364152; font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace; font-size: 13px; line-height: 1.6;"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- X-Y值互查区域 -->
+                                        <div id="xy-lookup-section" class="xy-lookup-section" style="margin-top: 20px; padding: 24px; background: linear-gradient(135deg, #fafbfc 0%, #f3f5f7 100%); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06);">
+                                            <div class="section-header" style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.06);">
+                                                <h4 style="color: #2c3e50; margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.3px;">数值查询工具</h4>
+                                            </div>
+                                            <div class="xy-lookup-container" style="display: flex; gap: 32px;">
+                                                <div class="lookup-item" style="flex: 1; padding: 20px; background: white; border-radius: 10px; border: 1px solid #e1e4e8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                                                    <div style="margin-bottom: 16px;">
+                                                        <label style="display: block; color: #586069; font-size: 13px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">X 坐标查询</label>
+                                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                                            <input type="number" id="lookup-x-input" style="flex: 1; padding: 8px 12px; border: 2px solid #e1e4e8; border-radius: 6px; font-size: 14px; transition: all 0.2s ease; outline: none;" placeholder="输入 X 值">
+                                                            <span id="lookup-x-unit-label" style="color: #8b949e; font-size: 13px; font-weight: 500; min-width: 30px;">μm</span>
+                                                        </div>
+                                                    </div>
+                                                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                                                        <button id="lookup-by-x-btn" style="padding: 8px 16px; background: linear-gradient(135deg, #56ccf2 0%, #2f80ed 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(47,128,237,0.25);">
+                                                            查询对应 Y 值
+                                                        </button>
+                                                        <div style="padding: 10px 14px; background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 100%); border: 1px solid #d1d5da; border-radius: 6px; min-height: 38px; display: flex; align-items: center; justify-content: center;">
+                                                            <span id="lookup-y-result" style="color: #24292e; font-size: 14px; font-weight: 500;">等待查询</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="lookup-item" style="flex: 1; padding: 20px; background: white; border-radius: 10px; border: 1px solid #e1e4e8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                                                    <div style="margin-bottom: 16px;">
+                                                        <label style="display: block; color: #586069; font-size: 13px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Y 光强查询</label>
+                                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                                            <input type="number" id="lookup-y-input" style="flex: 1; padding: 8px 12px; border: 2px solid #e1e4e8; border-radius: 6px; font-size: 14px; transition: all 0.2s ease; outline: none;" placeholder="输入 Y 值">
+                                                            <span id="lookup-y-unit-label" style="color: #8b949e; font-size: 13px; font-weight: 500; min-width: 45px;">强度</span>
+                                                        </div>
+                                                    </div>
+                                                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                                                        <button id="lookup-by-y-btn" style="padding: 8px 16px; background: linear-gradient(135deg, #56ccf2 0%, #2f80ed 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(47,128,237,0.25);">
+                                                            查询对应 X 值
+                                                        </button>
+                                                        <div style="padding: 10px 14px; background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 100%); border: 1px solid #d1d5da; border-radius: 6px; min-height: 38px; display: flex; align-items: center; justify-content: center;">
+                                                            <span id="lookup-x-result" style="color: #24292e; font-size: 14px; font-weight: 500;">等待查询</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <style>
+                                            #calculate-gaussian-btn:hover {
+                                                transform: translateY(-1px);
+                                                box-shadow: 0 6px 16px rgba(116,185,255,0.35) !important;
+                                            }
+
+                                            #lookup-by-x-btn:hover, #lookup-by-y-btn:hover {
+                                                transform: translateY(-1px);
+                                                box-shadow: 0 4px 12px rgba(47,128,237,0.35) !important;
+                                            }
+
+                                            #lookup-x-input:focus, #lookup-y-input:focus {
+                                                border-color: #2f80ed;
+                                                box-shadow: 0 0 0 3px rgba(47,128,237,0.1);
+                                            }
+
+                                            .gaussian-params-section, .xy-lookup-section {
+                                                transition: all 0.3s ease;
+                                            }
+
+                                            .gaussian-params-section:hover, .xy-lookup-section:hover {
+                                                box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+                                            }
+                                        </style>
                                     </div>
 
                                     <!-- 向量数据详细预览区域 -->
@@ -3916,8 +3999,80 @@ intensity3
             try {
                 window.photoRecognition = new PhotoRecognition();
                 window.photoRecognition.init();
+                // 初始化坐标查询界面的单位标签
+                window.photoRecognition.updateLookupUnitLabels();
                 console.log('✅ 照片识别功能初始化成功');
-                
+
+                // 初始化高斯参数计算按钮
+                const calculateGaussianBtn = document.getElementById('calculate-gaussian-btn');
+                if (calculateGaussianBtn) {
+                    calculateGaussianBtn.addEventListener('click', function() {
+                        if (window.photoRecognition) {
+                            const params = window.photoRecognition.calculateGaussianParams();
+                            if (params) {
+                                const formulaDiv = document.getElementById('gaussian-formula');
+                                if (formulaDiv) {
+                                    formulaDiv.style.display = 'block';
+                                    formulaDiv.querySelector('span').innerHTML = params.formula;
+                                    console.log('高斯参数:', params);
+                                }
+                            } else {
+                                alert('请先生成向量数据');
+                            }
+                        }
+                    });
+                }
+
+                // 初始化X值查询Y值按钮
+                const lookupByXBtn = document.getElementById('lookup-by-x-btn');
+                if (lookupByXBtn) {
+                    lookupByXBtn.addEventListener('click', function() {
+                        const xInput = document.getElementById('lookup-x-input');
+                        const yResult = document.getElementById('lookup-y-result');
+                        if (xInput && yResult && window.photoRecognition) {
+                            const xValue = parseFloat(xInput.value);
+                            if (!isNaN(xValue)) {
+                                const yValue = window.photoRecognition.lookupYByX(xValue);
+                                if (yValue !== null) {
+                                    yResult.textContent = yValue.toFixed(4);
+                                } else {
+                                    yResult.textContent = '无匹配数据';
+                                }
+                            } else {
+                                alert('请输入有效的X值');
+                            }
+                        }
+                    });
+                }
+
+                // 初始化Y值查询X值按钮
+                const lookupByYBtn = document.getElementById('lookup-by-y-btn');
+                if (lookupByYBtn) {
+                    lookupByYBtn.addEventListener('click', function() {
+                        const yInput = document.getElementById('lookup-y-input');
+                        const xResult = document.getElementById('lookup-x-result');
+                        if (yInput && xResult && window.photoRecognition) {
+                            const yValue = parseFloat(yInput.value);
+                            if (!isNaN(yValue)) {
+                                const xValues = window.photoRecognition.lookupXByY(yValue);
+                                if (xValues && xValues.length > 0) {
+                                    const currentUnit = document.getElementById('coordinate-unit')?.value || 'pixels';
+                                    const unitLabel = window.photoRecognition.getUnitLabel(currentUnit);
+                                    if (xValues.length === 1) {
+                                        xResult.textContent = xValues[0].toFixed(3) + ' ' + unitLabel;
+                                    } else {
+                                        xResult.textContent = xValues.map(x => x.toFixed(3)).join(', ') + ' ' + unitLabel;
+                                    }
+                                } else {
+                                    xResult.textContent = '无匹配数据';
+                                }
+                            } else {
+                                alert('请输入有效的Y值');
+                            }
+                        }
+                    });
+                }
+
                 // 页面卸载时清理资源
                 window.addEventListener('beforeunload', function() {
                     if (window.photoRecognition) {
