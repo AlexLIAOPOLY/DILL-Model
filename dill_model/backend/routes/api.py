@@ -708,7 +708,7 @@ def calculate_data():
                 add_progress_log('dill', "开始2D曝光图案计算", dimension='2d')
                 
                 # 获取2D曝光图案参数
-                angle_a = float(data.get('angle_a', 11.7))
+                angle_a = float(data.get('angle_a', 100.0))
                 exposure_threshold = float(data.get('exposure_threshold', 25))
                 contrast_ctr = float(data.get('V', 0.9))  # V参数就是对比度
                 wavelength = float(data.get('wavelength', 405))

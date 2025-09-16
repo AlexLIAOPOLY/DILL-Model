@@ -1739,7 +1739,7 @@ function getParameterValues() {
         const wavelength_elem = document.getElementById('wavelength');
         const wavelength_number_elem = document.getElementById('wavelength_number');
         
-        params.angle_a = angle_a_elem ? parseFloat(angle_a_elem.value) || 11.7 : 11.7;
+        params.angle_a = angle_a_elem ? parseFloat(angle_a_elem.value) || 100.0 : 100.0;
         params.exposure_threshold = exposure_threshold_elem ? parseFloat(exposure_threshold_elem.value) || 20 : 20;
         
         // 🔧 修复波长参数获取逻辑：优先使用数字输入框的值
@@ -6123,7 +6123,7 @@ function get2DExposurePatternPopupHtmlContent(point, setName, params, plotType) 
     const lastData = window.lastPlotData || {};
     const exposureTime = lastData.exposure_time || params.t_exp || 100;
     const C = lastData.parameters?.C || params.C || 0.022;
-    const angle_a_deg = lastData.parameters?.angle_a_deg || params.angle_a || 11.7;
+    const angle_a_deg = lastData.parameters?.angle_a_deg || params.angle_a || 100.0;
     const contrast_ctr = lastData.parameters?.contrast_ctr || params.contrast_ctr || 0.9;
     const wavelength_nm = lastData.parameters?.wavelength_nm || params.wavelength || 405;
     const threshold_cd = lastData.parameters?.threshold_cd || params.exposure_threshold || 25;

@@ -2100,7 +2100,7 @@ class DillModel:
         
         return result
 
-    def calculate_2d_exposure_pattern(self, I_avg=0.5, C=0.022, angle_a_deg=1.0, 
+    def calculate_2d_exposure_pattern(self, I_avg=0.5, C=0.022, angle_a_deg=100.0, 
                                      exposure_time=100, 
                                      contrast_ctr=0.9, threshold_cd=25, wavelength_nm=405,
                                      x_min=-1000, x_max=1000, y_min=-1000, y_max=1000, 
@@ -2134,6 +2134,34 @@ class DillModel:
         logger.info("【Dill模型 - 2D曝光图案计算】")
         logger.info("=" * 60)
         logger.info("🔸 使用MATLAB latent_image2d.m文件逻辑")
+        
+        # 🔸 参数合理性验证 - 防止采样混叠问题
+        grid_range = x_max - x_min
+        nyquist_period = 2 * step_size  # 奈奎斯特采样定理：最小可分辨周期是2倍步长
+        max_reasonable_period = grid_range / 3  # 至少要在网格范围内看到3个周期
+        
+        logger.info(f"🔍 参数合理性检查:")
+        logger.info(f"   - 网格范围: {grid_range} μm")
+        logger.info(f"   - 采样步长: {step_size} μm") 
+        logger.info(f"   - 奈奎斯特最小周期: {nyquist_period} μm")
+        logger.info(f"   - 建议最大周期: {max_reasonable_period:.1f} μm")
+        logger.info(f"   - 当前周期距离: {angle_a_deg} μm")
+        
+        # 检查并警告不合理的参数
+        if angle_a_deg < nyquist_period:
+            logger.warning(f"⚠️  周期距离 {angle_a_deg}μm 小于奈奎斯特限制 {nyquist_period}μm，可能产生混叠!")
+        if angle_a_deg > max_reasonable_period:
+            logger.warning(f"⚠️  周期距离 {angle_a_deg}μm 过大，在 {grid_range}μm 范围内周期数少于3个!")
+        
+        # 自动优化建议
+        if angle_a_deg < nyquist_period or angle_a_deg > max_reasonable_period:
+            suggested_period = max(nyquist_period * 2, min(max_reasonable_period, grid_range / 10))
+            logger.info(f"💡 建议使用周期距离: {suggested_period:.1f} μm (可显示约 {grid_range/suggested_period:.1f} 个周期)")
+            
+            # 如果参数过于不合理，使用建议值
+            if angle_a_deg < nyquist_period:
+                logger.info(f"🔧 自动修正：周期距离从 {angle_a_deg}μm 调整为 {suggested_period:.1f}μm")
+                angle_a_deg = suggested_period
         
         # 🔸 计算ARC设计参数
         arc_params = self.calculate_arc_parameters(substrate_material, arc_material, wavelength_nm)
@@ -2217,9 +2245,11 @@ class DillModel:
             original_unit = custom_intensity_data.get('original_unit', 'mm')
             unit_scale = custom_intensity_data.get('unit_scale', 1.0)
             
-            # 判断目标坐标系单位
+            # 🔧 改进的目标坐标系单位判断逻辑
             target_range = x_max - x_min
-            target_is_um = target_range > 100  # 如果范围>100，认为是微米单位
+            # 更合理的判断：范围>=10认为是微米单位，<10认为是毫米单位
+            # 因为2D光刻通常在微米级别，只有非常小的范围才可能是毫米级
+            target_is_um = target_range >= 10
             
             # 智能数据范围检测
             data_range = custom_x.max() - custom_x.min()
@@ -2251,14 +2281,22 @@ class DillModel:
             if unit_mismatch_detected:
                 logger.info(f"🔧 智能修正：{original_unit} → {corrected_unit}")
             
+            # 🔸 添加单位转换前的验证
+            pre_conversion_range = custom_x.max() - custom_x.min()
+            logger.info(f"🔍 转换前验证:")
+            logger.info(f"   - 数据单位: {corrected_unit}")
+            logger.info(f"   - 数据范围: {pre_conversion_range:.6f} {corrected_unit}")
+            logger.info(f"   - 目标单位: {'μm' if target_is_um else 'mm'}")
+            logger.info(f"   - 目标范围: {target_range:.1f} {'μm' if target_is_um else 'mm'}")
+            
             # 执行单位转换
             if target_is_um:  # 目标是微米网格
                 if corrected_unit == 'mm':
                     custom_x = custom_x * 1000.0
                     logger.info(f"🔸 单位转换: mm → μm，坐标×1000")
                 elif corrected_unit == 'nm':
-                    custom_x = custom_x * 1000000.0  # nm → μm 需要乘1000000
-                    logger.info(f"🔸 单位转换: nm → μm，坐标×1000000")
+                    custom_x = custom_x / 1000.0  # nm → μm 需要除1000
+                    logger.info(f"🔸 单位转换: nm → μm，坐标÷1000")
                 elif corrected_unit in ['μm', 'um', 'micron']:
                     logger.info(f"🔸 单位匹配: μm → μm，无需转换")
                 logger.info(f"   - 转换后范围: [{custom_x.min():.1f}, {custom_x.max():.1f}] μm")
@@ -2272,6 +2310,18 @@ class DillModel:
                 elif corrected_unit == 'mm':
                     logger.info(f"🔸 单位匹配: mm → mm，无需转换")
                 logger.info(f"   - 转换后范围: [{custom_x.min():.3f}, {custom_x.max():.3f}] mm")
+            
+            # 🔸 转换后验证和警告
+            post_conversion_range = custom_x.max() - custom_x.min()
+            target_unit = 'μm' if target_is_um else 'mm'
+            logger.info(f"🔍 转换后验证:")
+            logger.info(f"   - 转换后数据范围: {post_conversion_range:.6f} {target_unit}")
+            
+            # 合理性检查
+            if target_is_um and (post_conversion_range > 100000 or post_conversion_range < 0.001):
+                logger.warning(f"⚠️  转换后μm范围异常: {post_conversion_range:.6f}μm，请检查原始数据单位")
+            elif not target_is_um and (post_conversion_range > 1000 or post_conversion_range < 0.000001):
+                logger.warning(f"⚠️  转换后mm范围异常: {post_conversion_range:.6f}mm，请检查原始数据单位")
             
             # 验证转换后的数据是否在合理范围内（插值可以处理边界外的情况）
             data_span = custom_x.max() - custom_x.min()
