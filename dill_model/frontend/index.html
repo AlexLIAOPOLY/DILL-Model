@@ -1684,10 +1684,25 @@ intensity3
                                             <label class="mode-option"><input type="radio" name="video-align-mode" value="brightest" checked> 最亮点</label>
                                             <label class="mode-option"><input type="radio" name="video-align-mode" value="centroid"> 中心点</label>
                                         </div>
+                                        <div class="control-group mode">
+                                            <span class="mode-label">显示模式</span>
+                                            <label class="mode-option"><input type="radio" name="video-align-display" value="split" checked> 分屏</label>
+                                            <label class="mode-option"><input type="radio" name="video-align-display" value="merged"> 合并</label>
+                                            <label class="mode-option"><input type="radio" name="video-align-display" value="bw-merged"> 黑白合并</label>
+                                        </div>
+                                        <div class="control-group zoom">
+                                            <button id="zoom-out-btn" class="zoom-btn" type="button">−</button>
+                                            <span id="zoom-level" class="zoom-level">1.0x</span>
+                                            <button id="zoom-in-btn" class="zoom-btn" type="button">+</button>
+                                            <button id="zoom-reset-btn" class="zoom-btn reset" type="button">⌂</button>
+                                        </div>
                                     </div>
                                     <div class="video-align-visuals">
                                         <div class="video-pane">
-                                            <video id="video-align-stream" autoplay muted playsinline></video>
+                                            <div class="video-wrapper">
+                                                <video id="video-align-stream" autoplay muted playsinline></video>
+                                                <canvas id="video-align-video-overlay" width="320" height="240"></canvas>
+                                            </div>
                                         </div>
                                         <div class="heatmap-pane">
                                             <div class="heatmap-wrapper">
@@ -1695,12 +1710,53 @@ intensity3
                                                 <canvas id="video-align-overlay" width="320" height="240"></canvas>
                                             </div>
                                         </div>
+                                        <div id="merged-pane" class="merged-pane" style="display: none;">
+                                            <div class="merged-wrapper">
+                                                <canvas id="video-align-merged" width="640" height="240"></canvas>
+                                                <div class="merged-labels">
+                                                    <span class="left-label">原始视频</span>
+                                                    <span class="right-label">热力图</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="alignment-feedback">
                                         <div id="video-align-indicator" class="alignment-indicator idle"></div>
                                         <div id="video-align-status-text" class="alignment-status-text">等待摄像头</div>
                                     </div>
-                                    <div class="video-align-note">开启摄像头后将实时显示热力图与对齐状态，保持环境光稳定以获得更准确的识别结果。</div>
+                                    
+                                    <!-- 灵敏度调整 -->
+                                    <div class="sensitivity-control">
+                                        <div class="sensitivity-label">灵敏度</div>
+                                        <div class="sensitivity-slider-container">
+                                            <input type="range" id="sensitivity-slider" min="0.1" max="4.0" step="0.05" value="1.0">
+                                            <span id="sensitivity-value">1.0</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 信息显示区域：左右布局 -->
+                                    <div class="info-panel">
+                                        <!-- 左侧：距离信息 -->
+                                        <div class="info-left">
+                                            <div class="info-section-header">距离信息</div>
+                                            <div id="distance-info" class="distance-info scrollable"></div>
+                                        </div>
+                                        
+                                        <!-- 右侧：高斯拟合 -->
+                                        <div class="info-right">
+                                            <div class="info-section-header">高斯拟合</div>
+                                            <div id="formula-content" class="formula-content scrollable">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="video-align-note">
+                                        <div class="note-content-compact">
+                                            <span class="note-icon aligned">●</span> 对齐 
+                                            <span class="note-icon misaligned">● ●</span> 未对齐
+                                            <span class="note-icon mode">⚙️</span> 检测模式
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

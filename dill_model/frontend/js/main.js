@@ -15936,8 +15936,14 @@ function initCustomIntensityTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
     const updateVideoTabState = (targetTab) => {
+        const isVideoTab = targetTab === 'video-alignment';
+
+        if (document && document.body) {
+            document.body.classList.toggle('video-alignment-only', isVideoTab);
+        }
+
         if (window.videoAlignment && typeof window.videoAlignment.handleTabVisibility === 'function') {
-            window.videoAlignment.handleTabVisibility(targetTab === 'video-alignment');
+            window.videoAlignment.handleTabVisibility(isVideoTab);
         }
     };
 
