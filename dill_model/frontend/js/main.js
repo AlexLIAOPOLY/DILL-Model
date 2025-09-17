@@ -282,6 +282,9 @@ let dill1DVEvaluationState = {
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化波形类型标题国际化
     initWaveTypeTitles();
+
+    // 初始化3D视图开关
+    init3DViewToggle();
     
     // 初始化波形类型选择器
     initSineWaveTypeSelectors();
@@ -2821,13 +2824,22 @@ function displayInteractiveResults(data) {
                         has_thickness_distribution: !!data.thickness_distribution,
                         dose_distribution_shape: data.dose_distribution ? `${data.dose_distribution.length}x${data.dose_distribution[0]?.length}` : 'undefined',
                         X_grid_shape: data.X_grid ? `${data.X_grid.length}x${data.X_grid[0]?.length}` : 'undefined',
-                        Y_grid_shape: data.Y_grid ? `${data.Y_grid.length}x${data.Y_grid[0]?.length}` : 'undefined'
+                        Y_grid_shape: data.Y_grid ? `${data.Y_grid.length}x${data.Y_grid[0]?.length}` : 'undefined',
+                        is_3d_view_enabled: !!window.is3DViewEnabled
                     });
-                    
-                    // 转换2D曝光图案数据为标准2D热图格式
-                    const converted2DData = convert2DExposurePatternToHeatmapData(data);
-                    createExposureHeatmap(exposurePlotContainer, converted2DData);
-                    createThicknessHeatmap(thicknessPlotContainer, converted2DData);
+
+                    // 检查是否启用了3D视图
+                    if (window.is3DViewEnabled) {
+                        console.log('使用3D视图模式渲染2D曝光图案');
+                        createExposure3DVisualization(exposurePlotContainer, data);
+                        createThickness3DVisualization(thicknessPlotContainer, data);
+                    } else {
+                        console.log('使用2D热图模式渲染2D曝光图案');
+                        // 转换2D曝光图案数据为标准2D热图格式
+                        const converted2DData = convert2DExposurePatternToHeatmapData(data);
+                        createExposureHeatmap(exposurePlotContainer, converted2DData);
+                        createThicknessHeatmap(thicknessPlotContainer, converted2DData);
+                    }
                 } else {
                     createExposureHeatmap(exposurePlotContainer, data);
                     createThicknessHeatmap(thicknessPlotContainer, data);
@@ -2881,9 +2893,18 @@ function displayInteractiveResults(data) {
         // 特殊处理2D曝光图案数据
         if (data.sine_type === '2d_exposure_pattern') {
             console.log('处理2D曝光图案数据结构（第二分支）');
-            const converted2DData = convert2DExposurePatternToHeatmapData(data);
-            createExposureHeatmap(exposurePlotContainer, converted2DData);
-            createThicknessHeatmap(thicknessPlotContainer, converted2DData);
+
+            // 检查是否启用了3D视图
+            if (window.is3DViewEnabled) {
+                console.log('使用3D视图模式渲染2D曝光图案（第二分支）');
+                createExposure3DVisualization(exposurePlotContainer, data);
+                createThickness3DVisualization(thicknessPlotContainer, data);
+            } else {
+                console.log('使用2D热图模式渲染2D曝光图案（第二分支）');
+                const converted2DData = convert2DExposurePatternToHeatmapData(data);
+                createExposureHeatmap(exposurePlotContainer, converted2DData);
+                createThicknessHeatmap(thicknessPlotContainer, converted2DData);
+            }
         } else {
             createExposureHeatmap(exposurePlotContainer, data);
             createThicknessHeatmap(thicknessPlotContainer, data);
@@ -5671,11 +5692,319 @@ function showSinglePointDetailsPopup(point, plotType, container, eventData) {
 
     // 使用新的可拖拽缩放弹窗组件，默认显示在屏幕中央
     window.showDraggablePopup('📊 点详细信息', pointInfo.html);
+
 }
 
 function removeSinglePointDetailsPopup() {
     // 使用新的可拖拽缩放弹窗组件的移除函数
     window.removeDraggablePopup();
+}
+
+/**
+ * 初始化3D视图开关功能
+ */
+function init3DViewToggle() {
+    const toggle = document.getElementById('enable-3d-view-main');
+    const status = document.getElementById('3d-view-status');
+
+    if (!toggle || !status) return;
+
+    // 获取开关元素
+    const label = toggle.closest('label');
+    const toggleContainer = label ? label.querySelector('div') : null;
+    const toggleSlider = toggleContainer ? toggleContainer.querySelector('.toggle-slider-3d') : null;
+
+    if (!toggleContainer || !toggleSlider) {
+        console.error('找不到3D视图开关相关元素');
+        return;
+    }
+
+    toggle.addEventListener('change', function() {
+        if (this.checked) {
+            // 开启3D视图
+            status.textContent = '开启';
+            status.style.color = '#0ea5e9';
+            toggleContainer.style.backgroundColor = '#0ea5e9';
+            toggleSlider.style.transform = 'translateX(20px)';
+
+            // 存储3D视图状态
+            window.is3DViewEnabled = true;
+
+            // 如果当前已有2D曝光图案数据，重新渲染为3D
+            regenerateChartsAs3D();
+        } else {
+            // 关闭3D视图
+            status.textContent = '关闭';
+            status.style.color = '#64748b';
+            toggleContainer.style.backgroundColor = '#cbd5e1';
+            toggleSlider.style.transform = 'translateX(0)';
+
+            // 存储3D视图状态
+            window.is3DViewEnabled = false;
+
+            // 如果当前已有数据，重新渲染为2D
+            regenerateChartsAs2D();
+        }
+    });
+
+    // 点击label也能触发toggle
+    if (label) {
+        label.addEventListener('click', function(e) {
+            if (e.target !== toggle) {
+                e.preventDefault();
+                toggle.checked = !toggle.checked;
+                toggle.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+}
+
+/**
+ * 重新生成图表为3D形式
+ */
+function regenerateChartsAs3D() {
+    const data = window.lastPlotData;
+    if (!data || data.sine_type !== '2d_exposure_pattern') return;
+
+    console.log('重新生成3D图表...');
+
+    // 获取图表容器
+    const exposureContainer = document.getElementById('exposure-plot-container');
+    const thicknessContainer = document.getElementById('thickness-plot-container');
+
+    if (exposureContainer && data.dose_distribution) {
+        createExposure3DVisualization(exposureContainer, data);
+    }
+
+    if (thicknessContainer && data.thickness_distribution) {
+        createThickness3DVisualization(thicknessContainer, data);
+    }
+}
+
+/**
+ * 重新生成图表为2D形式
+ */
+function regenerateChartsAs2D() {
+    const data = window.lastPlotData;
+    if (!data || data.sine_type !== '2d_exposure_pattern') return;
+
+    console.log('重新生成2D图表...');
+
+    // 获取图表容器
+    const exposureContainer = document.getElementById('exposure-plot-container');
+    const thicknessContainer = document.getElementById('thickness-plot-container');
+
+    // 转换2D曝光图案数据为标准格式
+    const converted2DData = convert2DExposurePatternToHeatmapData(data);
+
+    if (exposureContainer) {
+        createExposureHeatmap(exposureContainer, converted2DData);
+    }
+
+    if (thicknessContainer) {
+        createThicknessHeatmap(thicknessContainer, converted2DData);
+    }
+}
+
+/**
+ * 创建3D曝光剂量可视化
+ */
+function createExposure3DVisualization(container, data) {
+    const converted2DData = convert2DExposurePatternToHeatmapData(data);
+
+    const trace = {
+        type: 'surface',
+        x: converted2DData.x_coords,
+        y: converted2DData.y_coords,
+        z: converted2DData.z_exposure_dose,
+        colorscale: 'Viridis',
+        showscale: true,
+        colorbar: {
+            title: '曝光剂量',
+            thickness: 15,
+            len: 0.6
+        },
+        hovertemplate: 'X: %{x:.2f}<br>Y: %{y:.2f}<br>曝光剂量: %{z:.4f}<extra></extra>'
+    };
+
+    const layout = {
+        title: '曝光剂量分布 (3D视图)',
+        scene: {
+            xaxis: { title: 'X 位置 (μm)' },
+            yaxis: { title: 'Y 位置 (μm)' },
+            zaxis: { title: '曝光剂量' },
+            camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
+        },
+        margin: { l: 0, r: 0, t: 40, b: 0 }
+    };
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['sendDataToCloud'],
+        toImageButtonOptions: {
+            format: 'png',
+            filename: 'exposure_3d_distribution',
+            height: 600,
+            width: 800,
+            scale: 1
+        }
+    };
+
+    Plotly.newPlot(container, [trace], layout, { responsive: true });
+}
+
+/**
+ * 创建3D厚度可视化
+ */
+function createThickness3DVisualization(container, data) {
+    const converted2DData = convert2DExposurePatternToHeatmapData(data);
+
+    const trace = {
+        type: 'surface',
+        x: converted2DData.x_coords,
+        y: converted2DData.y_coords,
+        z: converted2DData.z_thickness,
+        colorscale: 'Plasma',
+        showscale: true,
+        colorbar: {
+            title: '相对厚度',
+            thickness: 15,
+            len: 0.6
+        },
+        hovertemplate: 'X: %{x:.2f}<br>Y: %{y:.2f}<br>相对厚度: %{z:.4f}<extra></extra>'
+    };
+
+    const layout = {
+        title: '形貌分布 (3D视图)',
+        scene: {
+            xaxis: { title: 'X 位置 (μm)' },
+            yaxis: { title: 'Y 位置 (μm)' },
+            zaxis: { title: '相对厚度' },
+            camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
+        },
+        margin: { l: 0, r: 0, t: 40, b: 0 }
+    };
+
+    Plotly.newPlot(container, [trace], layout, { responsive: true });
+}
+
+/**
+ * 创建弹窗中的3D可视化
+ * @param {HTMLElement} container - 3D图表容器
+ * @param {string} plotType - 图表类型 ('exposure' 或 'thickness')
+ */
+function create3DVisualizationForPopup(container, plotType) {
+    // 获取最新的2D数据
+    const data = window.lastPlotData;
+
+    if (!data || data.sine_type !== '2d_exposure_pattern') {
+        container.innerHTML = '<div style="color: #6b7280; padding: 20px; text-align: center;">无法加载3D数据</div>';
+        return;
+    }
+
+    // 转换2D曝光图案数据为标准格式
+    const converted2DData = convert2DExposurePatternToHeatmapData(data);
+
+    // 提取数据
+    let xCoords = converted2DData.x_coords || [];
+    let yCoords = converted2DData.y_coords || [];
+    let zData;
+    let colorScale;
+    let title;
+    let zAxisTitle;
+
+    if (plotType === 'exposure') {
+        zData = converted2DData.z_exposure_dose || converted2DData.exposure_dose || [];
+        colorScale = 'Viridis';
+        title = '曝光剂量分布 (3D视图)';
+        zAxisTitle = '曝光剂量';
+    } else {
+        zData = converted2DData.z_thickness || converted2DData.thickness || [];
+        colorScale = 'Plasma';
+        title = '形貌分布 (3D视图)';
+        zAxisTitle = '相对厚度';
+    }
+
+    // 创建3D表面图
+    const trace = {
+        type: 'surface',
+        x: xCoords,
+        y: yCoords,
+        z: zData,
+        colorscale: colorScale,
+        showscale: true,
+        colorbar: {
+            title: zAxisTitle,
+            thickness: 15,
+            len: 0.6,
+            x: 0.98
+        },
+        hovertemplate: 'X: %{x:.2f}<br>Y: %{y:.2f}<br>' + zAxisTitle + ': %{z:.4f}<extra></extra>'
+    };
+
+    const layout = {
+        title: {
+            text: title,
+            font: { size: 14, color: '#374151' }
+        },
+        scene: {
+            xaxis: {
+                title: 'X 位置 (μm)',
+                titlefont: { size: 12 },
+                gridcolor: '#e5e7eb',
+                zerolinecolor: '#d1d5db'
+            },
+            yaxis: {
+                title: 'Y 位置 (μm)',
+                titlefont: { size: 12 },
+                gridcolor: '#e5e7eb',
+                zerolinecolor: '#d1d5db'
+            },
+            zaxis: {
+                title: zAxisTitle,
+                titlefont: { size: 12 },
+                gridcolor: '#e5e7eb',
+                zerolinecolor: '#d1d5db'
+            },
+            camera: {
+                eye: { x: 1.5, y: 1.5, z: 1.5 },
+                center: { x: 0, y: 0, z: 0 }
+            },
+            bgcolor: '#fafafa'
+        },
+        margin: { l: 0, r: 0, t: 30, b: 0 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'white',
+        autosize: true
+    };
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['toImage', 'sendDataToCloud'],
+        modeBarButtonsToAdd: [{
+            name: '重置视角',
+            icon: Plotly.Icons.home,
+            click: function() {
+                Plotly.relayout(container, {
+                    'scene.camera': {
+                        eye: { x: 1.5, y: 1.5, z: 1.5 },
+                        center: { x: 0, y: 0, z: 0 }
+                    }
+                });
+            }
+        }]
+    };
+
+    try {
+        Plotly.newPlot(container, [trace], layout, config);
+    } catch (error) {
+        console.error('创建3D可视化失败:', error);
+        container.innerHTML = '<div style="color: #ef4444; padding: 20px; text-align: center;">创建3D视图失败</div>';
+    }
 }
 
 // 将函数设为全局可访问

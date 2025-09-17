@@ -2927,6 +2927,26 @@ intensity3
                             </div>
                             <div class="parameter-description">空间网格步长，影响计算精度和计算量，步长越小精度越高但计算越慢</div>
                         </div>
+
+                        <!-- 3D视图开关 -->
+                        <div class="parameter-item" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-top: 12px;">
+                            <div class="parameter-label">
+                                <span class="parameter-name" style="font-weight: 500; color: #334155;">3D视图模式</span>
+                                <span class="parameter-value" id="3d-view-status" style="color: #64748b;">关闭</span>
+                            </div>
+                            <div class="parameter-input" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+                                <label for="enable-3d-view-main" style="display: flex; align-items: center; cursor: pointer; width: 100%;">
+                                    <span style="flex: 1; color: #475569; font-size: 14px;">启用3D视角展示2D图案</span>
+                                    <div style="position: relative; width: 44px; height: 24px; background-color: #cbd5e1; border-radius: 12px; transition: background-color 0.2s;">
+                                        <input type="checkbox" id="enable-3d-view-main" style="opacity: 0; width: 0; height: 0;">
+                                        <span class="toggle-slider-3d" style="position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background-color: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="parameter-description" style="color: #64748b; font-size: 12px; margin-top: 6px; line-height: 1.4;">
+                                启用后将以3D表面图的形式展示2D曝光图案数据
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
