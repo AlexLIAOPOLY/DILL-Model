@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/professional-header-footer.css?v=1.1">
     <link rel="stylesheet" href="css/animation-controls.css?v=2.0">
     <link rel="stylesheet" href="css/photo-recognition.css?v=1.1">
+    <link rel="stylesheet" href="css/video-alignment.css?v=1.0">
     <!-- 添加数学公式所需的样式 -->
     <style>
         /* 隐藏浏览器默认的网络状态指示器和进度条 */
@@ -996,6 +997,7 @@
                                 <button class="tab-button active" data-tab="file-upload">文件上传</button>
                                 <button class="tab-button" data-tab="manual-input">手动输入</button>
                                 <button class="tab-button" data-tab="photo-recognition">照片识别</button>
+                                <button class="tab-button" data-tab="video-alignment">视频对齐</button>
                             </div>
 
                             <!-- 文件上传标签页 -->
@@ -1667,6 +1669,38 @@ intensity3
                                         <div class="processing-spinner"></div>
                                         <div class="processing-text">处理中...</div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div id="video-alignment-tab" class="tab-content">
+                                <div class="video-alignment-area">
+                                    <div class="video-align-controls">
+                                        <div class="control-group">
+                                            <button id="video-align-start-btn" class="video-align-btn primary" type="button">开启摄像头</button>
+                                            <button id="video-align-stop-btn" class="video-align-btn" type="button" disabled>停止</button>
+                                        </div>
+                                        <div class="control-group mode">
+                                            <span class="mode-label">检测模式</span>
+                                            <label class="mode-option"><input type="radio" name="video-align-mode" value="brightest" checked> 最亮点</label>
+                                            <label class="mode-option"><input type="radio" name="video-align-mode" value="centroid"> 中心点</label>
+                                        </div>
+                                    </div>
+                                    <div class="video-align-visuals">
+                                        <div class="video-pane">
+                                            <video id="video-align-stream" autoplay muted playsinline></video>
+                                        </div>
+                                        <div class="heatmap-pane">
+                                            <div class="heatmap-wrapper">
+                                                <canvas id="video-align-heatmap" width="320" height="240"></canvas>
+                                                <canvas id="video-align-overlay" width="320" height="240"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="alignment-feedback">
+                                        <div id="video-align-indicator" class="alignment-indicator idle"></div>
+                                        <div id="video-align-status-text" class="alignment-status-text">等待摄像头</div>
+                                    </div>
+                                    <div class="video-align-note">开启摄像头后将实时显示热力图与对齐状态，保持环境光稳定以获得更准确的识别结果。</div>
                                 </div>
                             </div>
 
@@ -4054,11 +4088,13 @@ intensity3
     <script src="js/draggable-resizable-popup.js?v=1.0"></script>
     <script src="js/contour-controls.js?v=1.0"></script>
     <script src="js/lang.js"></script>
+    <script src="js/3d-data-validation.js?v=1.0"></script>
     <script src="js/main.js?v=1.1"></script>
     <script src="js/car-model.js?v=1.0"></script>
     <script src="js/validation.js?v=1.0"></script>
     <script src="js/logs-manager.js"></script>
     <script src="js/photo-recognition.js?v=1.0"></script>
+    <script src="js/video-alignment.js?v=1.0"></script>
     <script>
     // 模型切换逻辑
     const modelSelect = document.getElementById('model-select');
@@ -4182,6 +4218,19 @@ intensity3
             }
         } else {
             console.warn('⚠️ PhotoRecognition类未加载');
+        }
+
+        // 初始化视频对齐功能
+        if (typeof VideoAlignment !== 'undefined') {
+            try {
+                window.videoAlignment = new VideoAlignment();
+                window.videoAlignment.init();
+                console.log('✅ 视频对齐功能初始化成功');
+            } catch (error) {
+                console.error('❌ 视频对齐功能初始化失败:', error);
+            }
+        } else {
+            console.warn('⚠️ VideoAlignment类未加载');
         }
     });
     

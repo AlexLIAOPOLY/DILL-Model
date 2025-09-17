@@ -3678,15 +3678,40 @@ function createExposure3DPlot(container, data) {
         Plotly.newPlot(container, [trace], layout, { responsive: true });
         console.log('3D Exposure plot created successfully');
         
-        // 添加点击事件处理
+        // 🔧 集成3D数据验证工具 - 曝光分布
+        if (window.threeDDataValidator && zData) {
+            console.log('🔍 开始3D曝光数据验证...');
+            // 创建临时数据结构用于验证
+            const exposureData = {
+                x_coords: xCoords,
+                y_coords: yCoords,
+                thickness_distribution: plotDataZ, // 使用曝光数据作为验证对象
+                exposure_distribution: plotDataZ
+            };
+            const validation = window.threeDDataValidator.validateThicknessData(exposureData, container);
+            console.log('🔍 3D曝光数据验证完成:', validation);
+        }
+        
+        // 添加点击事件处理 - 增强版本
         container.on('plotly_click', function(eventData) {
             if(eventData.points && eventData.points.length > 0) {
                 const point = eventData.points[0];
+                
+                // 🔧 增强点击数据验证 - 曝光分布
+                console.log('🎯 3D曝光点击事件详细信息:', {
+                    plotly_point: point,
+                    coordinates: { x: point.x, y: point.y, z: point.z },
+                    indices: { pointNumber: point.pointNumber, curveNumber: point.curveNumber },
+                    data_source: data.exposure_dose ? '后端曝光数据' : 'Plotly数据'
+                });
+                
                 // 对于3D表面图，点击位置包含x、y、z值
                 showSinglePointDetailsPopup({ 
                     x: point.x, 
                     y: point.y, 
-                    z: point.z 
+                    z: point.z,
+                    // 🔧 添加曝光数据验证信息
+                    verified: window.threeDDataValidator && xCoords && yCoords
                 }, 'exposure', container, eventData);
             }
         });
@@ -3964,15 +3989,54 @@ function createThickness3DPlot(container, data) {
         Plotly.newPlot(container, [trace], layout, { responsive: true });
         console.log('3D Thickness plot created successfully');
         
-        // 添加点击事件处理
+        // 🔧 集成3D数据验证工具
+        if (window.threeDDataValidator) {
+            const validation = window.threeDDataValidator.validateThicknessData(data, container);
+            console.log('🔍 3D厚度数据验证完成:', validation);
+            
+            // 如果发现问题，自动修复
+            if (validation.recommendation.some(r => r.type === 'error' || r.type === 'warning')) {
+                window.threeDDataValidator.fixThicknessDisplay(container, data);
+            }
+        }
+        
+        // 添加点击事件处理 - 增强版本
         container.on('plotly_click', function(eventData) {
             if(eventData.points && eventData.points.length > 0) {
                 const point = eventData.points[0];
+                
+                // 🔧 增强点击数据验证
+                console.log('🎯 3D点击事件详细信息:', {
+                    plotly_point: point,
+                    coordinates: { x: point.x, y: point.y, z: point.z },
+                    indices: { pointNumber: point.pointNumber, curveNumber: point.curveNumber },
+                    data_source: data.thickness_distribution ? '后端数据' : 'Plotly数据'
+                });
+                
+                // 验证点击位置的数据准确性
+                if (window.threeDDataValidator && data.x_coords && data.y_coords && data.thickness_distribution) {
+                    const verification = window.threeDDataValidator.getValueAtCoordinate(
+                        point.x, point.y, data.x_coords, data.y_coords, data.thickness_distribution
+                    );
+                    console.log('🔍 点击位置数据验证:', verification);
+                    
+                    // 如果发现差异，显示警告
+                    if (Math.abs(verification.value - point.z) > 1e-6) {
+                        console.warn('⚠️ 发现数据不一致:', {
+                            plotly_z: point.z,
+                            backend_z: verification.value,
+                            difference: Math.abs(verification.value - point.z)
+                        });
+                    }
+                }
+                
                 // 对于3D表面图，点击位置包含x、y、z值
                 showSinglePointDetailsPopup({ 
                     x: point.x, 
                     y: point.y, 
-                    z: point.z 
+                    z: point.z,
+                    // 🔧 添加额外的验证信息
+                    verified: window.threeDDataValidator && data.x_coords && data.y_coords && data.thickness_distribution
                 }, 'thickness', container, eventData);
             }
         });
@@ -14901,7 +14965,7 @@ function exportPlotData(plotType) {
                 csvContent += `${dataX[i]},${dataY[i]}\n`;
             }
         } else if (plotType.includes('_xy') || plotType.includes('_plane_')) {
-            // 2D热图数据处理
+            // 2D热图数据处理 - 增强版本
             const xData = plotData.x || [];
             const yData = plotData.y || [];
             const zData = plotData.z || [];
@@ -14911,12 +14975,47 @@ function exportPlotData(plotType) {
                 return;
             }
             
+            // 🔧 增强3D数据导出验证
+            console.log('🔍 开始3D数据导出验证:', {
+                plotType,
+                xData_length: xData.length,
+                yData_length: yData.length,
+                zData_type: Array.isArray(zData) ? (Array.isArray(zData[0]) ? '2D数组' : '1D数组') : typeof zData,
+                zData_length: Array.isArray(zData) ? zData.length : 'N/A'
+            });
+            
+            // 数据验证和修复
+            let dataValid = true;
+            let totalPoints = 0;
+            let validPoints = 0;
+            
             // 导出2D网格数据
             for (let i = 0; i < yData.length; i++) {
                 for (let j = 0; j < xData.length; j++) {
+                    totalPoints++;
                     const zValue = Array.isArray(zData[i]) ? zData[i][j] : zData[i * xData.length + j];
-                    csvContent += `${xData[j]},${yData[i]},${zValue || 0}\n`;
+                    
+                    // 数据验证
+                    if (zValue !== undefined && zValue !== null && !isNaN(zValue)) {
+                        validPoints++;
+                        csvContent += `${xData[j]},${yData[i]},${zValue}\n`;
+                    } else {
+                        csvContent += `${xData[j]},${yData[i]},0\n`;
+                        dataValid = false;
+                    }
                 }
+            }
+            
+            console.log('🔍 3D数据导出验证结果:', {
+                totalPoints,
+                validPoints,
+                dataValid,
+                completeness: (validPoints / totalPoints * 100).toFixed(2) + '%'
+            });
+            
+            // 如果数据有问题，显示警告
+            if (!dataValid) {
+                console.warn('⚠️ 导出的3D数据中包含无效值，已替换为0');
             }
         }
         
@@ -15836,7 +15935,19 @@ function showAllNecessaryElements() {
 function initCustomIntensityTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
-    
+    const updateVideoTabState = (targetTab) => {
+        if (window.videoAlignment && typeof window.videoAlignment.handleTabVisibility === 'function') {
+            window.videoAlignment.handleTabVisibility(targetTab === 'video-alignment');
+        }
+    };
+
+    const currentActiveBtn = document.querySelector('.tab-button.active');
+    if (currentActiveBtn) {
+        updateVideoTabState(currentActiveBtn.getAttribute('data-tab'));
+    } else {
+        updateVideoTabState(null);
+    }
+
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             const targetTab = button.getAttribute('data-tab');
@@ -15852,6 +15963,7 @@ function initCustomIntensityTabs() {
                 targetContent.classList.add('active');
             }
             
+            updateVideoTabState(targetTab);
             console.log(`📄 切换到标签页: ${targetTab}`);
         });
     });

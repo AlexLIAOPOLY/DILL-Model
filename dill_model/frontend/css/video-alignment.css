@@ -1,0 +1,218 @@
+/* 视频对齐功能区域样式 */
+
+.video-alignment-area {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.video-alignment-area .video-align-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.video-alignment-area .control-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.video-alignment-area .control-group.mode {
+    gap: 16px;
+    font-size: 14px;
+    color: #374151;
+}
+
+.video-alignment-area .mode-label {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.video-alignment-area .mode-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #4b5563;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.video-alignment-area .mode-option input[type="radio"] {
+    accent-color: #2563eb;
+}
+
+.video-alignment-area .video-align-btn {
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #f3f4f6;
+    color: #1f2937;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.video-alignment-area .video-align-btn:hover:not(:disabled) {
+    background: #e5e7eb;
+}
+
+.video-alignment-area .video-align-btn:disabled {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.video-alignment-area .video-align-btn.primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.video-alignment-area .video-align-btn.primary:hover:not(:disabled) {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.video-alignment-area .video-align-visuals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.video-alignment-area .video-pane,
+.video-alignment-area .heatmap-pane {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.video-alignment-area .video-pane video {
+    width: 100%;
+    max-width: 320px;
+    border-radius: 6px;
+    background: #111827;
+}
+
+.video-alignment-area .heatmap-wrapper {
+    position: relative;
+    width: 320px;
+    height: 240px;
+    background: #111827;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+#video-align-heatmap,
+#video-align-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#video-align-heatmap {
+    filter: contrast(110%) saturate(120%);
+}
+
+#video-align-overlay {
+    pointer-events: none;
+}
+
+.video-alignment-area .alignment-feedback {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #4b5563;
+}
+
+.video-alignment-area .alignment-indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #d1d5db;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-alignment-area .alignment-indicator.aligned {
+    background: #22c55e;
+    animation: video-align-pulse 1.8s ease-in-out infinite;
+}
+
+.video-alignment-area .alignment-indicator.misaligned {
+    background: #f43f5e;
+    animation: none;
+    box-shadow: none;
+}
+
+.video-alignment-area .alignment-indicator.idle {
+    background: #d1d5db;
+    animation: none;
+    box-shadow: none;
+}
+
+@keyframes video-align-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35);
+    }
+    50% {
+        box-shadow: 0 0 0 12px rgba(34, 197, 94, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+}
+
+.video-alignment-area .alignment-status-text {
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.video-alignment-area .video-align-note {
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.6;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px 16px;
+}
+
+@media (max-width: 768px) {
+    .video-alignment-area .video-align-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .video-alignment-area .control-group {
+        flex-wrap: wrap;
+    }
+
+    .video-alignment-area .control-group.mode {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .video-alignment-area .heatmap-wrapper {
+        width: 100%;
+        max-width: 320px;
+    }
+}
