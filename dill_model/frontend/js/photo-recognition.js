@@ -4852,13 +4852,315 @@ ${'-'.repeat(70)}
         // 振幅 A
         let amplitude = maxY;
 
+        // 计算额外的高斯参数
+        const additionalParams = this.calculateAdditionalGaussianParams(amplitude, mu, sigma, fwhm);
+
         return {
             amplitude: amplitude,
             mu: mu,
             sigma: sigma,
             fwhm: fwhm,
-            formula: `f(x) = ${amplitude.toFixed(3)} * exp(-(x - ${mu.toFixed(3)})² / (2 * ${sigma.toFixed(3)}²))`
+            formula: `f(x) = ${amplitude.toFixed(3)} * exp(-(x - ${mu.toFixed(3)})² / (2 * ${sigma.toFixed(3)}²))`,
+            ...additionalParams
         };
+    }
+    
+    /**
+     * 计算全面的高斯参数
+     */
+    calculateAdditionalGaussianParams(amplitude, mu, sigma, fwhm) {
+        // 基础数学常数
+        const sqrt2 = Math.sqrt(2);
+        const sqrt2pi = Math.sqrt(2 * Math.PI);
+        const ln2 = Math.log(2);
+        
+        // 半衰期和时间常数
+        const tau = sigma * sqrt2; // 时间常数
+        const halfLife = tau * ln2; // 半衰期 t₁/₂ = τ·ln(2)
+        const quarterLife = halfLife / 2; // 1/4衰期
+        const tenthLife = halfLife / Math.log(10) * ln2; // 1/10衰期
+        
+        // 置信区间
+        const confidence68 = [mu - sigma, mu + sigma]; // ±1σ (68.27%)
+        const confidence95 = [mu - 2*sigma, mu + 2*sigma]; // ±2σ (95.45%)
+        const confidence99 = [mu - 3*sigma, mu + 3*sigma]; // ±3σ (99.73%)
+        const confidence90 = [mu - 1.645*sigma, mu + 1.645*sigma]; // 90%置信区间
+        const confidence99_9 = [mu - 3.29*sigma, mu + 3.29*sigma]; // 99.9%置信区间
+        
+        // 统计参数
+        const rms = amplitude / sqrt2; // 有效值
+        const peakFactor = amplitude / rms; // 峰值因子
+        const qualityFactor = Math.abs(mu / fwhm); // 品质因子
+        const area = amplitude * sigma * sqrt2pi; // 曲线下总面积
+        const variance = sigma * sigma; // 方差
+        const skewness = 0; // 偏斜度（理想高斯为0）
+        const kurtosis = 3; // 峰度（理想高斯为3）
+        const excessKurtosis = kurtosis - 3; // 超峰度
+        
+        // 能量和宽度参数
+        const energy50Width = fwhm; // 50%能量宽度（FWHM）
+        const energy68Width = 2 * sigma; // 68%能量宽度
+        const energy90Width = 3.29 * sigma; // 90%能量宽度
+        const energy95Width = 4 * sigma; // 95%能量宽度
+        const energy99Width = 6 * sigma; // 99%能量宽度
+        
+        // 特征宽度
+        const e_width = 2 * sigma; // e^(-1)宽度
+        const tenPercent_width = 2 * sigma * Math.sqrt(-2 * Math.log(0.1)); // 10%高度宽度
+        const fivePercent_width = 2 * sigma * Math.sqrt(-2 * Math.log(0.05)); // 5%高度宽度
+        
+        // 频率域参数（如果作为信号处理）
+        const bandwidth_3db = 1 / (2 * Math.PI * sigma); // 3dB带宽
+        const bandwidth_6db = bandwidth_3db * sqrt2; // 6dB带宽
+        
+        // 归一化参数
+        const normalizedAmplitude = amplitude / area; // 归一化振幅
+        const peakToRms = amplitude / rms; // 峰值与RMS比
+        
+        // 渐近行为
+        const asymptoteDecay = 1 / tau; // 渐近衰减常数
+        const relaxationTime = tau; // 弛豫时间
+        
+        // 能量分布
+        const centerEnergyFraction = amplitude * sigma * sqrt2pi * 0.3989 / area; // 中心点能量占比
+        
+        // 形状参数
+        const sharpness = amplitude / fwhm; // 尖锐度
+        const spread = fwhm / amplitude; // 展宽度
+        
+        return {
+            // 时间/衰减参数
+            tau: tau,
+            halfLife: halfLife,
+            quarterLife: quarterLife,
+            tenthLife: tenthLife,
+            relaxationTime: relaxationTime,
+            asymptoteDecay: asymptoteDecay,
+            
+            // 置信区间
+            confidence68: confidence68,
+            confidence90: confidence90,
+            confidence95: confidence95,
+            confidence99: confidence99,
+            confidence99_9: confidence99_9,
+            
+            // 基础统计参数
+            rms: rms,
+            variance: variance,
+            peakFactor: peakFactor,
+            qualityFactor: qualityFactor,
+            area: area,
+            skewness: skewness,
+            kurtosis: kurtosis,
+            excessKurtosis: excessKurtosis,
+            
+            // 宽度参数
+            energy50Width: energy50Width,
+            energy68Width: energy68Width,
+            energy90Width: energy90Width,
+            energy95Width: energy95Width,
+            energy99Width: energy99Width,
+            e_width: e_width,
+            tenPercent_width: tenPercent_width,
+            fivePercent_width: fivePercent_width,
+            
+            // 频率域参数
+            bandwidth_3db: bandwidth_3db,
+            bandwidth_6db: bandwidth_6db,
+            
+            // 归一化参数
+            normalizedAmplitude: normalizedAmplitude,
+            peakToRms: peakToRms,
+            centerEnergyFraction: centerEnergyFraction,
+            
+            // 形状参数
+            sharpness: sharpness,
+            spread: spread
+        };
+    }
+    
+    /**
+     * 显示所有高斯参数（简洁格式）
+     */
+    displayAllGaussianParams(params) {
+        if (!params) return;
+        
+        // 判断是1D还是2D数据
+        const is2D = params.is2D || false;
+        let content = '';
+        
+        if (is2D) {
+            // 2D高斯参数显示
+            content = `
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">基础参数</h5>
+                        <div style="line-height: 1.6;">
+                            <div>振幅: <span style="float: right; font-weight: 500;">${params.amplitude.toFixed(4)}</span></div>
+                            <div>中心X: <span style="float: right; font-weight: 500;">${params.centerX.toFixed(4)}</span></div>
+                            <div>中心Y: <span style="float: right; font-weight: 500;">${params.centerY.toFixed(4)}</span></div>
+                            <div>σ_X: <span style="float: right; font-weight: 500;">${params.sigmaX.toFixed(4)}</span></div>
+                            <div>σ_Y: <span style="float: right; font-weight: 500;">${params.sigmaY.toFixed(4)}</span></div>
+                            <div>FWHM_X: <span style="float: right; font-weight: 500;">${params.fwhmX.toFixed(4)}</span></div>
+                            <div>FWHM_Y: <span style="float: right; font-weight: 500;">${params.fwhmY.toFixed(4)}</span></div>
+                            <div>平均σ: <span style="float: right; font-weight: 500;">${params.avgSigma.toFixed(4)}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">半衰期参数</h5>
+                        <div style="line-height: 1.6;">
+                            <div>时间常数(τ): <span style="float: right; font-weight: 500;">${params.tau.toFixed(4)}</span></div>
+                            <div>半衰期: <span style="float: right; font-weight: 500;">${params.halfLife.toFixed(4)}</span></div>
+                            <div>1/4衰期: <span style="float: right; font-weight: 500;">${params.quarterLife.toFixed(4)}</span></div>
+                            <div>1/10衰期: <span style="float: right; font-weight: 500;">${params.tenthLife.toFixed(4)}</span></div>
+                            <div>弛豫时间: <span style="float: right; font-weight: 500;">${params.relaxationTime.toFixed(4)}</span></div>
+                            <div>衰减常数: <span style="float: right; font-weight: 500;">${params.asymptoteDecay.toFixed(6)}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">统计参数</h5>
+                        <div style="line-height: 1.6;">
+                            <div>方差: <span style="float: right; font-weight: 500;">${params.variance.toFixed(4)}</span></div>
+                            <div>有效值(RMS): <span style="float: right; font-weight: 500;">${params.rms.toFixed(4)}</span></div>
+                            <div>峰值因子: <span style="float: right; font-weight: 500;">${params.peakFactor.toFixed(4)}</span></div>
+                            <div>品质因子: <span style="float: right; font-weight: 500;">${params.qualityFactor.toFixed(4)}</span></div>
+                            <div>曲线面积: <span style="float: right; font-weight: 500;">${params.area.toFixed(4)}</span></div>
+                            <div>偏斜度: <span style="float: right; font-weight: 500;">${params.skewness.toFixed(4)}</span></div>
+                            <div>峰度: <span style="float: right; font-weight: 500;">${params.kurtosis.toFixed(4)}</span></div>
+                            <div>超峰度: <span style="float: right; font-weight: 500;">${params.excessKurtosis.toFixed(4)}</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">置信区间</h5>
+                        <div style="line-height: 1.6;">
+                            <div>68% (±1σ): <span style="float: right; font-weight: 500;">[${params.confidence68[0].toFixed(3)}, ${params.confidence68[1].toFixed(3)}]</span></div>
+                            <div>90%: <span style="float: right; font-weight: 500;">[${params.confidence90[0].toFixed(3)}, ${params.confidence90[1].toFixed(3)}]</span></div>
+                            <div>95% (±2σ): <span style="float: right; font-weight: 500;">[${params.confidence95[0].toFixed(3)}, ${params.confidence95[1].toFixed(3)}]</span></div>
+                            <div>99% (±3σ): <span style="float: right; font-weight: 500;">[${params.confidence99[0].toFixed(3)}, ${params.confidence99[1].toFixed(3)}]</span></div>
+                            <div>99.9%: <span style="float: right; font-weight: 500;">[${params.confidence99_9[0].toFixed(3)}, ${params.confidence99_9[1].toFixed(3)}]</span></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">能量宽度</h5>
+                        <div style="line-height: 1.6;">
+                            <div>50%能量: <span style="float: right; font-weight: 500;">${params.energy50Width.toFixed(4)}</span></div>
+                            <div>68%能量: <span style="float: right; font-weight: 500;">${params.energy68Width.toFixed(4)}</span></div>
+                            <div>90%能量: <span style="float: right; font-weight: 500;">${params.energy90Width.toFixed(4)}</span></div>
+                            <div>95%能量: <span style="float: right; font-weight: 500;">${params.energy95Width.toFixed(4)}</span></div>
+                            <div>99%能量: <span style="float: right; font-weight: 500;">${params.energy99Width.toFixed(4)}</span></div>
+                            <div>e^(-1)宽度: <span style="float: right; font-weight: 500;">${params.e_width.toFixed(4)}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">其他参数</h5>
+                        <div style="line-height: 1.6;">
+                            <div>10%高度宽度: <span style="float: right; font-weight: 500;">${params.tenPercent_width.toFixed(4)}</span></div>
+                            <div>5%高度宽度: <span style="float: right; font-weight: 500;">${params.fivePercent_width.toFixed(4)}</span></div>
+                            <div>3dB带宽: <span style="float: right; font-weight: 500;">${params.bandwidth_3db.toFixed(6)}</span></div>
+                            <div>6dB带宽: <span style="float: right; font-weight: 500;">${params.bandwidth_6db.toFixed(6)}</span></div>
+                            <div>尖锐度: <span style="float: right; font-weight: 500;">${params.sharpness.toFixed(4)}</span></div>
+                            <div>展宽度: <span style="float: right; font-weight: 500;">${params.spread.toFixed(6)}</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // 1D高斯参数显示
+            content = `
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">基础参数</h5>
+                        <div style="line-height: 1.6;">
+                            <div>振幅(A): <span style="float: right; font-weight: 500;">${params.amplitude.toFixed(4)}</span></div>
+                            <div>均值(μ): <span style="float: right; font-weight: 500;">${params.mu.toFixed(4)}</span></div>
+                            <div>标准差(σ): <span style="float: right; font-weight: 500;">${params.sigma.toFixed(4)}</span></div>
+                            <div>方差: <span style="float: right; font-weight: 500;">${params.variance.toFixed(4)}</span></div>
+                            <div>半高全宽: <span style="float: right; font-weight: 500;">${params.fwhm.toFixed(4)}</span></div>
+                            <div>曲线面积: <span style="float: right; font-weight: 500;">${params.area.toFixed(4)}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">半衰期参数</h5>
+                        <div style="line-height: 1.6;">
+                            <div>时间常数(τ): <span style="float: right; font-weight: 500;">${params.tau.toFixed(4)}</span></div>
+                            <div>半衰期: <span style="float: right; font-weight: 500;">${params.halfLife.toFixed(4)}</span></div>
+                            <div>1/4衰期: <span style="float: right; font-weight: 500;">${params.quarterLife.toFixed(4)}</span></div>
+                            <div>1/10衰期: <span style="float: right; font-weight: 500;">${params.tenthLife.toFixed(4)}</span></div>
+                            <div>弛豫时间: <span style="float: right; font-weight: 500;">${params.relaxationTime.toFixed(4)}</span></div>
+                            <div>衰减常数: <span style="float: right; font-weight: 500;">${params.asymptoteDecay.toFixed(6)}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">统计参数</h5>
+                        <div style="line-height: 1.6;">
+                            <div>有效值(RMS): <span style="float: right; font-weight: 500;">${params.rms.toFixed(4)}</span></div>
+                            <div>峰值因子: <span style="float: right; font-weight: 500;">${params.peakFactor.toFixed(4)}</span></div>
+                            <div>品质因子: <span style="float: right; font-weight: 500;">${params.qualityFactor.toFixed(4)}</span></div>
+                            <div>偏斜度: <span style="float: right; font-weight: 500;">${params.skewness.toFixed(4)}</span></div>
+                            <div>峰度: <span style="float: right; font-weight: 500;">${params.kurtosis.toFixed(4)}</span></div>
+                            <div>超峰度: <span style="float: right; font-weight: 500;">${params.excessKurtosis.toFixed(4)}</span></div>
+                            <div>峰值/RMS: <span style="float: right; font-weight: 500;">${params.peakToRms.toFixed(4)}</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">置信区间</h5>
+                        <div style="line-height: 1.6;">
+                            <div>68% (±1σ): <span style="float: right; font-weight: 500;">[${params.confidence68[0].toFixed(3)}, ${params.confidence68[1].toFixed(3)}]</span></div>
+                            <div>90%: <span style="float: right; font-weight: 500;">[${params.confidence90[0].toFixed(3)}, ${params.confidence90[1].toFixed(3)}]</span></div>
+                            <div>95% (±2σ): <span style="float: right; font-weight: 500;">[${params.confidence95[0].toFixed(3)}, ${params.confidence95[1].toFixed(3)}]</span></div>
+                            <div>99% (±3σ): <span style="float: right; font-weight: 500;">[${params.confidence99[0].toFixed(3)}, ${params.confidence99[1].toFixed(3)}]</span></div>
+                            <div>99.9%: <span style="float: right; font-weight: 500;">[${params.confidence99_9[0].toFixed(3)}, ${params.confidence99_9[1].toFixed(3)}]</span></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">能量宽度</h5>
+                        <div style="line-height: 1.6;">
+                            <div>50%能量: <span style="float: right; font-weight: 500;">${params.energy50Width.toFixed(4)}</span></div>
+                            <div>68%能量: <span style="float: right; font-weight: 500;">${params.energy68Width.toFixed(4)}</span></div>
+                            <div>90%能量: <span style="float: right; font-weight: 500;">${params.energy90Width.toFixed(4)}</span></div>
+                            <div>95%能量: <span style="float: right; font-weight: 500;">${params.energy95Width.toFixed(4)}</span></div>
+                            <div>99%能量: <span style="float: right; font-weight: 500;">${params.energy99Width.toFixed(4)}</span></div>
+                            <div>e^(-1)宽度: <span style="float: right; font-weight: 500;">${params.e_width.toFixed(4)}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #e1e4e8; color: #24292e; font-size: 14px;">其他参数</h5>
+                        <div style="line-height: 1.6;">
+                            <div>10%高度宽度: <span style="float: right; font-weight: 500;">${params.tenPercent_width.toFixed(4)}</span></div>
+                            <div>5%高度宽度: <span style="float: right; font-weight: 500;">${params.fivePercent_width.toFixed(4)}</span></div>
+                            <div>3dB带宽: <span style="float: right; font-weight: 500;">${params.bandwidth_3db.toFixed(6)}</span></div>
+                            <div>6dB带宽: <span style="float: right; font-weight: 500;">${params.bandwidth_6db.toFixed(6)}</span></div>
+                            <div>归一化振幅: <span style="float: right; font-weight: 500;">${params.normalizedAmplitude.toFixed(6)}</span></div>
+                            <div>尖锐度: <span style="float: right; font-weight: 500;">${params.sharpness.toFixed(4)}</span></div>
+                            <div>展宽度: <span style="float: right; font-weight: 500;">${params.spread.toFixed(6)}</span></div>
+                            <div>中心能量占比: <span style="float: right; font-weight: 500;">${params.centerEnergyFraction.toFixed(4)}</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        const displayDiv = document.getElementById('gaussian-params-display');
+        const contentDiv = document.getElementById('gaussian-params-content');
+        
+        if (displayDiv && contentDiv) {
+            contentDiv.innerHTML = content;
+            displayDiv.style.display = 'block';
+        }
     }
     
     /**
@@ -4940,6 +5242,11 @@ ${'-'.repeat(70)}
         const centerX = (maxX - width/2) * (this.vectorData.scaleFactorX || 1);
         const centerY = (maxY - height/2) * (this.vectorData.scaleFactorY || 1);
 
+        // 计算2D高斯的平均半衰期参数（使用X和Y方向的平均值）
+        const avgSigma = Math.sqrt((sigmaX * sigmaX + sigmaY * sigmaY) / 2);
+        const avgFwhm = Math.sqrt((fwhmX * fwhmX + fwhmY * fwhmY) / 2);
+        const additionalParams = this.calculateAdditionalGaussianParams(maxValue, 0, avgSigma, avgFwhm);
+
         return {
             amplitude: maxValue,
             centerX: centerX,
@@ -4948,7 +5255,13 @@ ${'-'.repeat(70)}
             sigmaY: sigmaY,
             fwhmX: fwhmX,
             fwhmY: fwhmY,
-            formula: `f(x,y) = ${maxValue.toFixed(3)} * exp(-((x - ${centerX.toFixed(3)})² / (2 * ${sigmaX.toFixed(3)}²) + (y - ${centerY.toFixed(3)})² / (2 * ${sigmaY.toFixed(3)}²)))`
+            formula: `f(x,y) = ${maxValue.toFixed(3)} * exp(-((x - ${centerX.toFixed(3)})² / (2 * ${sigmaX.toFixed(3)}²) + (y - ${centerY.toFixed(3)})² / (2 * ${sigmaY.toFixed(3)}²)))`,
+            // 2D特有参数
+            avgSigma: avgSigma,
+            avgFwhm: avgFwhm,
+            is2D: true,
+            // 添加额外参数
+            ...additionalParams
         };
     }
 

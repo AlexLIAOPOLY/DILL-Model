@@ -1527,13 +1527,17 @@ intensity3
                                             <div class="section-header" style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.06);">
                                                 <h4 style="color: #2c3e50; margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.3px;">高斯分布参数分析</h4>
                                             </div>
-                                            <div class="gaussian-params-container" style="display: flex; gap: 24px; align-items: stretch;">
+                                            <div class="gaussian-params-container" style="display: flex; gap: 24px; align-items: stretch; flex-wrap: wrap;">
                                                 <button id="calculate-gaussian-btn" style="padding: 10px 24px; background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(116,185,255,0.25); white-space: nowrap;">
                                                     计算高斯参数
                                                 </button>
                                                 <div id="gaussian-formula" style="display: none; flex: 1; padding: 12px 16px; background: white; border-radius: 8px; border: 1px solid #e1e4e8; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                                                     <span style="color: #364152; font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace; font-size: 13px; line-height: 1.6;"></span>
                                                 </div>
+                                            </div>
+                                            <!-- 高斯参数详细信息显示区域 -->
+                                            <div id="gaussian-params-display" style="display: none; margin-top: 16px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #e1e4e8; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                                <div id="gaussian-params-content" style="font-size: 13px; line-height: 1.8; color: #24292e;"></div>
                                             </div>
                                         </div>
 
@@ -4195,17 +4199,23 @@ intensity3
 
                 // 初始化高斯参数计算按钮
                 const calculateGaussianBtn = document.getElementById('calculate-gaussian-btn');
+                
                 if (calculateGaussianBtn) {
                     calculateGaussianBtn.addEventListener('click', function() {
                         if (window.photoRecognition) {
                             const params = window.photoRecognition.calculateGaussianParams();
                             if (params) {
+                                // 显示公式
                                 const formulaDiv = document.getElementById('gaussian-formula');
                                 if (formulaDiv) {
                                     formulaDiv.style.display = 'block';
                                     formulaDiv.querySelector('span').innerHTML = params.formula;
-                                    console.log('高斯参数:', params);
                                 }
+                                
+                                // 自动显示所有参数
+                                window.photoRecognition.displayAllGaussianParams(params);
+                                
+                                console.log('高斯参数:', params);
                             } else {
                                 alert('请先生成向量数据');
                             }
