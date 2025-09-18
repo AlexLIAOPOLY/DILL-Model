@@ -86,7 +86,8 @@ class VideoAlignment {
         this.sensitivitySlider = null;
         this.sensitivityValue = null;
         this.distanceInfo = null;
-        this.sensitivity = 1.0; // 默认灵敏度
+        this.sliderTooltip = null;
+        this.sensitivity = 2.4; // 默认灵敏度
     }
 
     init() {
@@ -108,6 +109,7 @@ class VideoAlignment {
         this.sensitivitySlider = document.getElementById('sensitivity-slider');
         this.sensitivityValue = document.getElementById('sensitivity-value');
         this.distanceInfo = document.getElementById('distance-info');
+        this.sliderTooltip = document.getElementById('slider-tooltip');
         this.startBtn = document.getElementById('video-align-start-btn');
         this.stopBtn = document.getElementById('video-align-stop-btn');
 
@@ -204,7 +206,56 @@ class VideoAlignment {
             this.sensitivitySlider.addEventListener('input', (e) => {
                 this.sensitivity = parseFloat(e.target.value);
                 if (this.sensitivityValue) {
-                    this.sensitivityValue.textContent = this.sensitivity.toFixed(1);
+                    this.sensitivityValue.value = this.sensitivity.toFixed(2);
+                }
+                this.updateSliderTooltip(this.sensitivity);
+            });
+
+            // 鼠标悬停或拖动时显示弹窗
+            this.sensitivitySlider.addEventListener('mousedown', () => {
+                this.showSliderTooltip(true);
+            });
+
+            this.sensitivitySlider.addEventListener('mouseup', () => {
+                this.showSliderTooltip(false);
+            });
+
+            this.sensitivitySlider.addEventListener('mouseenter', () => {
+                this.updateSliderTooltip(this.sensitivity);
+            });
+
+            this.sensitivitySlider.addEventListener('mouseleave', () => {
+                if (!this.sensitivitySlider.matches(':active')) {
+                    this.showSliderTooltip(false);
+                }
+            });
+
+            // 触摸设备支持
+            this.sensitivitySlider.addEventListener('touchstart', () => {
+                this.showSliderTooltip(true);
+            });
+
+            this.sensitivitySlider.addEventListener('touchend', () => {
+                setTimeout(() => this.showSliderTooltip(false), 1000);
+            });
+        }
+
+        // 灵敏度数值输入框控制
+        if (this.sensitivityValue) {
+            this.sensitivityValue.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value) && value >= 0 && value <= 10) {
+                    this.sensitivity = value;
+                    if (this.sensitivitySlider) {
+                        this.sensitivitySlider.value = value;
+                    }
+                }
+            });
+
+            this.sensitivityValue.addEventListener('blur', (e) => {
+                const value = parseFloat(e.target.value);
+                if (isNaN(value) || value < 0 || value > 10) {
+                    e.target.value = this.sensitivity.toFixed(2);
                 }
             });
         }
@@ -2539,6 +2590,45 @@ class VideoAlignment {
         ctx.fillStyle = color.center;
         ctx.globalAlpha = 0.9;
         ctx.fill();
+    }
+
+    // 滑动弹窗相关方法
+    updateSliderTooltip(value) {
+        if (!this.sliderTooltip || !this.sensitivitySlider) return;
+
+        // 计算滑块位置
+        const sliderRect = this.sensitivitySlider.getBoundingClientRect();
+        const sliderRange = this.sensitivitySlider.max - this.sensitivitySlider.min;
+        const currentPosition = (value - this.sensitivitySlider.min) / sliderRange;
+        const thumbPosition = sliderRect.width * currentPosition;
+        
+        // 设置弹窗位置
+        this.sliderTooltip.style.left = `${thumbPosition}px`;
+        
+        // 计算预期检测光斑数量
+        const expectedPeaks = Math.floor(value * 5);
+        const peaksText = expectedPeaks <= 1 ? '1个' : 
+                         expectedPeaks <= 2 ? '1-2个' :
+                         expectedPeaks <= 3 ? '2-3个' :
+                         expectedPeaks <= 5 ? '3-5个' : '5个以上';
+        
+        // 更新弹窗内容
+        this.sliderTooltip.innerHTML = `
+            <div class="tooltip-value">灵敏度: ${value.toFixed(2)}</div>
+            <div class="tooltip-desc">预期光斑: ${peaksText}</div>
+        `;
+    }
+
+    showSliderTooltip(show) {
+        if (!this.sliderTooltip) return;
+
+        if (show) {
+            this.sliderTooltip.classList.add('show');
+            // 更新当前值的弹窗内容
+            this.updateSliderTooltip(this.sensitivity);
+        } else {
+            this.sliderTooltip.classList.remove('show');
+        }
     }
 }
 
