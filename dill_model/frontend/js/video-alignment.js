@@ -27,14 +27,20 @@ class VideoAlignment {
         this.displayMode = 'split'; // split, merged, bw-merged
         this.zoomFactor = 1.0;
         
-        // 高性能GPU加速参数
+        // 高性能GPU加速参数 - 精度优先版本
         this.frameSkipCount = 0;
-        this.targetFrameRate = 60; // 目标帧率60fps，根据设备性能动态调整
-        this.minFrameRate = 30; // 最低帧率
+        this.targetFrameRate = 45; // 提高目标帧率到45fps，平衡性能和精度
+        this.minFrameRate = 20; // 最低帧率提高到20fps
         this.lastFrameTime = 0;
         this.filteredBuffer = null; // 复用滤波缓冲区
         this.kernelCache = null; // 缓存高斯核
         this.thresholdHistory = []; // 阈值历史平滑
+        
+        // 性能优化缓存
+        this.imageDataCache = null; // 缓存ImageData对象避免重复分配
+        this.tempCanvasCache = null; // 缓存临时canvas
+        this.processSkipCounter = 0; // 处理跳帧计数器
+        this.fastProcessingMode = false; // 默认关闭快速处理模式，保证精度
         this.maxThresholdHistory = 3; // 减少历史缓存提高响应速度
         
         // 跳帧优化 - 在性能不足时智能跳帧
@@ -66,6 +72,10 @@ class VideoAlignment {
         this.adaptiveQuality = 1.0; // 质量因子：1.0=最高质量，0.5=性能优先
         this.processingTime = 0;
         this.frameTimeTarget = 16.67; // 60fps目标：16.67ms/frame
+        
+        // 性能模式设置
+        this.performanceMode = 'balanced'; // 默认均衡模式
+        this.gpuUsageThreshold = 0.4; // GPU使用阈值
         
         // 并行处理
         this.worker = null;
@@ -169,14 +179,14 @@ class VideoAlignment {
         // 预计算高斯核
         this.precomputeGaussianKernel();
         
-        // 初始化GPU加速
+        // 首先检测设备性能和Apple优化
+        this.detectDevicePerformance();
+        
+        // 初始化GPU加速（在设备检测之后）
         this.initGPUAcceleration();
         
         // 初始化Web Worker
         this.initWebWorker();
-        
-        // 检测设备性能
-        this.detectDevicePerformance();
     }
 
     bindEvents() {
@@ -214,6 +224,45 @@ class VideoAlignment {
                 this.updateDisplayMode();
             });
         });
+
+        // 性能模式切换
+        const performanceModeInputs = document.querySelectorAll('input[name="video-align-performance"]');
+        performanceModeInputs.forEach(input => {
+            input.addEventListener('change', (event) => {
+                this.setPerformanceMode(event.target.value);
+            });
+        });
+
+        // 悬浮面板性能模式切换
+        const floatingPerformanceModeInputs = document.querySelectorAll('input[name="floating-performance"]');
+        floatingPerformanceModeInputs.forEach(input => {
+            input.addEventListener('change', (event) => {
+                this.setPerformanceMode(event.target.value);
+            });
+        });
+
+        // 悬浮面板按钮事件监听器
+        const floatingZoomInBtn = document.getElementById('floating-zoom-in');
+        const floatingZoomOutBtn = document.getElementById('floating-zoom-out');
+        const floatingZoomResetBtn = document.getElementById('floating-zoom-reset');
+        const floatingSaveSpotBtn = document.getElementById('floating-save-spot');
+        const floatingStopBtn = document.getElementById('floating-stop');
+
+        if (floatingZoomInBtn) {
+            floatingZoomInBtn.addEventListener('click', () => this.adjustZoom(0.2));
+        }
+        if (floatingZoomOutBtn) {
+            floatingZoomOutBtn.addEventListener('click', () => this.adjustZoom(-0.2));
+        }
+        if (floatingZoomResetBtn) {
+            floatingZoomResetBtn.addEventListener('click', () => this.resetZoom());
+        }
+        if (floatingSaveSpotBtn) {
+            floatingSaveSpotBtn.addEventListener('click', () => this.saveSelectedSpot());
+        }
+        if (floatingStopBtn) {
+            floatingStopBtn.addEventListener('click', () => this.stopCamera('已通过悬浮面板停止摄像头'));
+        }
 
         // 放大控制按钮
         const zoomInBtn = document.getElementById('zoom-in-btn');
@@ -421,15 +470,16 @@ class VideoAlignment {
             return;
         }
 
-        // 动态帧率控制和性能监控
+        // 优化的帧率控制和性能监控
         const frameStart = performance.now();
         const targetInterval = 1000 / this.targetFrameRate;
         
-        if (frameStart - this.lastFrameTime < targetInterval) {
+        // 更宽松的帧率控制，避免过度限制
+        if (frameStart - this.lastFrameTime < targetInterval * 0.7) {
             return;
         }
         
-        // 智能跳帧处理
+        // 智能跳帧处理 - 优化版
         this.lastProcessedFrame++;
         if (this.frameSkipPattern > 0 && this.lastProcessedFrame % (this.frameSkipPattern + 1) !== 0) {
             this.lastFrameTime = frameStart;
@@ -551,13 +601,18 @@ class VideoAlignment {
         const filtered = this.filteredBuffer;
         const kernel = this.kernelCache;
 
-        // 应用滤波
-        for (let y = 0; y < this.height; y++) {
-            for (let x = 0; x < this.width; x++) {
+        // 优化的滤波应用 - 根据性能模式调整处理密度
+        const step = this.fastProcessingMode ? 2 : 1;
+        const kernelStep = this.adaptiveQuality < 0.7 ? 2 : 1;
+        
+        for (let y = 0; y < this.height; y += step) {
+            for (let x = 0; x < this.width; x += step) {
                 let weightedSum = 0;
                 let totalWeight = 0;
                 
-                for (const k of kernel) {
+                // 根据性能模式减少内核计算
+                for (let i = 0; i < kernel.length; i += kernelStep) {
+                    const k = kernel[i];
                     const nx = x + k.x;
                     const ny = y + k.y;
                     
@@ -568,8 +623,15 @@ class VideoAlignment {
                     }
                 }
                 
-                // 防止除零错误
-                filtered[y * this.width + x] = totalWeight > 0 ? weightedSum / totalWeight : 0;
+                const value = totalWeight > 0 ? weightedSum / totalWeight : 0;
+                filtered[y * this.width + x] = value;
+                
+                // 如果跳像素，填充邻近像素以避免空隙
+                if (step > 1) {
+                    if (x + 1 < this.width) filtered[y * this.width + x + 1] = value;
+                    if (y + 1 < this.height) filtered[(y + 1) * this.width + x] = value;
+                    if (x + 1 < this.width && y + 1 < this.height) filtered[(y + 1) * this.width + x + 1] = value;
+                }
             }
         }
 
@@ -631,52 +693,86 @@ class VideoAlignment {
         const peaks = [];
         const radius = this.localMaxRadius;
 
-        for (let y = radius; y < this.height - radius; y++) {
-            for (let x = radius; x < this.width - radius; x++) {
+        // 性能优化：根据处理模式调整扫描密度
+        const step = this.fastProcessingMode ? 3 : (this.adaptiveQuality < 0.8 ? 2 : 1);
+        const checkRadius = this.fastProcessingMode ? Math.max(3, Math.floor(radius * 0.7)) : radius;
+
+        for (let y = checkRadius; y < this.height - checkRadius; y += step) {
+            for (let x = checkRadius; x < this.width - checkRadius; x += step) {
                 const centerIdx = y * this.width + x;
                 const centerValue = this.intensityBuffer[centerIdx];
 
                 if (centerValue < threshold) continue;
 
-                // 检查是否为局部最大值（严格大于周围所有点）
+                // 快速预检查：只检查关键方向
                 let isLocalMax = true;
-                let equalCount = 0;
+                const quickDirs = [
+                    [0, -checkRadius], [0, checkRadius], 
+                    [-checkRadius, 0], [checkRadius, 0]
+                ];
                 
-                for (let dy = -radius; dy <= radius && isLocalMax; dy++) {
-                    for (let dx = -radius; dx <= radius && isLocalMax; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        
-                        const neighborIdx = (y + dy) * this.width + (x + dx);
-                        const neighborValue = this.intensityBuffer[neighborIdx];
-                        
-                        if (neighborValue > centerValue) {
-                            isLocalMax = false;
-                        } else if (Math.abs(neighborValue - centerValue) < 0.01) {
-                            equalCount++;
-                            // 如果有太多相等的点，不认为是峰值
-                            if (equalCount > radius) {
+                for (const [dx, dy] of quickDirs) {
+                    const neighborIdx = (y + dy) * this.width + (x + dx);
+                    if (this.intensityBuffer[neighborIdx] > centerValue) {
+                        isLocalMax = false;
+                        break;
+                    }
+                }
+                
+                if (!isLocalMax) continue;
+
+                // 详细检查（非快速模式）
+                if (!this.fastProcessingMode) {
+                    let equalCount = 0;
+                    const checkStep = this.adaptiveQuality < 0.7 ? 2 : 1;
+                    
+                    for (let dy = -checkRadius; dy <= checkRadius && isLocalMax; dy += checkStep) {
+                        for (let dx = -checkRadius; dx <= checkRadius && isLocalMax; dx += checkStep) {
+                            if (dx === 0 && dy === 0) continue;
+                            
+                            const neighborIdx = (y + dy) * this.width + (x + dx);
+                            const neighborValue = this.intensityBuffer[neighborIdx];
+                            
+                            if (neighborValue > centerValue) {
                                 isLocalMax = false;
+                            } else if (Math.abs(neighborValue - centerValue) < 0.01) {
+                                equalCount++;
+                                if (equalCount > checkRadius) {
+                                    isLocalMax = false;
+                                }
                             }
                         }
                     }
                 }
 
                 if (isLocalMax) {
-                    // 计算质心位置（亚像素精度）
-                    const centroid = this.calculatePeakCentroid(x, y, radius);
+                    // 性能优化：快速模式跳过子像素精度计算
+                    const centroid = this.fastProcessingMode ? 
+                        { x, y } : 
+                        this.calculatePeakCentroid(x, y, checkRadius);
+                    
                     peaks.push({
                         x: centroid.x,
                         y: centroid.y,
                         intensity: centerValue,
-                        size: this.calculatePeakSize(x, y, radius, threshold * 0.5)
+                        size: this.fastProcessingMode ? 10 : this.calculatePeakSize(x, y, radius, threshold * 0.5)
                     });
+                    
+                    // 性能优化：早期退出，避免过度搜索
+                    const earlyExitLimit = this.fastProcessingMode ? 15 : 25;
+                    if (peaks.length >= earlyExitLimit) {
+                        break;
+                    }
                 }
             }
+            if (peaks.length >= (this.fastProcessingMode ? 15 : 25)) break;
         }
 
-        // 按强度排序并返回最强的峰值（根据灵敏度动态调整数量）
+        // 按强度排序并返回最强的峰值
         peaks.sort((a, b) => b.intensity - a.intensity);
-        const maxPeaks = Math.min(20, Math.max(1, Math.floor(this.sensitivity * 5))); // 1-20个峰值
+        const maxPeaks = this.fastProcessingMode ? 
+            Math.min(15, Math.max(1, Math.floor(this.sensitivity * 3))) :
+            Math.min(20, Math.max(1, Math.floor(this.sensitivity * 5)));
         return peaks.slice(0, maxPeaks);
     }
     
@@ -710,30 +806,45 @@ class VideoAlignment {
         return peaks;
     }
     
-    // 智能GPU使用决策（Apple优化）
+    // 智能GPU使用决策（Apple优化）- 根据性能模式动态调整
     shouldUseGPUAcceleration() {
         if (!this.useGPUAcceleration) return false;
         
         const imageSize = this.width * this.height;
+        const threshold = this.gpuUsageThreshold || 0.4; // 使用动态阈值
         
         if (this.enableAppleOptimizations) {
-            // Apple GPU优化策略 - 更积极使用GPU
-            return this.adaptiveQuality > 0.5 && imageSize > 30000;
+            // Apple GPU优化策略 - 根据性能模式调整
+            let appleThreshold = threshold;
+            if (this.performanceMode === 'speed') {
+                appleThreshold = threshold - 0.1;
+            } else if (this.performanceMode === 'balanced') {
+                appleThreshold = threshold - 0.05;
+            }
+            return this.adaptiveQuality > appleThreshold && imageSize > 20000;
         } else {
-            // 传统GPU策略
-            return this.adaptiveQuality > 0.6 && imageSize > 50000;
+            // 传统GPU策略 - 根据性能模式调整
+            let traditionalThreshold = threshold;
+            if (this.performanceMode === 'speed') {
+                traditionalThreshold = threshold - 0.1;
+            } else if (this.performanceMode === 'balanced') {
+                traditionalThreshold = threshold;
+            } else {
+                traditionalThreshold = threshold + 0.1;
+            }
+            return this.adaptiveQuality > traditionalThreshold && imageSize > 30000;
         }
     }
     
-    // 智能GPU峰值检测决策
+    // 智能GPU峰值检测决策 - 降低阈值保证精度
     shouldUseGPUPeakDetection() {
         if (!this.useGPUAcceleration) return false;
         
         if (this.enableAppleOptimizations) {
-            // Apple GPU更适合峰值检测
-            return this.adaptiveQuality > 0.7;
+            // Apple GPU更适合峰值检测 - 降低阈值
+            return this.adaptiveQuality > 0.4;
         } else {
-            return this.adaptiveQuality > 0.8;
+            return this.adaptiveQuality > 0.5;
         }
     }
     
@@ -1069,6 +1180,58 @@ class VideoAlignment {
             const wrapper = mergedPane.querySelector('.merged-wrapper');
             if (wrapper) wrapper.style.transform = transform;
         }
+
+        // 控制悬浮面板的显示/隐藏
+        this.updateFloatingControlsVisibility();
+    }
+
+    // 控制悬浮面板显示/隐藏逻辑
+    updateFloatingControlsVisibility() {
+        const floatingControls = document.getElementById('floating-controls');
+        if (!floatingControls) return;
+
+        // 当缩放到2.0x或以上时显示悬浮面板（默认1.0x放大4次后的第5次）
+        if (this.zoomFactor >= 2.0) {
+            floatingControls.style.display = 'block';
+            this.updateFloatingZoomLevel();
+            this.updateFloatingPerformance();
+            this.syncFloatingButtonStates();
+        } else {
+            floatingControls.style.display = 'none';
+        }
+    }
+
+    // 更新悬浮面板缩放显示
+    updateFloatingZoomLevel() {
+        const floatingZoomLevel = document.getElementById('floating-zoom-level');
+        if (floatingZoomLevel) {
+            floatingZoomLevel.textContent = `${this.zoomFactor.toFixed(1)}x`;
+        }
+    }
+
+    // 更新悬浮面板性能显示
+    updateFloatingPerformance() {
+        const floatingPerformance = document.getElementById('floating-performance');
+        if (floatingPerformance && this.isStreaming) {
+            const metrics = this.getPerformanceMetrics();
+            floatingPerformance.textContent = `${metrics.actualFps}fps | ${metrics.processingLatency}ms`;
+        }
+    }
+
+    // 同步悬浮面板按钮状态
+    syncFloatingButtonStates() {
+        const floatingSaveSpot = document.getElementById('floating-save-spot');
+        const floatingStop = document.getElementById('floating-stop');
+        
+        if (floatingSaveSpot) {
+            floatingSaveSpot.disabled = !this.isStreaming || !this.selectedSpot;
+            floatingSaveSpot.style.opacity = floatingSaveSpot.disabled ? '0.5' : '1';
+        }
+        
+        if (floatingStop) {
+            floatingStop.disabled = !this.isStreaming;
+            floatingStop.style.opacity = floatingStop.disabled ? '0.5' : '1';
+        }
     }
 
     updateButtonState(streaming) {
@@ -1080,6 +1243,15 @@ class VideoAlignment {
         }
         if (this.saveSpotBtn) {
             this.saveSpotBtn.disabled = !streaming || !this.selectedSpot;
+            this.saveSpotBtn.style.opacity = this.saveSpotBtn.disabled ? '0.5' : '1';
+        }
+
+        // 同步悬浮面板按钮状态
+        this.syncFloatingButtonStates();
+        
+        // 如果正在流传输，更新悬浮面板性能显示
+        if (streaming) {
+            this.updateFloatingPerformance();
         }
     }
 
@@ -1264,6 +1436,139 @@ class VideoAlignment {
         }
     }
 
+    // 设置性能模式
+    setPerformanceMode(mode) {
+        this.performanceMode = mode;
+        
+        if (mode === 'speed') {
+            // 速度优先模式：极致快速，大幅降低精度换取超高帧率
+            this.targetFrameRate = 80; // 极高目标帧率
+            this.minFrameRate = 45; // 高最低帧率保证
+            this.fastProcessingMode = true; // 启用快速处理
+            this.adaptiveQuality = Math.max(0.5, this.adaptiveQuality); // 质量可降至50%
+            
+            // 极度激进的GPU使用策略
+            this.gpuUsageThreshold = 0.2; // 更低门槛，几乎总是使用GPU
+            
+            // 最小历史缓存，极速响应
+            this.maxPerformanceHistory = 3;
+            this.maxThresholdHistory = 1;
+            
+            // 额外的速度优化参数
+            this.frameSkipPattern = 1; // 允许跳帧
+            this.processSkipCounter = 0; // 重置跳帧计数
+            
+            console.log('🚀 已切换到极速模式: 目标80fps, 质量50%, 激进优化已启用');
+            
+        } else if (mode === 'balanced') {
+            // 均衡模式：在速度和精度之间取得平衡
+            this.targetFrameRate = 60; // 中等目标帧率
+            this.minFrameRate = 30; // 中等最低帧率
+            this.fastProcessingMode = true; // 智能快速处理
+            this.adaptiveQuality = Math.max(0.75, this.adaptiveQuality); // 质量75%
+            
+            // 中等GPU使用策略
+            this.gpuUsageThreshold = 0.4; // 平衡的门槛
+            
+            // 中等历史缓存，平衡响应性和稳定性
+            this.maxPerformanceHistory = 8;
+            this.maxThresholdHistory = 4;
+            
+            // 智能跳帧策略
+            this.frameSkipPattern = 2; // 适度跳帧
+            this.processSkipCounter = 0; // 重置跳帧计数
+            
+            console.log('⚖️ 已切换到均衡模式: 目标60fps, 质量75%, 智能优化已启用');
+            
+        } else {
+            // 精准优先模式：极致精度，大幅降低帧率确保最高质量
+            this.targetFrameRate = 35; // 较低目标帧率为精度让路
+            this.minFrameRate = 15; // 允许更低帧率
+            this.fastProcessingMode = false; // 关闭快速处理
+            this.adaptiveQuality = Math.max(0.95, this.adaptiveQuality); // 质量不低于95%
+            
+            // 极度保守的GPU使用策略，确保最高精度
+            this.gpuUsageThreshold = 0.6; // 更高门槛，只在确定时使用GPU
+            
+            // 最大历史缓存，确保稳定性和精度
+            this.maxPerformanceHistory = 15;
+            this.maxThresholdHistory = 8;
+            
+            // 额外的精度优化参数
+            this.frameSkipPattern = 0; // 禁止跳帧
+            this.processSkipCounter = 0; // 重置跳帧计数
+            
+            console.log('🎯 已切换到极精模式: 目标35fps, 质量95%, 高精度处理已启用');
+        }
+        
+        // 更新帧时间目标
+        this.frameTimeTarget = 1000 / this.targetFrameRate;
+        
+        // 如果正在运行，触发性能重新评估
+        if (this.isStreaming) {
+            this.adaptPerformance();
+        }
+        
+        // 显示模式切换提示
+        this.showPerformanceModeMessage(mode);
+        
+        // 同步两个面板的性能模式状态
+        this.syncPerformanceModeState(mode);
+    }
+
+    // 显示性能模式切换消息
+    showPerformanceModeMessage(mode) {
+        let message;
+        if (mode === 'speed') {
+            message = '已切换到极速模式，目标80fps，质量50%，激进优化';
+        } else if (mode === 'balanced') {
+            message = '已切换到均衡模式，目标60fps，质量75%，智能优化';
+        } else {
+            message = '已切换到极精模式，目标35fps，质量95%，最高精度';
+        }
+            
+        // 创建临时消息提示
+        const messageEl = document.createElement('div');
+        messageEl.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: ${mode === 'speed' ? '#dbeafe' : '#f0f9ff'};
+            color: ${mode === 'speed' ? '#1e40af' : '#0369a1'};
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 10000;
+            transition: all 0.3s ease;
+        `;
+        messageEl.textContent = message;
+        document.body.appendChild(messageEl);
+        
+        // 3秒后淡出并移除
+        setTimeout(() => {
+            messageEl.style.opacity = '0';
+            messageEl.style.transform = 'translateX(-50%) translateY(-10px)';
+            setTimeout(() => document.body.removeChild(messageEl), 300);
+        }, 2500);
+    }
+
+    // 同步两个面板的性能模式状态
+    syncPerformanceModeState(mode) {
+        // 同步主面板状态
+        const mainInputs = document.querySelectorAll('input[name="video-align-performance"]');
+        mainInputs.forEach(input => {
+            input.checked = input.value === mode;
+        });
+
+        // 同步悬浮面板状态
+        const floatingInputs = document.querySelectorAll('input[name="floating-performance"]');
+        floatingInputs.forEach(input => {
+            input.checked = input.value === mode;
+        });
+    }
+
     drawMergedGreenPulse(x, y) {
         if (!this.mergedCtx) return;
 
@@ -1411,11 +1716,14 @@ class VideoAlignment {
 
     // GPU加速初始化（Apple优化）
     initGPUAcceleration() {
+        console.log('🚀 开始初始化GPU加速...');
+        
         try {
             // 创建离屏WebGL画布用于GPU计算
             this.webglCanvas = document.createElement('canvas');
             this.webglCanvas.width = this.width;
             this.webglCanvas.height = this.height;
+            console.log(`📊 WebGL画布大小: ${this.width}x${this.height}`);
             
             // 优先使用WebGL2（Apple设备支持更好）
             const gl = this.webglCanvas.getContext('webgl2', {
@@ -1425,24 +1733,41 @@ class VideoAlignment {
                 antialias: false,
                 premultipliedAlpha: false,
                 preserveDrawingBuffer: false,
-                powerPreference: this.enableAppleOptimizations ? 'high-performance' : 'default'
-            }) || this.webglCanvas.getContext('webgl');
+                powerPreference: this.enableAppleOptimizations ? 'high-performance' : 'high-performance' // 强制高性能
+            }) || this.webglCanvas.getContext('webgl', {
+                alpha: false,
+                depth: false,
+                stencil: false,
+                antialias: false,
+                premultipliedAlpha: false,
+                preserveDrawingBuffer: false,
+                powerPreference: 'high-performance'
+            });
             
             if (!gl) {
-                console.warn('WebGL不支持，使用CPU计算');
+                console.warn('❌ WebGL不支持，使用CPU计算');
                 return;
             }
+            
+            console.log('✅ WebGL上下文创建成功');
+            console.log(`🔧 WebGL版本: ${gl.getParameter(gl.VERSION)}`);
+            console.log(`💻 GLSL版本: ${gl.getParameter(gl.SHADING_LANGUAGE_VERSION)}`);
             
             this.gl = gl;
             this.useGPUAcceleration = true;
             
             // Apple GPU特定设置
             if (this.enableAppleOptimizations) {
+                console.log('🍎 配置Apple GPU优化...');
                 this.configureAppleWebGL(gl);
             }
             
             // 初始化GPU着色器
+            console.log('🎨 初始化GPU着色器...');
             this.initGPUShaders();
+            
+            // 初始化GPU缓冲区
+            console.log('📚 初始化GPU缓冲区...');
             this.initGPUBuffers();
             
             console.log('✅ GPU加速已启用');
@@ -1450,7 +1775,8 @@ class VideoAlignment {
                 console.log('🍎 Apple GPU优化已激活');
             }
         } catch (error) {
-            console.warn('GPU加速初始化失败，使用CPU模式:', error);
+            console.error('❌ GPU加速初始化失败，使用CPU模式:', error);
+            console.error('错误堆栈:', error.stack);
             this.useGPUAcceleration = false;
         }
     }
@@ -1819,13 +2145,40 @@ class VideoAlignment {
         const isIOS = /iphone|ipad|ipod/.test(userAgent) || 
                      (platform === 'macintel' && 'ontouchend' in document);
         
-        // 检测macOS设备
-        const isMac = platform.includes('mac');
+        // 检测macOS设备（包括Intel和Apple Silicon）
+        const isMac = platform.includes('mac') || 
+                     /macintosh|mac os/i.test(userAgent) ||
+                     platform === 'macintel';
         
         // 检测是否为Apple Silicon Mac
         const isAppleSilicon = isMac && this.detectAppleSilicon();
         
-        return isIOS || isAppleSilicon;
+        // 主动检测Apple WebGL扩展
+        const hasAppleWebGL = this.hasAppleWebGLExtensions();
+        
+        console.log(`🔍 Apple设备检测: iOS=${isIOS}, Mac=${isMac}, AppleSilicon=${isAppleSilicon}, WebGL=${hasAppleWebGL}`);
+        
+        return isIOS || isMac || isAppleSilicon || hasAppleWebGL;
+    }
+
+    // 检测Apple WebGL扩展
+    hasAppleWebGLExtensions() {
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+            if (!gl) return false;
+            
+            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+            if (debugInfo) {
+                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                
+                return /apple|amd.*apple|intel.*iris.*pro/i.test(renderer + vendor);
+            }
+            return false;
+        } catch (error) {
+            return false;
+        }
     }
     
     // 检测Apple Silicon芯片
@@ -1937,29 +2290,43 @@ class VideoAlignment {
     adaptPerformance() {
         const avgProcessingTime = this.performanceHistory.reduce((a, b) => a + b, 0) / this.performanceHistory.length;
         
-        // 如果处理时间超过目标，降低质量或帧率
-        if (avgProcessingTime > this.frameTimeTarget * 1.2) {
+        // 精度优先的性能调整策略
+        if (avgProcessingTime > this.frameTimeTarget * 1.3) { // 提高阈值，避免过度优化
+            // 优先启用跳帧，保持质量
             if (this.frameSkipPattern < 2) {
                 this.frameSkipPattern++;
-                console.log(`⚡ 性能自适应: 启用跳帧模式 ${this.frameSkipPattern}`);
-            } else if (this.adaptiveQuality > 0.5) {
-                this.adaptiveQuality = Math.max(0.5, this.adaptiveQuality - 0.1);
-                console.log(`⚡ 性能自适应: 降低质量到 ${this.adaptiveQuality.toFixed(1)}`);
-            } else if (this.targetFrameRate > this.minFrameRate) {
-                this.targetFrameRate = Math.max(this.minFrameRate, this.targetFrameRate - 5);
+                console.log(`⚡ 性能自适应: 启用跳帧模式 ${this.frameSkipPattern} (保持精度)`);
+            }
+            // 然后降低帧率而不是质量
+            else if (this.targetFrameRate > this.minFrameRate) {
+                this.targetFrameRate = Math.max(this.minFrameRate, this.targetFrameRate - 2);
                 this.frameTimeTarget = 1000 / this.targetFrameRate;
-                console.log(`⚡ 性能自适应: 降低帧率到 ${this.targetFrameRate}fps`);
+                console.log(`⚡ 性能自适应: 降低帧率到 ${this.targetFrameRate}fps (保持精度)`);
+            }
+            // 只有在极端情况下才启用快速模式
+            else if (!this.fastProcessingMode && avgProcessingTime > this.frameTimeTarget * 1.8) {
+                this.fastProcessingMode = true;
+                console.log(`⚡ 性能自适应: 启用快速处理模式 (极端情况)`);
+            }
+            // 最后才考虑降低质量，但不要太低
+            else if (this.adaptiveQuality > 0.6) {
+                this.adaptiveQuality = Math.max(0.6, this.adaptiveQuality - 0.1);
+                console.log(`⚡ 性能自适应: 降低质量到 ${this.adaptiveQuality.toFixed(1)} (最小60%)`);
             }
         }
-        // 如果性能有余量，提升质量
+        // 如果性能良好，优先恢复质量和精度
         else if (avgProcessingTime < this.frameTimeTarget * 0.7) {
-            if (this.frameSkipPattern > 0) {
+            if (this.fastProcessingMode) {
+                this.fastProcessingMode = false;
+                console.log(`⚡ 性能提升: 关闭快速处理模式 (恢复精度)`);
+            } else if (this.adaptiveQuality < 1.0) {
+                this.adaptiveQuality = Math.min(1.0, this.adaptiveQuality + 0.1);
+                console.log(`⚡ 性能提升: 提高质量到 ${this.adaptiveQuality.toFixed(1)}`);
+            } else if (this.frameSkipPattern > 0) {
                 this.frameSkipPattern--;
                 console.log(`⚡ 性能提升: 减少跳帧到 ${this.frameSkipPattern}`);
-            } else if (this.adaptiveQuality < 1.0) {
-                this.adaptiveQuality = Math.min(1.0, this.adaptiveQuality + 0.05);
-            } else if (this.targetFrameRate < 75) {
-                this.targetFrameRate = Math.min(75, this.targetFrameRate + 5);
+            } else if (this.targetFrameRate < 60) {
+                this.targetFrameRate = Math.min(60, this.targetFrameRate + 2);
                 this.frameTimeTarget = 1000 / this.targetFrameRate;
                 console.log(`⚡ 性能提升: 提高帧率到 ${this.targetFrameRate}fps`);
             }
@@ -1991,10 +2358,13 @@ class VideoAlignment {
             sensitivity: this.sensitivity,
             
             // 性能优化状态
+            performanceMode: this.performanceMode === 'speed' ? '速度优先' : 
+                           this.performanceMode === 'balanced' ? '均衡模式' : '精准优先',
             frameSkipPattern: this.frameSkipPattern,
             adaptiveQuality: Math.round(this.adaptiveQuality * 100),
             useGPUAcceleration: this.useGPUAcceleration,
             useWebWorker: this.useWebWorker,
+            fastProcessingMode: this.fastProcessingMode,
             
             // 检测精度信息
             detectionPrecision: "亚像素级 (0.1-0.01 pixel)",
@@ -2026,8 +2396,10 @@ class VideoAlignment {
         console.log(`  灵敏度: ${metrics.sensitivity}`);
         
         console.log("⚡ 性能优化:");
+        console.log(`  性能模式: ${metrics.performanceMode}`);
         console.log(`  跳帧模式: ${metrics.frameSkipPattern > 0 ? `跳${metrics.frameSkipPattern}帧` : '无跳帧'}`);
         console.log(`  自适应质量: ${metrics.adaptiveQuality}%`);
+        console.log(`  快速处理: ${metrics.fastProcessingMode ? '启用' : '禁用'}`);
         console.log(`  GPU加速: ${metrics.useGPUAcceleration ? '启用' : '禁用'}`);
         console.log(`  Web Worker: ${metrics.useWebWorker ? '启用' : '禁用'}`);
         
@@ -3090,6 +3462,9 @@ class VideoAlignment {
                 this.saveSpotBtn.style.opacity = '1';
             }
             
+            // 同步悬浮面板按钮状态
+            this.syncFloatingButtonStates();
+            
             // 显示成功选择的提示
             if (typeof showTopSuccess === 'function') {
                 showTopSuccess(`已选中光斑 (${nearestSpot.x.toFixed(0)}, ${nearestSpot.y.toFixed(0)})`, false);
@@ -3102,6 +3477,9 @@ class VideoAlignment {
                 this.saveSpotBtn.disabled = true;
                 this.saveSpotBtn.style.opacity = '0.6';
             }
+            
+            // 同步悬浮面板按钮状态
+            this.syncFloatingButtonStates();
             
             // 显示未选中的提示
             if (typeof showTopError === 'function') {
@@ -3255,6 +3633,9 @@ class VideoAlignment {
             this.saveSpotBtn.disabled = true;
             this.saveSpotBtn.style.opacity = '0.6';
         }
+
+        // 同步悬浮面板按钮状态
+        this.syncFloatingButtonStates();
 
         // 显示保存成功消息
         if (typeof showTopSuccess === 'function') {

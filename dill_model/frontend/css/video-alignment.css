@@ -9,6 +9,8 @@
     border: 1px solid #e1e5e9;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    position: relative; /* 确保不影响悬浮面板 */
+    z-index: 1; /* 低于悬浮面板 */
 }
 
 .video-alignment-area .video-align-controls {
@@ -52,6 +54,105 @@
     accent-color: #2563eb;
 }
 
+/* 性能模式行样式 - 独立居中 */
+.video-alignment-area .performance-mode-row {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0;
+    padding: 0 20px;
+}
+
+/* 性能模式特殊样式 - 淡色主题 */
+.video-alignment-area .control-group.mode:has(input[name="video-align-performance"]) {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.video-alignment-area .control-group.mode:has(input[name="video-align-performance"]) .mode-label {
+    color: #64748b;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+.video-alignment-area .control-group.mode:has(input[name="video-align-performance"]) .mode-option {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 400;
+    transition: color 0.2s ease;
+}
+
+.video-alignment-area .control-group.mode:has(input[name="video-align-performance"]) .mode-option:hover {
+    color: #475569;
+}
+
+.video-alignment-area .control-group.mode:has(input[name="video-align-performance"]) .mode-option input[type="radio"] {
+    accent-color: #94a3b8;
+    scale: 0.9;
+}
+
+.video-alignment-area .control-group.mode:has(input[name="video-align-performance"]) .mode-option input[type="radio"]:checked {
+    accent-color: #64748b;
+}
+
+/* 为了兼容性，如果浏览器不支持:has选择器，使用备用样式 */
+@supports not selector(:has(*)) {
+    .video-alignment-area .performance-mode-group {
+        background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .video-alignment-area .performance-mode-group .mode-label {
+        color: #64748b;
+        font-weight: 500;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+    }
+    
+    .video-alignment-area .performance-mode-group .mode-option {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 400;
+    }
+    
+    .video-alignment-area .performance-mode-group .mode-option input[type="radio"] {
+        accent-color: #94a3b8;
+        scale: 0.9;
+    }
+}
+
+/* 响应式布局 - 小屏幕下的性能模式行 */
+@media (max-width: 768px) {
+    .video-alignment-area .performance-mode-row {
+        margin: 12px 0;
+        padding: 0 10px;
+    }
+    
+    .floating-performance-mode {
+        padding: 6px 8px;
+    }
+    
+    .floating-mode-label {
+        font-size: 10px;
+        margin-bottom: 4px;
+    }
+    
+    .floating-mode-option {
+        font-size: 10px;
+        gap: 3px;
+    }
+    
+    .floating-mode-option input[type="radio"] {
+        scale: 0.7;
+    }
+}
+
 .video-alignment-area .video-align-btn {
     padding: 10px 18px;
     border-radius: 6px;
@@ -77,15 +178,17 @@
 }
 
 .video-alignment-area .video-align-btn.primary {
-    background: #5dade2;
-    border-color: #3498db;
+    background: #3498db;
+    border-color: #2980b9;
     color: #ffffff;
     font-weight: 500;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
 }
 
 .video-alignment-area .video-align-btn.primary:hover:not(:disabled) {
-    background: #3498db;
-    border-color: #2980b9;
+    background: #2980b9;
+    border-color: #21618c;
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
 }
 
 .video-alignment-area .video-align-visuals {
@@ -896,6 +999,231 @@ body.video-alignment-only #car-sine-type-container {
     .sensitivity-input {
         width: 65px;
     }
+}
+
+/* 悬浮控制面板 */
+.floating-controls {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(203, 213, 225, 0.8);
+    border-radius: 12px;
+    padding: 0;
+    z-index: 9999 !important; /* 确保在最顶层 */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    min-width: 240px;
+    max-width: 280px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* 确保始终在视窗内 */
+    transform: none !important;
+    margin: 0 !important;
+    /* 防止被其他元素覆盖 */
+    pointer-events: auto !important;
+}
+
+.floating-controls-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    border-bottom: 1px solid rgba(203, 213, 225, 0.5);
+    border-radius: 12px 12px 0 0;
+}
+
+.floating-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.floating-performance {
+    font-size: 11px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(203, 213, 225, 0.5);
+}
+
+.floating-controls-body {
+    padding: 12px;
+}
+
+.floating-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.floating-group:last-child {
+    margin-bottom: 0;
+}
+
+.floating-btn {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.floating-btn:hover:not(:disabled) {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.floating-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.floating-btn.zoom {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 0;
+}
+
+.floating-btn.primary {
+    background: #3b82f6;
+    color: white;
+    border-color: #2563eb;
+}
+
+.floating-btn.primary:hover:not(:disabled) {
+    background: #2563eb;
+}
+
+.floating-btn.danger {
+    background: #ef4444;
+    color: white;
+    border-color: #dc2626;
+}
+
+.floating-btn.danger:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+.floating-btn.reset {
+    background: #6b7280;
+    color: white;
+    border-color: #4b5563;
+}
+
+.floating-btn.reset:hover:not(:disabled) {
+    background: #4b5563;
+}
+
+.floating-zoom-level {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* 悬浮面板在小屏幕上的适配 */
+@media (max-width: 768px) {
+    .floating-controls {
+        top: 10px !important;
+        right: 10px !important;
+        min-width: 200px !important;
+        max-width: 220px !important;
+    }
+    
+    .floating-controls-header {
+        padding: 10px 12px !important;
+    }
+    
+    .floating-controls-body {
+        padding: 10px !important;
+    }
+    
+    .floating-btn {
+        padding: 5px 10px !important;
+        font-size: 11px !important;
+    }
+    
+    .floating-btn.zoom {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 14px !important;
+    }
+    
+    .floating-performance {
+        font-size: 10px !important;
+        padding: 3px 6px !important;
+    }
+}
+
+/* 确保悬浮面板不被任何元素遮挡 */
+.floating-controls * {
+    pointer-events: auto !important;
+}
+
+/* 悬浮面板性能模式样式 */
+.floating-performance-mode {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 10px !important;
+}
+
+.floating-mode-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+}
+
+.floating-mode-option {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 400;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 2px;
+    transition: color 0.2s ease;
+}
+
+.floating-mode-option:last-child {
+    margin-bottom: 0;
+}
+
+.floating-mode-option:hover {
+    color: #475569;
+}
+
+.floating-mode-option input[type="radio"] {
+    accent-color: #94a3b8;
+    scale: 0.8;
+    margin: 0;
+}
+
+.floating-mode-option input[type="radio"]:checked {
+    accent-color: #64748b;
 }
 
 /* 简化的说明区域样式 */

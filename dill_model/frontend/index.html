@@ -1702,6 +1702,17 @@ intensity3
                                             <button id="zoom-reset-btn" class="zoom-btn reset" type="button">⌂</button>
                                         </div>
                                     </div>
+                                    
+                                    <!-- 性能模式控制行 - 单独居中 -->
+                                    <div class="performance-mode-row">
+                                        <div class="control-group mode performance-mode-group">
+                                            <span class="mode-label">性能模式</span>
+                                            <label class="mode-option"><input type="radio" name="video-align-performance" value="accuracy"> 极精模式</label>
+                                            <label class="mode-option"><input type="radio" name="video-align-performance" value="balanced" checked> 均衡模式</label>
+                                            <label class="mode-option"><input type="radio" name="video-align-performance" value="speed"> 极速模式</label>
+                                        </div>
+                                    </div>
+                                    
                                     <div class="video-align-visuals">
                                         <div class="video-pane">
                                             <div class="video-wrapper">
@@ -1741,11 +1752,16 @@ intensity3
                                                 <input type="range" id="sensitivity-slider" min="0" max="10" step="0.05" value="2.4" title="拖动调整灵敏度">
                                                 <div class="slider-tooltip" id="slider-tooltip"></div>
                                                 <div class="slider-marks">
-                                                    <span class="mark" style="left: 10%;" data-label="1个"></span>
-                                                    <span class="mark" style="left: 30%;" data-label="1-2个"></span>
-                                                    <span class="mark" style="left: 50%;" data-label="2-3个"></span>
-                                                    <span class="mark" style="left: 70%;" data-label="3-5个"></span>
-                                                    <span class="mark" style="left: 90%;" data-label="5个以上"></span>
+                                                    <span class="mark" style="left: 5%;" data-label="0-1个"></span>
+                                                    <span class="mark" style="left: 15%;" data-label="1-2个"></span>
+                                                    <span class="mark" style="left: 25%;" data-label="2-3个"></span>
+                                                    <span class="mark" style="left: 35%;" data-label="3-5个"></span>
+                                                    <span class="mark" style="left: 45%;" data-label="5-8个"></span>
+                                                    <span class="mark" style="left: 55%;" data-label="8-12个"></span>
+                                                    <span class="mark" style="left: 65%;" data-label="12-18个"></span>
+                                                    <span class="mark" style="left: 75%;" data-label="18-25个"></span>
+                                                    <span class="mark" style="left: 85%;" data-label="25-35个"></span>
+                                                    <span class="mark" style="left: 95%;" data-label="35个以上"></span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1773,6 +1789,32 @@ intensity3
                                             <span class="note-icon misaligned">● ●</span> 未对齐
                                             <span class="note-icon mode">⚙️</span> 检测模式
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 悬浮控制面板 (缩放时显示) - 放在 video-alignment-area 外面，确保 position: fixed 正常工作 -->
+                            <div id="floating-controls" class="floating-controls" style="display: none;">
+                                <div class="floating-controls-header">
+                                    <span class="floating-title">控制面板</span>
+                                    <span id="floating-performance" class="floating-performance">--fps | --ms</span>
+                                </div>
+                                <div class="floating-controls-body">
+                                    <div class="floating-group">
+                                        <button id="floating-zoom-out" class="floating-btn zoom">−</button>
+                                        <span id="floating-zoom-level" class="floating-zoom-level">1.0x</span>
+                                        <button id="floating-zoom-in" class="floating-btn zoom">+</button>
+                                        <button id="floating-zoom-reset" class="floating-btn reset">重置</button>
+                                    </div>
+                                    <div class="floating-group floating-performance-mode">
+                                        <span class="floating-mode-label">性能模式</span>
+                                        <label class="floating-mode-option"><input type="radio" name="floating-performance" value="accuracy"> 极精</label>
+                                        <label class="floating-mode-option"><input type="radio" name="floating-performance" value="balanced" checked> 均衡</label>
+                                        <label class="floating-mode-option"><input type="radio" name="floating-performance" value="speed"> 极速</label>
+                                    </div>
+                                    <div class="floating-group">
+                                        <button id="floating-save-spot" class="floating-btn primary" disabled>保存光斑</button>
+                                        <button id="floating-stop" class="floating-btn danger" disabled>停止</button>
                                     </div>
                                 </div>
                             </div>
