@@ -3144,21 +3144,28 @@ class VideoAlignment {
         let totalPairs = 0;
         let minDistance = Infinity;
         let alignmentPairs = [];
+        let hasAnyAlignment = false; // 是否有任何一对光斑对齐
 
         for (let i = 0; i < spots.length - 1; i++) {
             for (let j = i + 1; j < spots.length; j++) {
                 const spot1 = spots[i];
                 const spot2 = spots[j];
-                
+
                 const distance = Math.sqrt(
-                    Math.pow(spot1.x - spot2.x, 2) + 
+                    Math.pow(spot1.x - spot2.x, 2) +
                     Math.pow(spot1.y - spot2.y, 2)
                 );
 
-                const isAligned = distance < 20; // 稍微放宽对齐阈值
-                if (isAligned) totalAligned++;
+                // 统一使用15px作为对齐阈值
+                const isAligned = distance < 15;
+
+                // 每个光斑对单独判断对齐状态
+                if (isAligned) {
+                    totalAligned++;
+                    hasAnyAlignment = true; // 标记至少有一对对齐
+                }
                 totalPairs++;
-                
+
                 if (distance < minDistance) {
                     minDistance = distance;
                 }
@@ -3174,9 +3181,30 @@ class VideoAlignment {
         // 绘制对齐线
         this.drawAlignmentLines(alignmentPairs, ctx);
 
-        // 更新对齐状态
-        this.isAligned = totalPairs > 0 ? (totalAligned / totalPairs) > 0.5 : false;
-        
+        // 更新对齐状态：只要有任何一对光斑对齐就显示对齐状态
+        // 对于保存的光斑，也要单独作为个体判断
+        this.isAligned = hasAnyAlignment;
+
+        // 更新状态指示器和文本
+        if (hasAnyAlignment) {
+            this.setIndicatorState('aligned');
+            if (this.statusText) {
+                const metrics = this.getPerformanceMetrics();
+                const fpsText = metrics.actualFps > 0 ? `${metrics.actualFps}fps` : '--fps';
+                const latencyText = metrics.processingLatency > 0 ? `${metrics.processingLatency}ms` : '--ms';
+                const alignmentRate = totalPairs > 0 ? (totalAligned / totalPairs * 100).toFixed(0) : '0';
+                this.statusText.textContent = `完美对齐 (${totalAligned}/${totalPairs}对, ${alignmentRate}%) [${fpsText} | ${latencyText}]`;
+            }
+        } else {
+            this.setIndicatorState('misaligned');
+            if (this.statusText) {
+                const metrics = this.getPerformanceMetrics();
+                const fpsText = metrics.actualFps > 0 ? `${metrics.actualFps}fps` : '--fps';
+                const latencyText = metrics.processingLatency > 0 ? `${metrics.processingLatency}ms` : '--ms';
+                this.statusText.textContent = `未对齐 (最小距离: ${minDistance.toFixed(1)}px) [${fpsText} | ${latencyText}]`;
+            }
+        }
+
         // 显示对齐统计信息
         this.displayAlignmentStats(totalAligned, totalPairs, minDistance, ctx);
     }
