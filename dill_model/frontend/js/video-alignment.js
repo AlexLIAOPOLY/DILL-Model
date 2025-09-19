@@ -26,6 +26,11 @@ class VideoAlignment {
         this.adaptiveThreshold = true; // 自适应阈值
         this.displayMode = 'split'; // split, merged, bw-merged
         this.zoomFactor = 1.0;
+
+        // 对齐动画相关
+        this.alignmentCheckmarkElement = null;
+        this.lastAlignmentState = false;
+        this.checkmarkTimeout = null;
         
         // 高性能GPU加速参数 - 精度优先版本
         this.frameSkipCount = 0;
@@ -432,6 +437,10 @@ class VideoAlignment {
 
         // 停止选中光斑动画
         this.stopSelectedSpotAnimation();
+
+        // 清理勾勾动画
+        this.removeAlignmentCheckmark();
+        this.lastAlignmentState = false;
 
         this.isStreaming = false;
         this.updateButtonState(false);
@@ -1057,6 +1066,12 @@ class VideoAlignment {
                 this.statusText.textContent = `完美对齐 (${modeText}, 置信度: ${confidenceText}) [${fpsText} | ${latencyText}]`;
             }
             this.drawGreenPulse(result.mainPeak.x, result.mainPeak.y);
+
+            // 显示勾勾动画（只在状态从未对齐变为对齐时显示）
+            if (!this.lastAlignmentState) {
+                this.showAlignmentCheckmark(result.mainPeak.x, result.mainPeak.y);
+            }
+            this.lastAlignmentState = true;
         } else {
             this.setIndicatorState('misaligned');
             if (this.statusText) {
@@ -1069,6 +1084,9 @@ class VideoAlignment {
             this.drawRedMarker(result.peaks[0].x, result.peaks[0].y);
             this.drawRedMarker(result.peaks[1].x, result.peaks[1].y);
             this.drawMisalignmentLine(result.peaks[0], result.peaks[1]);
+
+            // 重置对齐状态
+            this.lastAlignmentState = false;
         }
     }
 
@@ -1089,8 +1107,15 @@ class VideoAlignment {
             // 在合并视图上绘制标记
             if (result.aligned) {
                 this.drawMergedGreenPulse(result.mainPeak.x, result.mainPeak.y);
+
+                // 在合并视图中也显示勾勾动画
+                if (!this.lastAlignmentState) {
+                    this.showAlignmentCheckmark(result.mainPeak.x, result.mainPeak.y);
+                }
+                this.lastAlignmentState = true;
             } else {
                 this.drawMergedRedMarkers(result.peaks);
+                this.lastAlignmentState = false;
             }
             
             // 绘制高斯拟合可视化（合并视图）
@@ -1356,7 +1381,7 @@ class VideoAlignment {
         const radius = 15 * pulseScale;
 
         this.overlayCtx.save();
-        
+
         // 外圈光晕
         const outerGradient = this.overlayCtx.createRadialGradient(x, y, 0, x, y, radius * 2.5);
         outerGradient.addColorStop(0, 'rgba(34, 197, 94, 0)');
@@ -1385,6 +1410,88 @@ class VideoAlignment {
         this.overlayCtx.fill();
         
         this.overlayCtx.restore();
+    }
+
+    showAlignmentCheckmark(x, y) {
+        // 如果已经显示了勾勾，不重复创建
+        if (this.alignmentCheckmarkElement && this.alignmentCheckmarkElement.parentNode) {
+            return;
+        }
+
+        // 清除之前的超时
+        if (this.checkmarkTimeout) {
+            clearTimeout(this.checkmarkTimeout);
+        }
+
+        // 创建勾勾容器
+        const checkmarkContainer = document.createElement('div');
+        checkmarkContainer.className = 'alignment-checkmark';
+
+        // 获取画布的位置信息
+        const canvasRect = this.overlayCanvas.getBoundingClientRect();
+        const absoluteX = canvasRect.left + x;
+        const absoluteY = canvasRect.top + y;
+
+        checkmarkContainer.style.left = absoluteX + 'px';
+        checkmarkContainer.style.top = absoluteY + 'px';
+
+        // 添加发光效果
+        const glowDiv = document.createElement('div');
+        glowDiv.className = 'checkmark-glow';
+        checkmarkContainer.appendChild(glowDiv);
+
+        // 添加波纹效果
+        const rippleDiv = document.createElement('div');
+        rippleDiv.className = 'checkmark-ripple';
+        for (let i = 0; i < 3; i++) {
+            const ring = document.createElement('div');
+            ring.className = 'ripple-ring';
+            rippleDiv.appendChild(ring);
+        }
+        checkmarkContainer.appendChild(rippleDiv);
+
+        // 创建SVG勾勾
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'checkmark-svg');
+        svg.setAttribute('viewBox', '0 0 52 52');
+
+        // 圆圈背景
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('class', 'checkmark-circle');
+        circle.setAttribute('cx', '26');
+        circle.setAttribute('cy', '26');
+        circle.setAttribute('r', '25');
+        circle.setAttribute('fill', 'none');
+
+        // 勾勾路径
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'checkmark-path');
+        path.setAttribute('d', 'M14 27 L22 35 L38 19');
+        path.setAttribute('fill', 'none');
+
+        svg.appendChild(circle);
+        svg.appendChild(path);
+        checkmarkContainer.appendChild(svg);
+
+        // 添加到页面
+        document.body.appendChild(checkmarkContainer);
+        this.alignmentCheckmarkElement = checkmarkContainer;
+
+        // 2秒后自动移除
+        this.checkmarkTimeout = setTimeout(() => {
+            this.removeAlignmentCheckmark();
+        }, 2000);
+    }
+
+    removeAlignmentCheckmark() {
+        if (this.alignmentCheckmarkElement) {
+            this.alignmentCheckmarkElement.remove();
+            this.alignmentCheckmarkElement = null;
+        }
+        if (this.checkmarkTimeout) {
+            clearTimeout(this.checkmarkTimeout);
+            this.checkmarkTimeout = null;
+        }
     }
 
     async tryFallbackCamera() {
