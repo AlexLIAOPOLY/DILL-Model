@@ -1030,6 +1030,9 @@ function initApp() {
                 if (dill3DSineParams) dill3DSineParams.style.display = 'none';
                 if (dill2DExposureParams) dill2DExposureParams.style.display = 'block';
                 if (dillK) dillK.style.display = 'none';
+                
+                // 自动填写2D曝光图案的最优参数
+                autoFill2DExposureParameters();
             } else {
                 if (dillMultisineParams) dillMultisineParams.style.display = 'none';
                 if (dill3DSineParams) dill3DSineParams.style.display = 'none';
@@ -1055,6 +1058,316 @@ function initApp() {
     // 初始化时设置正弦波选择器的可见性
     updateSineTypeVisibility();
     }
+
+    /**
+     * 自动填写2D曝光图案的最优参数
+     * 根据当前的模型参数自动计算并填写X、Y范围和网格步长
+     */
+    function autoFill2DExposureParameters() {
+        console.log('🎯 开始自动填写2D曝光图案参数...');
+        
+        try {
+            // 获取当前模型类型
+            const modelSelect = document.getElementById('model-select');
+            const modelType = modelSelect ? modelSelect.value : 'dill';
+            
+            // 获取当前的基础参数
+            let periodDistance = 10.0; // 默认周期距离（微米）
+            let exposureTime = 5.0; // 默认曝光时间
+            let averageIntensity = 10.0; // 默认平均光强
+            let visibility = 0.8; // 默认条纹可见度
+            
+            // 根据模型类型获取参数 - 不同模型使用不同的参数类型
+            let spatialFreq;
+            
+            if (modelType === 'dill') {
+                // Dill模型使用周期距离
+                const angleAElem = document.getElementById('angle_a');
+                const tExpElem = document.getElementById('t_exp');
+                const iAvgElem = document.getElementById('I_avg');
+                const vElem = document.getElementById('V');
+                
+                periodDistance = angleAElem ? parseFloat(angleAElem.value) || 10.0 : 10.0;
+                exposureTime = tExpElem ? parseFloat(tExpElem.value) || 5.0 : 5.0;
+                averageIntensity = iAvgElem ? parseFloat(iAvgElem.value) || 10.0 : 10.0;
+                visibility = vElem ? parseFloat(vElem.value) || 0.8 : 0.8;
+                
+                // 将周期距离转换为空间频率
+                spatialFreq = (2 * Math.PI) / periodDistance;
+            } else if (modelType === 'enhanced_dill') {
+                // 增强Dill模型使用空间频率K
+                const kElem = document.getElementById('enhanced_K');
+                const tExpElem = document.getElementById('t_exp_enhanced');
+                const i0Elem = document.getElementById('I_0');
+                const vElem = document.getElementById('V_enhanced');
+                
+                spatialFreq = kElem ? parseFloat(kElem.value) || 2.0 : 2.0;
+                exposureTime = tExpElem ? parseFloat(tExpElem.value) || 5.0 : 5.0;
+                averageIntensity = i0Elem ? parseFloat(i0Elem.value) || 1.0 : 1.0;
+                visibility = vElem ? parseFloat(vElem.value) || 0.8 : 0.8;
+                
+                // 计算对应的周期距离用于显示
+                periodDistance = (2 * Math.PI) / spatialFreq;
+            } else if (modelType === 'car') {
+                // CAR模型使用空间频率K
+                const kElem = document.getElementById('car_K');
+                const tExpElem = document.getElementById('car_t_exp');
+                const iAvgElem = document.getElementById('car_I_avg');
+                const vElem = document.getElementById('car_V');
+                
+                spatialFreq = kElem ? parseFloat(kElem.value) || 2.0 : 2.0;
+                exposureTime = tExpElem ? parseFloat(tExpElem.value) || 5.0 : 5.0;
+                averageIntensity = iAvgElem ? parseFloat(iAvgElem.value) || 10.0 : 10.0;
+                visibility = vElem ? parseFloat(vElem.value) || 0.8 : 0.8;
+                
+                // 计算对应的周期距离用于显示
+                periodDistance = (2 * Math.PI) / spatialFreq;
+            }
+            
+            console.log('📊 当前参数:', {
+                modelType,
+                periodDistance,
+                spatialFreq,
+                exposureTime,
+                averageIntensity,
+                visibility
+            });
+            
+            // 计算最优参数
+            const optimalParams = calculateOptimal2DParameters(spatialFreq, exposureTime, averageIntensity, visibility);
+            
+            // 填写计算出的参数
+            fill2DExposureInputs(optimalParams);
+            
+            console.log('✅ 2D曝光图案参数自动填写完成:', optimalParams);
+            
+        } catch (error) {
+            console.error('❌ 自动填写2D曝光图案参数时出错:', error);
+        }
+    }
+    
+    /**
+     * 计算2D曝光图案的最优参数
+     * @param {number} spatialFreq - 空间频率 K
+     * @param {number} exposureTime - 曝光时间
+     * @param {number} averageIntensity - 平均光强
+     * @param {number} visibility - 条纹可见度
+     * @returns {object} 最优参数对象
+     */
+    function calculateOptimal2DParameters(spatialFreq, exposureTime, averageIntensity, visibility) {
+        // 基于空间频率计算合适的范围
+        // 原理：确保能包含足够的周期以观察完整的曝光图案
+        const wavelength = 2 * Math.PI / spatialFreq; // 空间波长（周期距离）
+        
+        // 更智能的周期数计算：确保显示3-8个完整周期
+        let periodsToShow;
+        if (wavelength < 5) {
+            periodsToShow = 8; // 短周期显示更多
+        } else if (wavelength < 20) {
+            periodsToShow = 6; // 中等周期显示6个
+        } else if (wavelength < 50) {
+            periodsToShow = 4; // 长周期显示4个
+        } else {
+            periodsToShow = 3; // 很长周期显示3个
+        }
+        
+        const rangeRadius = periodsToShow * wavelength; // 范围半径
+        
+        // 确保范围不会太小或太大
+        const minRange = 10; // 最小范围10μm
+        const maxRange = 200; // 最大范围200μm
+        const finalRange = Math.max(minRange, Math.min(maxRange, rangeRadius));
+        
+        // 计算合适的网格步长
+        // 原理：确保每个波长有足够的采样点，但不会过度采样导致计算缓慢
+        const samplesPerWavelength = 20; // 每个波长20个采样点
+        const idealStepSize = wavelength / samplesPerWavelength;
+        
+        // 根据范围和性能考虑调整步长
+        const gridPoints = (2 * finalRange) / idealStepSize; // 总网格点数
+        const maxGridPoints = 1000; // 最大网格点数限制（避免内存问题）
+        const minStepSize = 0.1; // 最小步长0.1μm
+        const maxStepSize = 10.0; // 最大步长10μm
+        
+        let finalStepSize = idealStepSize;
+        if (gridPoints > maxGridPoints) {
+            finalStepSize = (2 * finalRange) / maxGridPoints;
+        }
+        finalStepSize = Math.max(minStepSize, Math.min(maxStepSize, finalStepSize));
+        
+        // 将步长取整到合理精度
+        finalStepSize = Math.round(finalStepSize * 10) / 10;
+        
+        // 根据曝光强度和时间微调范围（强度高或时间长需要更大范围观察效果）
+        const intensityFactor = Math.min(1.5, 1 + (averageIntensity - 10) / 50); // 强度调整因子
+        const timeFactor = Math.min(1.3, 1 + (exposureTime - 5) / 20); // 时间调整因子
+        const adjustedRange = finalRange * intensityFactor * timeFactor;
+        
+        // 最终范围调整
+        const optimalRange = Math.max(minRange, Math.min(maxRange, adjustedRange));
+        
+        return {
+            xMin: -Math.round(optimalRange),
+            xMax: Math.round(optimalRange),
+            yMin: -Math.round(optimalRange),
+            yMax: Math.round(optimalRange),
+            stepSize: finalStepSize,
+            calculationInfo: {
+                spatialFreq: Math.round(spatialFreq * 1000) / 1000,
+                wavelength: Math.round(wavelength * 100) / 100,
+                periodsShown: Math.round((2 * optimalRange) / wavelength * 10) / 10,
+                gridPoints: Math.round((2 * optimalRange) / finalStepSize),
+                samplesPerWavelength: Math.round(wavelength / finalStepSize)
+            }
+        };
+    }
+    
+    /**
+     * 填写2D曝光图案的输入框
+     * @param {object} params - 计算出的参数
+     */
+    function fill2DExposureInputs(params) {
+        // 获取当前模型类型
+        const modelSelect = document.getElementById('model-select');
+        const modelType = modelSelect ? modelSelect.value : 'dill';
+        
+        // 根据模型类型获取对应的输入框元素
+        let xMinElem, xMaxElem, yMinElem, yMaxElem, stepSizeElem, xRangeDisplay, yRangeDisplay, stepDisplay;
+        
+        if (modelType === 'dill') {
+            xMinElem = document.getElementById('x_min_2d');
+            xMaxElem = document.getElementById('x_max_2d');
+            yMinElem = document.getElementById('y_min_2d');
+            yMaxElem = document.getElementById('y_max_2d');
+            stepSizeElem = document.getElementById('step_size_2d');
+            xRangeDisplay = document.querySelector('#dill-2d-exposure-params-container .parameter-item:first-child .parameter-value');
+            yRangeDisplay = document.querySelector('#dill-2d-exposure-params-container .parameter-item:nth-child(2) .parameter-value');
+            stepDisplay = document.getElementById('auto_step_size_display');
+        } else if (modelType === 'enhanced_dill') {
+            xMinElem = document.getElementById('enhanced_x_min_2d');
+            xMaxElem = document.getElementById('enhanced_x_max_2d');
+            yMinElem = document.getElementById('enhanced_y_min_2d');
+            yMaxElem = document.getElementById('enhanced_y_max_2d');
+            stepSizeElem = document.getElementById('enhanced_step_size_2d');
+            xRangeDisplay = document.querySelector('#enhanced-dill-2d-exposure-params-container .parameter-item:first-child .parameter-value');
+            yRangeDisplay = document.querySelector('#enhanced-dill-2d-exposure-params-container .parameter-item:nth-child(2) .parameter-value');
+            stepDisplay = document.getElementById('enhanced_auto_step_size_display');
+        } else if (modelType === 'car') {
+            xMinElem = document.getElementById('car_x_min_2d');
+            xMaxElem = document.getElementById('car_x_max_2d');
+            yMinElem = document.getElementById('car_y_min_2d');
+            yMaxElem = document.getElementById('car_y_max_2d');
+            stepSizeElem = document.getElementById('car_step_size_2d');
+            xRangeDisplay = document.querySelector('#car-2d-exposure-params-container .parameter-item:first-child .parameter-value');
+            yRangeDisplay = document.querySelector('#car-2d-exposure-params-container .parameter-item:nth-child(2) .parameter-value');
+            stepDisplay = document.getElementById('car_auto_step_size_display');
+        }
+        
+        // 填写数值
+        if (xMinElem) {
+            xMinElem.value = params.xMin;
+            updateParameterDisplay(xMinElem);
+        }
+        if (xMaxElem) {
+            xMaxElem.value = params.xMax;
+            updateParameterDisplay(xMaxElem);
+        }
+        if (yMinElem) {
+            yMinElem.value = params.yMin;
+            updateParameterDisplay(yMinElem);
+        }
+        if (yMaxElem) {
+            yMaxElem.value = params.yMax;
+            updateParameterDisplay(yMaxElem);
+        }
+        if (stepSizeElem) {
+            stepSizeElem.value = params.stepSize;
+            updateParameterDisplay(stepSizeElem);
+        }
+        
+        // 更新显示值
+        if (xRangeDisplay) {
+            xRangeDisplay.textContent = `${params.xMin} 到 ${params.xMax}`;
+        }
+        if (yRangeDisplay) {
+            yRangeDisplay.textContent = `${params.yMin} 到 ${params.yMax}`;
+        }
+        if (stepDisplay) {
+            stepDisplay.textContent = params.stepSize;
+        }
+        
+        // 显示计算信息
+        console.log('📈 自动计算详情:', {
+            '模型类型': modelType,
+            '空间频率': params.calculationInfo.spatialFreq,
+            '空间波长': params.calculationInfo.wavelength + 'μm',
+            '显示周期数': params.calculationInfo.periodsShown,
+            '总网格点数': params.calculationInfo.gridPoints,
+            '每波长采样点': params.calculationInfo.samplesPerWavelength
+        });
+        
+        // 创建用户友好的提示信息
+        showAutoFillNotification(params);
+    }
+    
+    /**
+     * 显示自动填写完成的通知
+     * @param {object} params - 填写的参数
+     */
+    function showAutoFillNotification(params) {
+        // 创建临时通知元素
+        const notification = document.createElement('div');
+        notification.className = 'auto-fill-notification';
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="fas fa-magic"></i>
+                <div class="notification-text">
+                    <strong>已自动优化2D曝光图案参数</strong>
+                    <div class="notification-details">
+                        X/Y范围: ${params.xMin}~${params.xMax}μm | 网格步长: ${params.stepSize}μm<br>
+                        预计显示 ${params.calculationInfo.periodsShown} 个周期，${params.calculationInfo.gridPoints} 个网格点
+                    </div>
+                </div>
+                <button class="notification-close">&times;</button>
+            </div>
+        `;
+        
+        // 样式将通过CSS文件处理，这里只需要设置基本属性
+        
+        // 添加关闭功能
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.onclick = () => notification.remove();
+        
+        // 自动关闭
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+        
+        // 添加到页面
+        document.body.appendChild(notification);
+    }
+    
+    /**
+     * 更新参数显示值
+     * @param {HTMLElement} inputElement - 输入框元素
+     */
+    function updateParameterDisplay(inputElement) {
+        if (!inputElement) return;
+        
+        // 查找对应的显示元素
+        const parameterItem = inputElement.closest('.parameter-item');
+        if (parameterItem) {
+            const valueDisplay = parameterItem.querySelector('.parameter-value');
+            if (valueDisplay && inputElement.value) {
+                valueDisplay.textContent = inputElement.value;
+            }
+        }
+    }
+    
+    // 将函数暴露到全局作用域，供其他地方调用
+    window.autoFill2DExposureParameters = autoFill2DExposureParameters;
     
     // 正弦波类型切换逻辑（增强Dill） - 添加安全检查
     const enhancedDillSineType = document.getElementById('enhanced-dill-sine-type');
@@ -1063,19 +1376,32 @@ function initApp() {
     const enhancedK = document.getElementById('enhanced_K');
     const enhancedKItem = document.getElementById('enhanced-dill-params')?.querySelector('#K')?.closest('.parameter-item');
     
+    const enhancedDill2DExposureParams = document.getElementById('enhanced-dill-2d-exposure-params-container');
+    
     if (enhancedDillSineType) {
         enhancedDillSineType.addEventListener('change', function() {
             if (this.value === 'multi') {
                 if (enhancedDillMultisineParams) enhancedDillMultisineParams.style.display = 'block';
                 if (enhancedDill3DSineParams) enhancedDill3DSineParams.style.display = 'none';
+                if (enhancedDill2DExposureParams) enhancedDill2DExposureParams.style.display = 'none';
                 if (enhancedKItem) enhancedKItem.style.display = 'none';
             } else if (this.value === '3d') {
                 if (enhancedDillMultisineParams) enhancedDillMultisineParams.style.display = 'none';
                 if (enhancedDill3DSineParams) enhancedDill3DSineParams.style.display = 'block';
+                if (enhancedDill2DExposureParams) enhancedDill2DExposureParams.style.display = 'none';
                 if (enhancedKItem) enhancedKItem.style.display = 'none';
+            } else if (this.value === '2d_exposure_pattern') {
+                if (enhancedDillMultisineParams) enhancedDillMultisineParams.style.display = 'none';
+                if (enhancedDill3DSineParams) enhancedDill3DSineParams.style.display = 'none';
+                if (enhancedDill2DExposureParams) enhancedDill2DExposureParams.style.display = 'block';
+                if (enhancedKItem) enhancedKItem.style.display = 'none';
+                
+                // 自动填写2D曝光图案的最优参数
+                autoFill2DExposureParameters();
             } else {
                 if (enhancedDillMultisineParams) enhancedDillMultisineParams.style.display = 'none';
                 if (enhancedDill3DSineParams) enhancedDill3DSineParams.style.display = 'none';
+                if (enhancedDill2DExposureParams) enhancedDill2DExposureParams.style.display = 'none';
                 if (enhancedKItem) enhancedKItem.style.display = '';
             }
         });
@@ -1088,19 +1414,32 @@ function initApp() {
     const carKElement = document.getElementById('car_K');
     const carK = carKElement ? carKElement.closest('.parameter-item') : null;
     
+    const car2DExposureParams = document.getElementById('car-2d-exposure-params-container');
+    
     if (carSineType) {
         carSineType.addEventListener('change', function() {
             if (this.value === 'multi') {
                 if (carMultisineParams) carMultisineParams.style.display = 'block';
                 if (car3DSineParams) car3DSineParams.style.display = 'none';
+                if (car2DExposureParams) car2DExposureParams.style.display = 'none';
                 if (carK) carK.style.display = 'none';
             } else if (this.value === '3d') {
                 if (carMultisineParams) carMultisineParams.style.display = 'none';
                 if (car3DSineParams) car3DSineParams.style.display = 'block';
+                if (car2DExposureParams) car2DExposureParams.style.display = 'none';
                 if (carK) carK.style.display = 'none';
+            } else if (this.value === '2d_exposure_pattern') {
+                if (carMultisineParams) carMultisineParams.style.display = 'none';
+                if (car3DSineParams) car3DSineParams.style.display = 'none';
+                if (car2DExposureParams) car2DExposureParams.style.display = 'block';
+                if (carK) carK.style.display = 'none';
+                
+                // 自动填写2D曝光图案的最优参数
+                autoFill2DExposureParameters();
             } else {
                 if (carMultisineParams) carMultisineParams.style.display = 'none';
                 if (car3DSineParams) car3DSineParams.style.display = 'none';
+                if (car2DExposureParams) car2DExposureParams.style.display = 'none';
                 if (carK) carK.style.display = '';
             }
         });

@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/theme-colors.css?v=1.0">
     <link rel="stylesheet" href="css/professional-header-footer.css?v=1.1">
     <link rel="stylesheet" href="css/animation-controls.css?v=2.0">
+    <link rel="stylesheet" href="css/auto-fill-notification.css?v=1.0">
     <link rel="stylesheet" href="css/photo-recognition.css?v=1.1">
     <link rel="stylesheet" href="css/video-alignment.css?v=1.0">
     <!-- 添加数学公式所需的样式 -->
@@ -963,6 +964,69 @@
                                         <code data-i18n="car_formula_steps_3">3. M = 1 - e<sup>-k · [H<sup>+</sup>]<sub>diff</sub> · A</sup></code>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CAR模型2D曝光图案参数容器 -->
+                    <div class="parameter-group-container" id="car-2d-exposure-params-container" data-title="2D曝光图案参数" style="display: none;">
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">X范围 (μm)</span>
+                                <span class="parameter-value">-50 到 50</span>
+                            </div>
+                            <div class="parameter-input">
+                                <label>X最小值: </label>
+                                <input type="number" id="car_x_min_2d" value="-50" step="10" style="width: 80px;">
+                                <label style="margin-left: 10px;">X最大值: </label>
+                                <input type="number" id="car_x_max_2d" value="50" step="10" style="width: 80px;">
+                            </div>
+                            <div class="parameter-description">X方向的计算范围，单位：微米</div>
+                        </div>
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">Y范围 (μm)</span>
+                                <span class="parameter-value">-50 到 50</span>
+                            </div>
+                            <div class="parameter-input">
+                                <label>Y最小值: </label>
+                                <input type="number" id="car_y_min_2d" value="-50" step="10" style="width: 80px;">
+                                <label style="margin-left: 10px;">Y最大值: </label>
+                                <input type="number" id="car_y_max_2d" value="50" step="10" style="width: 80px;">
+                            </div>
+                            <div class="parameter-description">Y方向的计算范围，单位：微米</div>
+                        </div>
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">网格步长 (μm)</span>
+                                <span class="parameter-value" id="car_auto_step_size_display">0.2</span>
+                            </div>
+                            <div class="parameter-input">
+                                <input type="number" id="car_step_size_2d" value="0.2" min="0.1" max="50" step="0.1" style="width: 80px;" title="建议值：0.1-10μm，过小的步长会导致计算缓慢或内存不足">
+                            </div>
+                            <div class="parameter-description">自动计算，可手动调整</div>
+                        </div>
+
+                        <!-- 3D视图开关 -->
+                        <div class="parameter-item" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-top: 12px;">
+                            <div class="parameter-label">
+                                <span class="parameter-name" style="font-weight: 500; color: #334155;">3D视图模式</span>
+                                <span class="parameter-value" id="car-3d-view-status" style="color: #64748b;">关闭</span>
+                            </div>
+                            <div class="parameter-input" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+                                <label for="enable-car-3d-view-main" style="display: flex; align-items: center; cursor: pointer; width: 100%;">
+                                    <span style="flex: 1; color: #475569; font-size: 14px;">启用3D视角展示2D图案</span>
+                                    <div style="position: relative; width: 44px; height: 24px; background-color: #cbd5e1; border-radius: 12px; transition: background-color 0.2s;">
+                                        <input type="checkbox" id="enable-car-3d-view-main" style="opacity: 0; width: 0; height: 0;">
+                                        <span class="toggle-slider-3d" style="position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background-color: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="parameter-description" style="color: #64748b; font-size: 12px; margin-top: 6px; line-height: 1.4;">
+                                启用后将以3D表面图的形式展示2D曝光图案数据
                             </div>
                         </div>
                     </div>
@@ -3166,6 +3230,7 @@ intensity3
                             <option value="single" selected data-i18n="sine_wave_type_single">一维正弦波</option>
                             <option value="multi" data-i18n="sine_wave_type_multi">二维正弦波</option>
                             <option value="3d" data-i18n="sine_wave_type_3d">三维正弦波</option>
+                            <option value="2d_exposure_pattern" data-i18n="sine_wave_type_2d_exposure">2D曝光图案</option>
                         </select>
                     </div>
                     <div id="enhanced-dill-multisine-params" class="sine-wave-params-container" data-title="二维波形参数" data-i18n-title="twod_sine_wave_params" style="display:none;">
@@ -3300,6 +3365,69 @@ intensity3
                                 </div>
                             </div>
                             <div class="parameter-description" data-i18n="3d_range_description">三维分布显示范围，单位：μm</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 增强Dill模型2D曝光图案参数容器 -->
+                    <div class="parameter-group-container" id="enhanced-dill-2d-exposure-params-container" data-title="2D曝光图案参数" style="display: none;">
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">X范围 (μm)</span>
+                                <span class="parameter-value">-50 到 50</span>
+                            </div>
+                            <div class="parameter-input">
+                                <label>X最小值: </label>
+                                <input type="number" id="enhanced_x_min_2d" value="-50" step="10" style="width: 80px;">
+                                <label style="margin-left: 10px;">X最大值: </label>
+                                <input type="number" id="enhanced_x_max_2d" value="50" step="10" style="width: 80px;">
+                            </div>
+                            <div class="parameter-description">X方向的计算范围，单位：微米</div>
+                        </div>
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">Y范围 (μm)</span>
+                                <span class="parameter-value">-50 到 50</span>
+                            </div>
+                            <div class="parameter-input">
+                                <label>Y最小值: </label>
+                                <input type="number" id="enhanced_y_min_2d" value="-50" step="10" style="width: 80px;">
+                                <label style="margin-left: 10px;">Y最大值: </label>
+                                <input type="number" id="enhanced_y_max_2d" value="50" step="10" style="width: 80px;">
+                            </div>
+                            <div class="parameter-description">Y方向的计算范围，单位：微米</div>
+                        </div>
+                        
+                        <div class="parameter-item slider-fill">
+                            <div class="parameter-label">
+                                <span class="parameter-name">网格步长 (μm)</span>
+                                <span class="parameter-value" id="enhanced_auto_step_size_display">0.2</span>
+                            </div>
+                            <div class="parameter-input">
+                                <input type="number" id="enhanced_step_size_2d" value="0.2" min="0.1" max="50" step="0.1" style="width: 80px;" title="建议值：0.1-10μm，过小的步长会导致计算缓慢或内存不足">
+                            </div>
+                            <div class="parameter-description">自动计算，可手动调整</div>
+                        </div>
+
+                        <!-- 3D视图开关 -->
+                        <div class="parameter-item" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-top: 12px;">
+                            <div class="parameter-label">
+                                <span class="parameter-name" style="font-weight: 500; color: #334155;">3D视图模式</span>
+                                <span class="parameter-value" id="enhanced-3d-view-status" style="color: #64748b;">关闭</span>
+                            </div>
+                            <div class="parameter-input" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+                                <label for="enable-enhanced-3d-view-main" style="display: flex; align-items: center; cursor: pointer; width: 100%;">
+                                    <span style="flex: 1; color: #475569; font-size: 14px;">启用3D视角展示2D图案</span>
+                                    <div style="position: relative; width: 44px; height: 24px; background-color: #cbd5e1; border-radius: 12px; transition: background-color 0.2s;">
+                                        <input type="checkbox" id="enable-enhanced-3d-view-main" style="opacity: 0; width: 0; height: 0;">
+                                        <span class="toggle-slider-3d" style="position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background-color: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"></span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="parameter-description" style="color: #64748b; font-size: 12px; margin-top: 6px; line-height: 1.4;">
+                                启用后将以3D表面图的形式展示2D曝光图案数据
+                            </div>
                         </div>
                     </div>
                     
@@ -3501,6 +3629,7 @@ intensity3
                             <option value="single" selected data-i18n="sine_wave_type_single">一维正弦波</option>
                             <option value="multi" data-i18n="sine_wave_type_multi">二维正弦波</option>
                             <option value="3d" data-i18n="sine_wave_type_3d">三维正弦波</option>
+                            <option value="2d_exposure_pattern" data-i18n="sine_wave_type_2d_exposure">2D曝光图案</option>
                         </select>
                     </div>
                     <div id="car-multisine-params" class="sine-wave-params-container" data-title="二维波形参数" data-i18n-title="twod_sine_wave_params" style="display:none;">
