@@ -1360,6 +1360,39 @@ function initMaterialSelectors() {
 function autoCalculateSpaceFrequencyK(showNotice = true) {
     // 获取周期距离参数的元素
     const periodSlider = document.getElementById('angle_a'); // 重用原来的ID
+    
+    // 更新2D曝光图案自动步长显示和输入框
+    if (periodSlider) {
+        const periodValue = parseFloat(periodSlider.value);
+        if (!isNaN(periodValue) && periodValue > 0) {
+            // 安全的自动步长计算：确保不小于最小安全值
+            let autoStepSize = periodValue / 100;
+            const MIN_SAFE_STEP = 0.1;  // 最小安全步长
+            const MAX_REASONABLE_STEP = 50;  // 最大合理步长
+            
+            // 应用安全限制
+            if (autoStepSize < MIN_SAFE_STEP) {
+                autoStepSize = Math.max(MIN_SAFE_STEP, Math.min(0.2, periodValue / 10)); // 合理的安全值
+            }
+            if (autoStepSize > MAX_REASONABLE_STEP) {
+                autoStepSize = MAX_REASONABLE_STEP;
+            }
+            
+            const safeStepSize = autoStepSize.toFixed(2);
+            
+            // 更新显示值
+            const autoStepSizeDisplay = document.getElementById('auto_step_size_display');
+            if (autoStepSizeDisplay) {
+                autoStepSizeDisplay.textContent = safeStepSize;
+            }
+            
+            // 更新输入框值
+            const stepSizeInput = document.getElementById('step_size_2d');
+            if (stepSizeInput) {
+                stepSizeInput.value = safeStepSize;
+            }
+        }
+    }
     const kSlider = document.getElementById('K');
     const kInput = kSlider ? kSlider.parentElement.querySelector('.number-input') : null;
     
@@ -1747,7 +1780,7 @@ function getParameterValues() {
         const wavelength_elem = document.getElementById('wavelength');
         const wavelength_number_elem = document.getElementById('wavelength_number');
         
-        params.angle_a = angle_a_elem ? parseFloat(angle_a_elem.value) || 100.0 : 100.0;
+        params.angle_a = angle_a_elem ? parseFloat(angle_a_elem.value) || 10.0 : 10.0;
         params.exposure_threshold = exposure_threshold_elem ? parseFloat(exposure_threshold_elem.value) || 20 : 20;
         
         // 🔧 修复波长参数获取逻辑：优先使用数字输入框的值
@@ -1966,17 +1999,23 @@ function getParameterValues() {
             // params.exposure_times 不再设置，后端将使用 t_exp
             
             // 获取2D曝光图案参数
-            params.x_min_2d = x_min_2d_elem ? parseFloat(x_min_2d_elem.value) || -1000 : -1000;
-            params.x_max_2d = x_max_2d_elem ? parseFloat(x_max_2d_elem.value) || 1000 : 1000;
-            params.y_min_2d = y_min_2d_elem ? parseFloat(y_min_2d_elem.value) || -1000 : -1000;
-            params.y_max_2d = y_max_2d_elem ? parseFloat(y_max_2d_elem.value) || 1000 : 1000;
-            params.step_size_2d = step_size_2d_elem ? parseFloat(step_size_2d_elem.value) || 5 : 5;
+            params.x_min_2d = x_min_2d_elem ? parseFloat(x_min_2d_elem.value) || -50 : -50;
+            params.x_max_2d = x_max_2d_elem ? parseFloat(x_max_2d_elem.value) || 50 : 50;
+            params.y_min_2d = y_min_2d_elem ? parseFloat(y_min_2d_elem.value) || -50 : -50;
+            params.y_max_2d = y_max_2d_elem ? parseFloat(y_max_2d_elem.value) || 50 : 50;
+            // 修复步长默认值：确保不会使用过小的步长导致内存问题
+            let step_size_value = step_size_2d_elem ? parseFloat(step_size_2d_elem.value) : 0.2;
+            if (!step_size_value || step_size_value <= 0) {
+                step_size_value = 0.2; // 安全的默认值
+            }
+            params.step_size_2d = step_size_value;
             
             console.log('DILL模型2D曝光图案参数:', {
                 exposure_time: params.t_exp,
                 x_range: [params.x_min_2d, params.x_max_2d],
                 y_range: [params.y_min_2d, params.y_max_2d],
-                step_size: params.step_size_2d
+                step_size: params.step_size_2d,
+                period: params.angle_a
             });
             
             // 检查4D动画参数

@@ -254,7 +254,29 @@ def calculate():
                 x_max_2d = float(data.get('x_max_2d', 1000))
                 y_min_2d = float(data.get('y_min_2d', -1000))
                 y_max_2d = float(data.get('y_max_2d', 1000))
-                step_size_2d = float(data.get('step_size_2d', 5))
+                
+                # 获取步长，确保安全默认值
+                step_size_2d_input = data.get('step_size_2d')
+                if step_size_2d_input is None or step_size_2d_input <= 0:
+                    step_size_2d = max(5.0, angle_a / 100.0)  # 自动计算，但最小为5
+                else:
+                    step_size_2d = float(step_size_2d_input)
+                
+                # 安全检查：验证步长不会导致内存问题
+                x_points = int((x_max_2d - x_min_2d) / step_size_2d) + 1
+                y_points = int((y_max_2d - y_min_2d) / step_size_2d) + 1
+                total_points = x_points * y_points
+                MAX_SAFE_POINTS = 10_000_000  # 10M points
+                
+                if total_points > MAX_SAFE_POINTS:
+                    suggested_step = max(0.1, ((x_max_2d - x_min_2d) * (y_max_2d - y_min_2d) / MAX_SAFE_POINTS) ** 0.5)
+                    error_msg = (f"计算参数会导致内存不足！预估需要计算 {total_points:,} 个点。\n\n"
+                               f"建议修改：\n"
+                               f"• 增大步长至 {suggested_step:.2f} 或更大\n"
+                               f"• 或减小计算范围\n\n"
+                               f"当前：范围 {x_max_2d - x_min_2d} × {y_max_2d - y_min_2d} μm，步长 {step_size_2d} μm")
+                    add_error_log('dill', error_msg, dimension='2d')
+                    return jsonify(format_response(False, message=error_msg)), 400
                 
                 # 检查曝光计量计算方式
                 exposure_calculation_method = data.get('exposure_calculation_method', 'standard')
@@ -730,7 +752,29 @@ def calculate_data():
                 x_max_2d = float(data.get('x_max_2d', 1000))
                 y_min_2d = float(data.get('y_min_2d', -1000))
                 y_max_2d = float(data.get('y_max_2d', 1000))
-                step_size_2d = float(data.get('step_size_2d', 5))
+                
+                # 获取步长，确保安全默认值
+                step_size_2d_input = data.get('step_size_2d')
+                if step_size_2d_input is None or step_size_2d_input <= 0:
+                    step_size_2d = max(5.0, angle_a / 100.0)  # 自动计算，但最小为5
+                else:
+                    step_size_2d = float(step_size_2d_input)
+                
+                # 安全检查：验证步长不会导致内存问题
+                x_points = int((x_max_2d - x_min_2d) / step_size_2d) + 1
+                y_points = int((y_max_2d - y_min_2d) / step_size_2d) + 1
+                total_points = x_points * y_points
+                MAX_SAFE_POINTS = 10_000_000  # 10M points
+                
+                if total_points > MAX_SAFE_POINTS:
+                    suggested_step = max(0.1, ((x_max_2d - x_min_2d) * (y_max_2d - y_min_2d) / MAX_SAFE_POINTS) ** 0.5)
+                    error_msg = (f"计算参数会导致内存不足！预估需要计算 {total_points:,} 个点。\n\n"
+                               f"建议修改：\n"
+                               f"• 增大步长至 {suggested_step:.2f} 或更大\n"
+                               f"• 或减小计算范围\n\n"
+                               f"当前：范围 {x_max_2d - x_min_2d} × {y_max_2d - y_min_2d} μm，步长 {step_size_2d} μm")
+                    add_error_log('dill', error_msg, dimension='2d')
+                    return jsonify(format_response(False, message=error_msg)), 400
                 
                 # 检查曝光计量计算方式
                 exposure_calculation_method = data.get('exposure_calculation_method', 'standard')

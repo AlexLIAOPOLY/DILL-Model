@@ -2201,23 +2201,23 @@ class DillModel:
                                      exposure_time=100, 
                                      contrast_ctr=0.9, threshold_cd=25, wavelength_nm=405,
                                      x_min=-1000, x_max=1000, y_min=-1000, y_max=1000, 
-                                     step_size=5, exposure_calculation_method='standard',
+                                     step_size=None, exposure_calculation_method='standard',
                                      segment_intensities=None, custom_intensity_data=None,
                                      substrate_material='silicon', arc_material='sion'):
         """
-        2D曝光图案计算 - 基于周期距离的物理模型
+        2D曝光图案计算 - 基于周期距离的物理模型（自动步长计算）
         
         参数:
             I_avg: 平均入射光强度，对应MATLAB中的0.5系数，默认 0.5
             C: 光敏速率常数，默认 0.022
-            angle_a_deg: 周期距离（μm），默认 1.0 (注意：参数名保持angle_a_deg以维持API兼容性)
+            angle_a_deg: 周期距离（μm），默认 100.0 (注意：参数名保持angle_a_deg以维持API兼容性)
             exposure_time: 曝光时间（标准模式为单个时间，累积模式为总时间），默认 100
             contrast_ctr: 对比度参数，默认 0.9
             threshold_cd: 阈值剂量，默认 25
             wavelength_nm: 光波长（纳米），默认 405
             x_min, x_max: X方向范围（微米），默认 [-1000, 1000]
             y_min, y_max: Y方向范围（微米），默认 [-1000, 1000]
-            step_size: 网格步长（微米），默认 5
+            step_size: 网格步长（微米），如果为None则自动计算为 周期距离/100，确保每个周期采样100个点
             exposure_calculation_method: 曝光计算方式，'standard' 或 'cumulative'
             segment_intensities: 累积模式下的段强度列表
             custom_intensity_data: 自定义光强分布数据
@@ -2231,6 +2231,19 @@ class DillModel:
         logger.info("【Dill模型 - 2D曝光图案计算】")
         logger.info("=" * 60)
         logger.info("🔸 使用MATLAB latent_image2d.m文件逻辑")
+        
+        # 🔸 步长处理 - 自动计算或使用指定值
+        if step_size is None:
+            # 自动计算步长：周期距离 / 100，确保每个周期有100个采样点
+            auto_step_size = angle_a_deg / 100.0
+            step_size = auto_step_size
+            logger.info(f"🔧 自动步长计算:")
+            logger.info(f"   - 周期距离: {angle_a_deg} μm")
+            logger.info(f"   - 自动步长: {step_size:.6f} μm (周期/100)")
+            logger.info(f"   - 每周期采样点数: {angle_a_deg / step_size:.0f} 点")
+        else:
+            logger.info(f"🔧 使用指定步长: {step_size} μm")
+            logger.info(f"   - 每周期采样点数: {angle_a_deg / step_size:.1f} 点")
         
         # 🔸 参数合理性验证 - 防止采样混叠问题
         grid_range = x_max - x_min
@@ -2296,16 +2309,48 @@ class DillModel:
         logger.info(f"   - X范围 = [{x_min}, {x_max}] 微米，步长 = {step_size}")
         logger.info(f"   - Y范围 = [{y_min}, {y_max}] 微米，步长 = {step_size}")
         
+        # 🔸 内存安全检查 - 防止计算过大网格导致系统崩溃
+        # 计算网格点数量
+        x_points = int((x_max - x_min) / step_size) + 1
+        y_points = int((y_max - y_min) / step_size) + 1
+        total_points = x_points * y_points
+        
+        # 设置安全限制：最大1000万个点（约400MB内存）
+        MAX_SAFE_POINTS = 10_000_000  # 10M points
+        RECOMMENDED_MAX_POINTS = 1_000_000  # 1M points (推荐上限)
+        
+        logger.info(f"🔸 内存安全检查:")
+        logger.info(f"   - 预估网格点数: {x_points} × {y_points} = {total_points:,} 点")
+        logger.info(f"   - 预估内存需求: {total_points * 8 * 4 / 1024 / 1024:.1f} MB")  # 假设每点4个float64值
+        logger.info(f"   - 安全限制: {MAX_SAFE_POINTS:,} 点")
+        
+        if total_points > MAX_SAFE_POINTS:
+            error_msg = (f"❌ 计算网格过大！预估 {total_points:,} 个点超过安全限制 {MAX_SAFE_POINTS:,} 个点。\n"
+                        f"当前参数：范围=[{x_min}, {x_max}] × [{y_min}, {y_max}]，步长={step_size}\n"
+                        f"建议方案：\n"
+                        f"1. 增大步长至 {max(0.1, (x_max-x_min) * (y_max-y_min) / MAX_SAFE_POINTS)**0.5:.2f} 或更大\n"
+                        f"2. 减小计算范围\n"
+                        f"3. 使用更合理的参数组合")
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        elif total_points > RECOMMENDED_MAX_POINTS:
+            logger.warning(f"⚠️  网格较大：{total_points:,} 个点，计算可能较慢")
+            logger.warning(f"   推荐减小网格或增大步长至 {max(0.1, (x_max-x_min) * (y_max-y_min) / RECOMMENDED_MAX_POINTS)**0.5:.2f}")
+        
         # 创建空间网格坐标 (对应MATLAB: X=-1000:5:1000; Y=-1000:5:1000)
         x_range = np.arange(x_min, x_max + step_size, step_size)
         y_range = np.arange(y_min, y_max + step_size, step_size)
+        
+        logger.info(f"🔸 创建网格...")
         X, Y = np.meshgrid(x_range, y_range)
         
         grid_shape = X.shape
         logger.info(f"🔸 网格信息:")
-        logger.info(f"   - 网格大小: {grid_shape[0]} × {grid_shape[1]} = {grid_shape[0] * grid_shape[1]} 点")
+        logger.info(f"   - 实际网格大小: {grid_shape[0]} × {grid_shape[1]} = {grid_shape[0] * grid_shape[1]:,} 点")
         logger.info(f"   - X坐标点数: {len(x_range)}")
         logger.info(f"   - Y坐标点数: {len(y_range)}")
+        logger.info(f"   - 内存状态: ✅ 安全")
         
         # 存储计算结果
         results_data = {
@@ -2320,7 +2365,9 @@ class DillModel:
                 'spatial_frequency': spatial_frequency,
                 'contrast_ctr': contrast_ctr,
                 'threshold_cd': threshold_cd,
-                'wavelength_nm': wavelength_nm
+                'wavelength_nm': wavelength_nm,
+                'step_size_auto': step_size,  # 添加自动计算的步长信息
+                'grid_points_per_period': angle_a_deg / step_size if step_size > 0 else 100  # 每周期采样点数
             },
             'sine_type': '2d_exposure_pattern'
         }

@@ -2317,11 +2317,11 @@ intensity3
                             <div class="parameter-label">
                                 <span class="parameter-name">周期距离 (Period) <span class="unit-label">μm</span></span>
                                 
-                                <span class="parameter-value">1.0</span>
+                                <span class="parameter-value">10.0</span>
                             </div>
                             <div class="parameter-input">
-                                <input type="range" id="angle_a" class="slider" min="0.00001" max="6.28" step="0.00001" value="1.0" title="周期距离滑块" aria-label="周期距离">
-                                <input type="number" class="number-input" value="1.0" min="0.00001" max="6.28" step="0.00001" title="周期距离数值输入" aria-label="周期距离数值">
+                                <input type="range" id="angle_a" class="slider" min="0.1" max="100" step="0.1" value="10.0" title="周期距离滑块" aria-label="周期距离">
+                                <input type="number" class="number-input" value="10.0" min="0.1" max="100" step="0.1" title="周期距离数值输入" aria-label="周期距离数值">
                             </div>
                             <div class="parameter-description" data-i18n="param_desc_angle_a">光强分布阶段：控制干涉条纹的真实周期距离（两个最低点间距，单位μm），周期小=条纹密集=空间频率高</div>
                         </div>
@@ -3041,13 +3041,13 @@ intensity3
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
                                 <span class="parameter-name">X范围 (μm)</span>
-                                <span class="parameter-value">-1000 到 1000</span>
+                                <span class="parameter-value">-50 到 50</span>
                             </div>
                             <div class="parameter-input">
                                 <label>X最小值: </label>
-                                <input type="number" id="x_min_2d" value="-1000" step="10" style="width: 80px;">
+                                <input type="number" id="x_min_2d" value="-50" step="10" style="width: 80px;">
                                 <label style="margin-left: 10px;">X最大值: </label>
-                                <input type="number" id="x_max_2d" value="1000" step="10" style="width: 80px;">
+                                <input type="number" id="x_max_2d" value="50" step="10" style="width: 80px;">
                             </div>
                             <div class="parameter-description">X方向的计算范围，单位：微米</div>
                         </div>
@@ -3055,13 +3055,13 @@ intensity3
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
                                 <span class="parameter-name">Y范围 (μm)</span>
-                                <span class="parameter-value">-1000 到 1000</span>
+                                <span class="parameter-value">-50 到 50</span>
                             </div>
                             <div class="parameter-input">
                                 <label>Y最小值: </label>
-                                <input type="number" id="y_min_2d" value="-1000" step="10" style="width: 80px;">
+                                <input type="number" id="y_min_2d" value="-50" step="10" style="width: 80px;">
                                 <label style="margin-left: 10px;">Y最大值: </label>
-                                <input type="number" id="y_max_2d" value="1000" step="10" style="width: 80px;">
+                                <input type="number" id="y_max_2d" value="50" step="10" style="width: 80px;">
                             </div>
                             <div class="parameter-description">Y方向的计算范围，单位：微米</div>
                         </div>
@@ -3069,12 +3069,12 @@ intensity3
                         <div class="parameter-item slider-fill">
                             <div class="parameter-label">
                                 <span class="parameter-name">网格步长 (μm)</span>
-                                <span class="parameter-value">5</span>
+                                <span class="parameter-value" id="auto_step_size_display">0.2</span>
                             </div>
                             <div class="parameter-input">
-                                <input type="number" id="step_size_2d" value="5" min="1" max="50" step="1" style="width: 80px;">
+                                <input type="number" id="step_size_2d" value="0.2" min="0.1" max="50" step="0.1" style="width: 80px;" title="建议值：0.1-10μm，过小的步长会导致计算缓慢或内存不足">
                             </div>
-                            <div class="parameter-description">空间网格步长，影响计算精度和计算量，步长越小精度越高但计算越慢</div>
+                            <div class="parameter-description">自动计算，可手动调整</div>
                         </div>
 
                         <!-- 3D视图开关 -->
