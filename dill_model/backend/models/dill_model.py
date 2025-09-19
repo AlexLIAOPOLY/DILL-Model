@@ -1212,6 +1212,77 @@ class DillModel:
             
             y_axis_points = np.array(y_range) if y_range is not None else np.linspace(0, 10, 100)
             
+            # 🔧 检查是否使用自定义光强数据
+            if custom_intensity_data is not None and 'x' in custom_intensity_data and 'intensity' in custom_intensity_data:
+                logger.info(f"🔸 2D多维模式使用自定义光强分布数据")
+                logger.warning(f"⚠️  注意：2D多维模式的自定义光强数据仅应用于X方向，Y方向使用标准余弦分布")
+                
+                # 对于2D多维模式，使用自定义数据处理X方向光强分布
+                custom_x = np.array(custom_intensity_data['x'])
+                custom_intensity = np.array(custom_intensity_data['intensity'])
+                
+                # 🔧 执行单位转换（复用2D曝光图案的逻辑）
+                original_unit = custom_intensity_data.get('original_unit', 'mm')
+                unit_scale = custom_intensity_data.get('unit_scale', 1.0)
+                
+                # 智能单位转换判断
+                target_range = x_max - x_min if 'x_max' in locals() and 'x_min' in locals() else 20  # 默认20μm范围
+                target_is_um = target_range >= 10
+                data_range = custom_x.max() - custom_x.min()
+                
+                logger.info(f"🔸 2D多维模式智能单位转换:")
+                logger.info(f"   - 声明单位: {original_unit}")
+                logger.info(f"   - 数据范围: [{custom_x.min():.6f}, {custom_x.max():.6f}] ({data_range:.6f})")
+                logger.info(f"   - 目标范围: {target_range:.1f} {'μm' if target_is_um else 'mm'}")
+                
+                # 执行单位转换
+                if target_is_um:  # 目标是微米网格
+                    if original_unit == 'mm':
+                        custom_x = custom_x * 1000.0
+                        logger.info(f"🔸 单位转换: mm → μm，坐标×1000")
+                    elif original_unit == 'nm':
+                        custom_x = custom_x / 1000.0  # nm → μm 需要除1000
+                        logger.info(f"🔸 单位转换: nm → μm，坐标÷1000")
+                    elif original_unit in ['μm', 'um', 'micron']:
+                        logger.info(f"🔸 单位匹配: μm → μm，无需转换")
+                else:  # 目标是毫米网格
+                    if original_unit in ['μm', 'um', 'micron']:
+                        custom_x = custom_x / 1000.0
+                        logger.info(f"🔸 单位转换: μm → mm，坐标÷1000")
+                    elif original_unit == 'nm':
+                        custom_x = custom_x / 1000000.0  # nm → mm 需要除1000000
+                        logger.info(f"🔸 单位转换: nm → mm，坐标÷1000000")
+                    elif original_unit == 'mm':
+                        logger.info(f"🔸 单位匹配: mm → mm，无需转换")
+                
+                # 计算X方向的自定义光强分布（插值到x_axis_points）
+                outside_range_mode = custom_intensity_data.get('outside_range_mode', 'zero')
+                custom_intensity_value = custom_intensity_data.get('custom_intensity_value', 0)
+                
+                logger.info(f"🔸 X方向自定义光强插值模式: {outside_range_mode}")
+                
+                # 执行插值处理
+                if outside_range_mode == 'edge':
+                    intensity_x = np.interp(x_axis_points, custom_x, custom_intensity)
+                elif outside_range_mode == 'custom':
+                    intensity_x = np.full_like(x_axis_points, custom_intensity_value, dtype=float)
+                    mask = (x_axis_points >= custom_x.min()) & (x_axis_points <= custom_x.max())
+                    intensity_x[mask] = np.interp(x_axis_points[mask], custom_x, custom_intensity)
+                else:  # 'zero' mode (default)
+                    intensity_x = np.zeros_like(x_axis_points, dtype=float)
+                    mask = (x_axis_points >= custom_x.min()) & (x_axis_points <= custom_x.max())
+                    if np.any(mask):
+                        intensity_x[mask] = np.interp(x_axis_points[mask], custom_x, custom_intensity)
+                
+                # 应用I_avg和ARC透射率修正因子
+                intensity_x = I_avg * arc_transmission_factor * intensity_x
+                
+                logger.info(f"   - X方向光强范围: [{intensity_x.min():.6f}, {intensity_x.max():.6f}]")
+            else:
+                # 使用标准余弦分布
+                intensity_x = None
+                logger.info(f"🔸 2D多维模式使用标准余弦光强分布")
+            
             if enable_4d_animation:
                 logger.info(f"🔸 2D模式4D动画参数:")
                 logger.info(f"   - 时间范围: {t_start}s ~ {t_end}s")
@@ -1238,7 +1309,14 @@ class DillModel:
                     thickness_2d = []
                     
                     for y in y_axis_points:
-                        intensity_line = I_avg * (1 + V * np.cos(Kx * x_axis_points + Ky * y + phi_t))
+                        if intensity_x is not None:
+                            # 使用自定义X方向光强 + 标准Y方向调制
+                            y_modulation = (1 + V * np.cos(Ky * y + phi_t))
+                            intensity_line = intensity_x * y_modulation
+                        else:
+                            # 使用标准2D余弦分布
+                            intensity_line = I_avg * arc_transmission_factor * (1 + V * np.cos(Kx * x_axis_points + Ky * y + phi_t))
+                        
                         exposure_dose_line = intensity_line * t_exp
                         thickness_line = np.exp(-C * exposure_dose_line)
                         
@@ -1258,15 +1336,34 @@ class DillModel:
                 phi = parse_phi_expr(phi_expr, 0) if phi_expr is not None else 0.0
                 
                 X_grid, Y_grid = np.meshgrid(x_axis_points, y_axis_points)
-                exposure_dose_2d = I_avg * (1 + V * np.cos(Kx * X_grid + Ky * Y_grid + phi)) * t_exp
-                thickness_2d = np.exp(-C * exposure_dose_2d)
+                
+                if intensity_x is not None:
+                    # 使用自定义X方向光强分布
+                    logger.info(f"🔸 2D静态模式：结合自定义X光强和标准Y调制")
+                    
+                    # 创建2D光强分布：自定义X方向 + 标准Y方向调制
+                    intensity_2d = np.zeros_like(X_grid)
+                    for i, y_val in enumerate(y_axis_points):
+                        y_modulation = (1 + V * np.cos(Ky * y_val + phi))
+                        intensity_2d[i, :] = intensity_x * y_modulation
+                    
+                    exposure_dose_2d = intensity_2d * t_exp
+                    thickness_2d = np.exp(-C * exposure_dose_2d)
+                    
+                    logger.info(f"   - 混合光强范围: [{intensity_2d.min():.6f}, {intensity_2d.max():.6f}]")
+                else:
+                    # 使用标准2D余弦分布
+                    logger.info(f"🔸 2D静态模式：使用标准2D余弦分布")
+                    exposure_dose_2d = I_avg * arc_transmission_factor * (1 + V * np.cos(Kx * X_grid + Ky * Y_grid + phi)) * t_exp
+                    thickness_2d = np.exp(-C * exposure_dose_2d)
                 
                 return {
                     'x_coords': x_axis_points.tolist(),
                     'y_coords': y_axis_points.tolist(),
                     'z_exposure_dose': exposure_dose_2d.tolist(),
                     'z_thickness': thickness_2d.tolist(),
-                    'is_2d': True
+                    'is_2d': True,
+                    'custom_intensity_mode': intensity_x is not None
                 }
         
         # 一维正弦波处理
@@ -2337,10 +2434,84 @@ class DillModel:
                 
             logger.info(f"🔍 数据范围检查: {coverage_status} (覆盖比例: {coverage_ratio*100:.1f}%)")
             
+            # 🔧 智能范围调整：当数据范围太小时，自动调整目标网格来匹配数据
+            if coverage_ratio < 0.05:  # 覆盖率小于5%，需要调整
+                logger.warning(f"⚠️  数据覆盖率过低 ({coverage_ratio*100:.1f}%)，启动智能范围调整")
+                
+                # 计算合适的显示范围：数据范围的1.2-2倍，确保有足够的上下文
+                data_center = (custom_x.max() + custom_x.min()) / 2
+                display_span = max(data_span * 1.5, data_span + 20)  # 至少比数据范围大50%或增加20μm
+                
+                # 调整目标网格范围
+                x_min_adjusted = data_center - display_span / 2
+                x_max_adjusted = data_center + display_span / 2
+                y_min_adjusted = y_min  # Y方向保持原设置
+                y_max_adjusted = y_max
+                
+                logger.info(f"🔧 自动调整网格范围:")
+                logger.info(f"   - 原X范围: [{x_min:.1f}, {x_max:.1f}] μm")
+                logger.info(f"   - 新X范围: [{x_min_adjusted:.1f}, {x_max_adjusted:.1f}] μm")
+                logger.info(f"   - 数据中心: {data_center:.1f} μm")
+                logger.info(f"   - 显示范围: {display_span:.1f} μm")
+                
+                # 重新创建网格
+                x_range = np.arange(x_min_adjusted, x_max_adjusted + step_size, step_size)
+                y_range = np.arange(y_min_adjusted, y_max_adjusted + step_size, step_size)
+                X, Y = np.meshgrid(x_range, y_range)
+                
+                # 更新results_data中的坐标信息
+                results_data.update({
+                    'x_coords': x_range,
+                    'y_coords': y_range,
+                    'X_grid': X,
+                    'Y_grid': Y
+                })
+                
+                # 重新计算覆盖率
+                new_target_span = x_max_adjusted - x_min_adjusted
+                new_coverage_ratio = data_span / new_target_span if new_target_span > 0 else 0
+                logger.info(f"✅ 调整后覆盖率: {new_coverage_ratio*100:.1f}%")
+                
+                grid_shape = X.shape
+                logger.info(f"🔸 更新后网格信息:")
+                logger.info(f"   - 网格大小: {grid_shape[0]} × {grid_shape[1]} = {grid_shape[0] * grid_shape[1]} 点")
+                logger.info(f"   - X坐标点数: {len(x_range)}")
+                logger.info(f"   - Y坐标点数: {len(y_range)}")
+            
+            # 🔧 改进的插值处理：处理边界外的数据
+            outside_range_mode = custom_intensity_data.get('outside_range_mode', 'zero')
+            custom_intensity_value = custom_intensity_data.get('custom_intensity_value', 0)
+            
+            logger.info(f"🔸 数据范围外光强处理模式: {outside_range_mode}")
+            if outside_range_mode == 'custom':
+                logger.info(f"   - 使用自定义值: {custom_intensity_value}")
+            elif outside_range_mode == 'zero':
+                logger.info(f"   - 使用零值作为范围外光强")
+            elif outside_range_mode == 'edge':
+                logger.info(f"   - 使用边界值作为范围外光强")
+            
+            # 执行插值，根据outside_range_mode处理边界外的值
+            if outside_range_mode == 'edge':
+                # 使用边界值外推
+                intensity_1d_raw = np.interp(x_range, custom_x, custom_intensity)
+            elif outside_range_mode == 'custom':
+                # 使用自定义值填充范围外
+                intensity_1d_raw = np.full_like(x_range, custom_intensity_value, dtype=float)
+                # 在数据范围内的点使用插值
+                mask = (x_range >= custom_x.min()) & (x_range <= custom_x.max())
+                intensity_1d_raw[mask] = np.interp(x_range[mask], custom_x, custom_intensity)
+            else:  # 'zero' mode (default)
+                # 使用零值填充范围外  
+                intensity_1d_raw = np.zeros_like(x_range, dtype=float)
+                # 在数据范围内的点使用插值
+                mask = (x_range >= custom_x.min()) & (x_range <= custom_x.max())
+                if np.any(mask):
+                    intensity_1d_raw[mask] = np.interp(x_range[mask], custom_x, custom_intensity)
+            
             # 关键修复：只对X的1D坐标插值，然后广播到2D网格
             # 严格按照MATLAB逻辑：D0(i,j) 只依赖于X(i)，对所有j都相同
             # 自定义光强需要乘以I_avg系数和ARC透射率修正因子
-            intensity_1d = I_avg * arc_transmission_factor * np.interp(x_range, custom_x, custom_intensity)
+            intensity_1d = I_avg * arc_transmission_factor * intensity_1d_raw
             # 广播到2D网格：每一行都相同（只依赖X坐标）
             intensity_factor = np.broadcast_to(intensity_1d, (len(y_range), len(x_range)))
             

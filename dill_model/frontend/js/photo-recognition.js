@@ -2423,36 +2423,59 @@ class PhotoRecognition {
         // 计算总数据点数量
         const totalPoints = xData.length * yData.length;
         
-        // 如果数据量很大，显示提示信息
-        if (totalPoints > 10000) {
-            const infoRow = document.createElement('tr');
-            infoRow.className = 'data-info-warning';
+        // 2D数据预览限制：只显示前1000个数据点
+        const maxPreviewRows = 1000;
+        const shouldLimitRows = totalPoints > maxPreviewRows;
+        const displayRows = shouldLimitRows ? maxPreviewRows : totalPoints;
+        
+        // 显示数据量信息
+        const infoRow = document.createElement('tr');
+        infoRow.className = 'data-info-header';
+        
+        if (shouldLimitRows) {
             infoRow.innerHTML = `
-                <td colspan="4" style="text-align: center; background-color: #e8f5e8; color: #2e7d2e; padding: 12px; border-radius: 6px; border-left: 4px solid #4caf50;">
-                    📊 显示完整数据：${totalPoints.toLocaleString()} 个数据点<br>
-                    <small style="color: #666; font-size: 11px;">数据量较大，页面滚动可能较慢，建议使用浏览器搜索功能快速定位数据</small>
+                <td colspan="4" style="text-align: center; background-color: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                    📊 2D数据预览：显示前 ${displayRows.toLocaleString()} 个数据点 (总共 ${totalPoints.toLocaleString()} 个)<br>
+                    <small style="color: #666; font-size: 11px;">
+                        为避免页面卡顿，预览模式只显示前1000个数据点。
+                        如需查看完整数据，请使用"导出数据"功能。
+                    </small>
                 </td>
             `;
-            tbody.appendChild(infoRow);
-            
-            // 8秒后自动消失
-            setTimeout(() => {
-                if (infoRow.parentNode) {
-                    infoRow.style.opacity = '0';
-                    setTimeout(() => {
-                        if (infoRow.parentNode) {
-                            infoRow.parentNode.removeChild(infoRow);
-                        }
-                    }, 500);
-                }
-            }, 8000);
+        } else {
+            infoRow.innerHTML = `
+                <td colspan="4" style="text-align: center; background-color: #e8f5e8; color: #2e7d2e; padding: 12px; border-radius: 6px; border-left: 4px solid #4caf50;">
+                    📊 2D数据预览：显示全部 ${totalPoints.toLocaleString()} 个数据点<br>
+                    <small style="color: #666; font-size: 11px;">数据量适中，显示完整数据</small>
+                </td>
+            `;
         }
+        
+        tbody.appendChild(infoRow);
+        
+        // 10秒后自动消失信息提示
+        setTimeout(() => {
+            if (infoRow.parentNode) {
+                infoRow.style.opacity = '0';
+                setTimeout(() => {
+                    if (infoRow.parentNode) {
+                        infoRow.parentNode.removeChild(infoRow);
+                    }
+                }, 500);
+            }
+        }, 10000);
         
         let rowCount = 0;
         
-        // 遍历所有2D数据点（完整显示）
-        for (let j = 0; j < yData.length; j++) {
+        // 遍历2D数据点（限制预览数量）
+        outerLoop: for (let j = 0; j < yData.length; j++) {
             for (let i = 0; i < xData.length; i++) {
+                // 检查是否已达到预览上限
+                if (rowCount >= maxPreviewRows) {
+                    console.log(`📊 2D数据预览已达到上限 ${maxPreviewRows} 行，停止渲染`);
+                    break outerLoop;
+                }
+                
                 const row = document.createElement('tr');
                 row.className = 'data-row';
                 
@@ -2466,14 +2489,27 @@ class PhotoRecognition {
                 tbody.appendChild(row);
                 rowCount++;
                 
-                // 每1000行显示一次进度（仅在大数据量时）
-                if (totalPoints > 10000 && rowCount % 1000 === 0) {
-                    console.log(`📊 已渲染 ${rowCount.toLocaleString()} / ${totalPoints.toLocaleString()} 行数据...`);
+                // 每100行显示一次进度（避免过于频繁的日志）
+                if (rowCount % 100 === 0) {
+                    console.log(`📊 已渲染 ${rowCount} / ${displayRows} 行数据...`);
                 }
             }
         }
         
-        console.log(`✅ 2D数据表格填充完成，显示全部 ${rowCount.toLocaleString()} 行数据`);
+        // 如果数据被截断，添加提示行
+        if (shouldLimitRows) {
+            const truncateRow = document.createElement('tr');
+            truncateRow.className = 'data-truncate-warning';
+            truncateRow.innerHTML = `
+                <td colspan="4" style="text-align: center; background-color: #f8f9fa; color: #6c757d; padding: 10px; font-style: italic; border-top: 2px dashed #dee2e6;">
+                    ⚠️ 还有 ${(totalPoints - rowCount).toLocaleString()} 个数据点未显示<br>
+                    <small>请使用"导出数据"功能获取完整数据</small>
+                </td>
+            `;
+            tbody.appendChild(truncateRow);
+        }
+        
+        console.log(`✅ 2D数据表格填充完成，显示 ${rowCount.toLocaleString()} / ${totalPoints.toLocaleString()} 行数据 (预览模式: ${shouldLimitRows ? '是' : '否'})`);
     }
 
     /**
@@ -5530,3 +5566,4 @@ ${'-'.repeat(70)}
 
 // 导出类供全局使用
 window.PhotoRecognition = PhotoRecognition;
+

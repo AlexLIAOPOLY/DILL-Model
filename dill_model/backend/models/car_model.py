@@ -347,7 +347,7 @@ class CARModel:
             'additionalInfo': additionalInfo
         }
     
-    def generate_data(self, I_avg, V, K, t_exp, acid_gen_efficiency, diffusion_length, reaction_rate, amplification, contrast, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20):
+    def generate_data(self, I_avg, V, K, t_exp, acid_gen_efficiency, diffusion_length, reaction_rate, amplification, contrast, sine_type='1d', Kx=None, Ky=None, Kz=None, phi_expr=None, y_range=None, z_range=None, enable_4d_animation=False, t_start=0, t_end=5, time_steps=20, custom_intensity_data=None):
         """
         生成模型数据用于交互式图表
         
@@ -650,13 +650,89 @@ class CARModel:
         elif sine_type == 'multi' and Kx is not None and Ky is not None:
             if y_range is not None and len(y_range) > 1:
                 y_axis_points = np.array(y_range)
-                # 创建二维网格
-                X_grid, Y_grid = np.meshgrid(x_np, y_axis_points)
                 
-                # 计算曝光剂量分布
-                phi = parse_phi_expr(phi_expr, 0) if phi_expr is not None else 0.0
-                initial_acid_2d = self.calculate_acid_generation(X_grid, I_avg, V, None, t_exp, acid_gen_efficiency, 
-                                                          sine_type, Kx, Ky, None, phi_expr, Y_grid)
+                # 🔧 检查是否使用自定义光强数据（与Dill模型保持一致）
+                if custom_intensity_data is not None and 'x' in custom_intensity_data and 'intensity' in custom_intensity_data:
+                    logger.info(f"🔸 CAR模型2D模式使用自定义光强分布数据")
+                    logger.warning(f"⚠️  注意：CAR模型2D模式的自定义光强数据仅应用于X方向，Y方向使用标准余弦分布")
+                    
+                    # 对于CAR模型2D模式，使用自定义数据处理X方向光强分布
+                    custom_x = np.array(custom_intensity_data['x'])
+                    custom_intensity = np.array(custom_intensity_data['intensity'])
+                    
+                    # 🔧 执行单位转换（复用Dill模型的逻辑）
+                    original_unit = custom_intensity_data.get('original_unit', 'mm')
+                    unit_scale = custom_intensity_data.get('unit_scale', 1.0)
+                    
+                    # 智能单位转换判断（假设CAR模型通常工作在微米级）
+                    target_range = 20  # 默认20μm范围，CAR模型通常在亚微米级工作
+                    target_is_um = True  # CAR模型通常使用微米单位
+                    data_range = custom_x.max() - custom_x.min()
+                    
+                    logger.info(f"🔸 CAR模型2D模式智能单位转换:")
+                    logger.info(f"   - 声明单位: {original_unit}")
+                    logger.info(f"   - 数据范围: [{custom_x.min():.6f}, {custom_x.max():.6f}] ({data_range:.6f})")
+                    logger.info(f"   - 目标单位: μm (CAR模型默认)")
+                    
+                    # 执行单位转换到微米
+                    if original_unit == 'mm':
+                        custom_x = custom_x * 1000.0
+                        logger.info(f"🔸 单位转换: mm → μm，坐标×1000")
+                    elif original_unit == 'nm':
+                        custom_x = custom_x / 1000.0  # nm → μm 需要除1000
+                        logger.info(f"🔸 单位转换: nm → μm，坐标÷1000")
+                    elif original_unit in ['μm', 'um', 'micron']:
+                        logger.info(f"🔸 单位匹配: μm → μm，无需转换")
+                    
+                    # 计算X方向的自定义光强分布（插值到x_np）
+                    outside_range_mode = custom_intensity_data.get('outside_range_mode', 'zero')
+                    custom_intensity_value = custom_intensity_data.get('custom_intensity_value', 0)
+                    
+                    logger.info(f"🔸 CAR模型X方向自定义光强插值模式: {outside_range_mode}")
+                    
+                    # 执行插值处理
+                    if outside_range_mode == 'edge':
+                        intensity_x = np.interp(x_np, custom_x, custom_intensity)
+                    elif outside_range_mode == 'custom':
+                        intensity_x = np.full_like(x_np, custom_intensity_value, dtype=float)
+                        mask = (x_np >= custom_x.min()) & (x_np <= custom_x.max())
+                        intensity_x[mask] = np.interp(x_np[mask], custom_x, custom_intensity)
+                    else:  # 'zero' mode (default)
+                        intensity_x = np.zeros_like(x_np, dtype=float)
+                        mask = (x_np >= custom_x.min()) & (x_np <= custom_x.max())
+                        if np.any(mask):
+                            intensity_x[mask] = np.interp(x_np[mask], custom_x, custom_intensity)
+                    
+                    logger.info(f"   - CAR模型X方向光强范围: [{intensity_x.min():.6f}, {intensity_x.max():.6f}]")
+                    
+                    # 创建二维网格
+                    X_grid, Y_grid = np.meshgrid(x_np, y_axis_points)
+                    
+                    # 计算混合光强分布：自定义X方向 + 标准Y方向调制
+                    phi = parse_phi_expr(phi_expr, 0) if phi_expr is not None else 0.0
+                    
+                    intensity_2d = np.zeros_like(X_grid)
+                    for i, y_val in enumerate(y_axis_points):
+                        y_modulation = (1 + V * np.cos(Ky * y_val + phi))
+                        intensity_2d[i, :] = intensity_x * y_modulation
+                    
+                    # 计算初始光酸浓度分布（应用I_avg系数）
+                    initial_acid_2d = acid_gen_efficiency * I_avg * intensity_2d * t_exp
+                    
+                    logger.info(f"🔸 CAR模型混合光强模式:")
+                    logger.info(f"   - 混合光强范围: [{intensity_2d.min():.6f}, {intensity_2d.max():.6f}]")
+                    logger.info(f"   - 初始光酸浓度范围: [{initial_acid_2d.min():.6f}, {initial_acid_2d.max():.6f}]")
+                else:
+                    # 使用标准2D余弦分布
+                    logger.info(f"🔸 CAR模型2D模式使用标准余弦光强分布")
+                    
+                    # 创建二维网格
+                    X_grid, Y_grid = np.meshgrid(x_np, y_axis_points)
+                    
+                    # 计算曝光剂量分布
+                    phi = parse_phi_expr(phi_expr, 0) if phi_expr is not None else 0.0
+                    initial_acid_2d = self.calculate_acid_generation(X_grid, I_avg, V, None, t_exp, acid_gen_efficiency, 
+                                                              sine_type, Kx, Ky, None, phi_expr, Y_grid)
                                                           
                 # 模拟光酸扩散
                 diffused_acid_2d = self.simulate_acid_diffusion(initial_acid_2d, diffusion_length)

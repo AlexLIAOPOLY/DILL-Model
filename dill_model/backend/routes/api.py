@@ -1257,7 +1257,9 @@ def calculate_data():
                 y_range = np.linspace(y_min, y_max, y_points).tolist()
                 
                 calc_start = time.time()
-                plot_data = model.generate_data(I_avg, V_car, None, t_exp_car, acid_gen_eff, diff_len, react_rate, amp, contr, sine_type=sine_type, Kx=Kx, Ky=Ky, phi_expr=phi_expr, y_range=y_range)
+                # 🔧 添加自定义光强数据支持
+                custom_intensity_data = data.get('custom_intensity_data')
+                plot_data = model.generate_data(I_avg, V_car, None, t_exp_car, acid_gen_eff, diff_len, react_rate, amp, contr, sine_type=sine_type, Kx=Kx, Ky=Ky, phi_expr=phi_expr, y_range=y_range, custom_intensity_data=custom_intensity_data)
                 calc_time = time.time() - calc_start
                 
                 if plot_data and 'z_acid_concentration' in plot_data:
@@ -1327,13 +1329,16 @@ def calculate_data():
                     add_log_entry('info', 'car', f"启用4D动画: t_start={t_start}, t_end={t_end}, time_steps={time_steps}", dimension='4d')
                 
                 calc_start = time.time()
+                # 🔧 添加自定义光强数据支持
+                custom_intensity_data = data.get('custom_intensity_data')
                 plot_data = model.generate_data(I_avg, V_car, None, t_exp_car, acid_gen_eff, diff_len, react_rate, amp, contr, 
                                              sine_type=sine_type, Kx=Kx, Ky=Ky, Kz=Kz, phi_expr=phi_expr, 
                                              y_range=y_range, z_range=z_range, 
                                              enable_4d_animation=enable_4d_animation,
                                              t_start=t_start if enable_4d_animation else 0,
                                              t_end=t_end if enable_4d_animation else 5,
-                                             time_steps=time_steps if enable_4d_animation else 20)
+                                             time_steps=time_steps if enable_4d_animation else 20,
+                                             custom_intensity_data=custom_intensity_data)
                 calc_time = time.time() - calc_start
                 
                 print(f"[CAR-3D] 🎯 三维化学放大计算完成统计:")
@@ -1370,7 +1375,9 @@ def calculate_data():
                 add_log_entry('progress', 'car', f"开始计算化学放大一维空间分布，共1000个位置", dimension='1d')
                 
                 calc_start = time.time()
-                plot_data = model.generate_data(I_avg, V_car, K_car, t_exp_car, acid_gen_eff, diff_len, react_rate, amp, contr, sine_type=sine_type)
+                # 🔧 添加自定义光强数据支持
+                custom_intensity_data = data.get('custom_intensity_data')
+                plot_data = model.generate_data(I_avg, V_car, K_car, t_exp_car, acid_gen_eff, diff_len, react_rate, amp, contr, sine_type=sine_type, custom_intensity_data=custom_intensity_data)
                 calc_time = time.time() - calc_start
                 
                 if plot_data and 'acid_concentration' in plot_data:
