@@ -158,4 +158,4 @@ $RECYCLE.BIN/
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp *.pdf

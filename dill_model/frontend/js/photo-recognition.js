@@ -1321,45 +1321,53 @@ class PhotoRecognition {
     }
     
     /**
-     * 绘制2D数据预览 - 矩形绘制热力图
+     * 绘制2D数据预览 - 简洁美观的热力图（无坐标轴）
      */
     draw2DDataPreview(ctx, width, height) {
         // 清空画布
         ctx.clearRect(0, 0, width, height);
         
-        // 设置背景
-        const gradient = ctx.createLinearGradient(0, 0, 0, height);
-        gradient.addColorStop(0, '#f8f9fa');
-        gradient.addColorStop(1, '#e9ecef');
-        ctx.fillStyle = gradient;
+        // 简洁的白色背景
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, width, height);
         
         const intensity2D = this.vectorData.intensity2D;
         const imgWidth = this.vectorData.width;
         const imgHeight = this.vectorData.height;
         
-        // 计算显示区域
+        // 优化的布局设计 - 无坐标轴的紧凑布局，增加右侧空间
         const titleHeight = 40;
-        const padding = 30;
-        const footerHeight = 40;
-        const colorBarWidth = 60;
+        const leftSpace = 30;       // 左侧最小间距
+        const rightLegendSpace = 200; // 右侧图例和单位标注空间（增加到200px）
+        const bottomSpace = 30;     // 底部最小间距  
+        const topPadding = 15;      // 顶部内边距
+        const centerGap = 30;       // 热力图与图例间隙（增加到30px）
         
-        // 可用显示区域
-        const availableWidth = width - colorBarWidth - padding * 3;
-        const availableHeight = height - titleHeight - footerHeight;
+        // 计算热力图核心区域
+        const coreAreaWidth = width - leftSpace - rightLegendSpace - centerGap;
+        const coreAreaHeight = height - titleHeight - bottomSpace - topPadding;
         
-        // 计算每个像素的显示尺寸
-        const pixelWidth = availableWidth / imgWidth;
-        const pixelHeight = availableHeight / imgHeight;
+        // 确保核心区域足够大
+        if (coreAreaWidth <= 0 || coreAreaHeight <= 0) {
+            ctx.fillStyle = '#ef4444';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('画布太小，无法显示热力图', width / 2, height / 2);
+            return;
+        }
+        
+        // 计算像素大小，保持比例
+        const pixelWidth = coreAreaWidth / imgWidth;
+        const pixelHeight = coreAreaHeight / imgHeight;
         const pixelSize = Math.min(pixelWidth, pixelHeight);
         
-        // 实际绘制尺寸
+        // 实际热力图尺寸
         const drawWidth = pixelSize * imgWidth;
         const drawHeight = pixelSize * imgHeight;
         
-        // 居中定位
-        const startX = padding + (availableWidth - drawWidth) / 2;
-        const startY = titleHeight + (availableHeight - drawHeight) / 2;
+        // 热力图位置 - 在可用区域居中
+        const heatmapX = leftSpace + (coreAreaWidth - drawWidth) / 2;
+        const heatmapY = titleHeight + topPadding + (coreAreaHeight - drawHeight) / 2;
         
         // 找到强度范围
         let minIntensity = Infinity;
@@ -1375,55 +1383,65 @@ class PhotoRecognition {
         
         const range = maxIntensity - minIntensity;
         
-        // 绘制每个像素为一个矩形
+        // 绘制每个像素为一个矩形 - 使用白到深橘黄色渐变
         for (let y = 0; y < imgHeight; y++) {
             for (let x = 0; x < imgWidth; x++) {
                 const intensity = intensity2D[y][x];
                 const normalizedIntensity = range > 0 ? (intensity - minIntensity) / range : 0;
                 
-                // 热力图配色 - 更简洁的蓝白红渐变
+                // 深橘黄色渐变配色 - 从白色到深橘黄色
                 let r, g, b;
-                if (normalizedIntensity < 0.5) {
-                    // 蓝到白
-                    const t = normalizedIntensity * 2;
-                    r = Math.floor(30 + t * 225);
-                    g = Math.floor(144 + t * 111);
-                    b = 255;
+                if (normalizedIntensity < 0.3) {
+                    // 白色到浅橘黄
+                    const t = normalizedIntensity / 0.3;
+                    r = Math.floor(255 - t * 35);    // 255 → 220
+                    g = Math.floor(255 - t * 55);    // 255 → 200  
+                    b = Math.floor(255 - t * 95);    // 255 → 160
+                } else if (normalizedIntensity < 0.7) {
+                    // 浅橘黄到中橘黄
+                    const t = (normalizedIntensity - 0.3) / 0.4;
+                    r = Math.floor(220 - t * 30);    // 220 → 190
+                    g = Math.floor(200 - t * 70);    // 200 → 130
+                    b = Math.floor(160 - t * 90);    // 160 → 70
                 } else {
-                    // 白到红
-                    const t = (normalizedIntensity - 0.5) * 2;
-                    r = 255;
-                    g = Math.floor(255 - t * 255);
-                    b = Math.floor(255 - t * 255);
+                    // 中橘黄到深橘黄
+                    const t = (normalizedIntensity - 0.7) / 0.3;
+                    r = Math.floor(190 - t * 50);    // 190 → 140 (深橘红)
+                    g = Math.floor(130 - t * 60);    // 130 → 70  (深橘黄)
+                    b = Math.floor(70 - t * 50);     // 70 → 20   (深黄)
                 }
                 
                 ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
                 ctx.fillRect(
-                    startX + x * pixelSize,
-                    startY + y * pixelSize,
+                    heatmapX + x * pixelSize,
+                    heatmapY + y * pixelSize,
                     pixelSize,
                     pixelSize
                 );
             }
         }
         
-        // 绘制边框
-        ctx.strokeStyle = '#2c3e50';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(startX, startY, drawWidth, drawHeight);
+        // 简洁的边框
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(heatmapX, heatmapY, drawWidth, drawHeight);
         
-        // 绘制美化的色彩标尺
-        const colorBarX = startX + drawWidth + 20;
-        const colorBarY = startY;
-        this.drawColorScale(ctx, colorBarX, colorBarY, 25, drawHeight, minIntensity, maxIntensity);
+        // 绘制图例和单位标注 - 使用优化的右侧空间
+        const legendX = heatmapX + drawWidth + centerGap;
+        const legendY = heatmapY;
+        const legendWidth = 25;
+        this.drawColorScale(ctx, legendX, legendY, legendWidth, drawHeight, minIntensity, maxIntensity);
         
-        // 标题
-        ctx.fillStyle = '#2c3e50';
-        ctx.font = 'bold 16px Arial';
+        // 绘制单位标注 - 替代坐标轴的简洁标注
+        this.drawUnitLabels(ctx, heatmapX, heatmapY, drawWidth, drawHeight, legendX + legendWidth + 15, minIntensity, maxIntensity);
+        
+        // 简洁的标题
+        ctx.fillStyle = '#374151';
+        ctx.font = '16px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(`2D强度热力图 (${imgWidth}×${imgHeight})`, width / 2, 25);
         
-        // 找到最大强度点并添加标注
+        // 找到最大强度点并添加简洁标注
         let maxIntensityX = 0, maxIntensityY = 0;
         let maxVal = -Infinity;
         
@@ -1437,140 +1455,118 @@ class PhotoRecognition {
             }
         }
         
-        // 绘制最大强度点标记
-        const markerX = startX + maxIntensityX * pixelSize + pixelSize / 2;
-        const markerY = startY + maxIntensityY * pixelSize + pixelSize / 2;
+        // 简洁的最大值标记点 - 使用新的坐标
+        const markerX = heatmapX + maxIntensityX * pixelSize + pixelSize / 2;
+        const markerY = heatmapY + maxIntensityY * pixelSize + pixelSize / 2;
         
-        // 外圈 - 白色边框
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3;
+        // 简洁的圆形标记
+        ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(markerX, markerY, 8, 0, 2 * Math.PI);
+        ctx.arc(markerX, markerY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, 4, 0, 2 * Math.PI);
         ctx.stroke();
         
-        // 内圈 - 红色填充
-        ctx.fillStyle = '#ff4444';
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 5, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // 中心点 - 白色
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(markerX, markerY, 2, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // 获取最大点的实际坐标
+        // 获取最大点的实际坐标并添加简洁标注
         const maxPointCoordX = this.vectorData.x[maxIntensityX];
         const maxPointCoordY = this.vectorData.y[maxIntensityY];
         
-        // 标注文字
+        // 简洁的标注文字
         const unit = this.getCoordinateUnit();
-        ctx.font = 'bold 11px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#2c3e50';
-        ctx.lineWidth = 3;
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#374151';
         ctx.textAlign = 'center';
         
-        const labelText = `最大值: ${maxVal.toFixed(3)}`;
-        const coordText = `(${maxPointCoordX.toFixed(2)}, ${maxPointCoordY.toFixed(2)} ${unit})`;
+        const labelText = `最大: ${maxVal.toFixed(3)}`;
         
-        // 计算标签位置（避免超出边界）
+        // 计算标签位置
         let labelX = markerX;
-        let labelY = markerY - 15;
+        let labelY = markerY - 12;
         
-        // 如果标记点在顶部，标签放在下方
-        if (markerY < startY + 30) {
-            labelY = markerY + 25;
+        // 如果在顶部，放在下方
+        if (markerY < heatmapY + 20) {
+            labelY = markerY + 20;
         }
         
-        // 如果标记点在左边或右边边缘，调整X位置
-        if (markerX < startX + 60) {
-            labelX = startX + 60;
-        } else if (markerX > startX + drawWidth - 60) {
-            labelX = startX + drawWidth - 60;
-        }
-        
-        // 绘制标注文字（带描边）
-        ctx.strokeText(labelText, labelX, labelY);
+        // 绘制简洁标注
         ctx.fillText(labelText, labelX, labelY);
         
-        ctx.strokeText(coordText, labelX, labelY + 12);
-        ctx.fillText(coordText, labelX, labelY + 12);
+    }
+    
+    /**
+     * 绘制简洁的坐标轴
+     */
+    drawAxes(ctx, heatmapX, heatmapY, drawWidth, drawHeight, imgWidth, imgHeight, leftSpace, bottomSpace) {
+        const unit = this.getCoordinateUnit();
+        ctx.strokeStyle = '#9ca3af';
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '11px Arial';
+        ctx.lineWidth = 1;
         
-        // 绘制中心点标记
-        const centerX = Math.floor(imgWidth / 2);
-        const centerY = Math.floor(imgHeight / 2);
-        const centerMarkerX = startX + centerX * pixelSize + pixelSize / 2;
-        const centerMarkerY = startY + centerY * pixelSize + pixelSize / 2;
-        const centerIntensity = intensity2D[centerY][centerX];
+        // X轴刻度和标签
+        const xData = this.vectorData.x;
+        const xMin = xData[0];
+        const xMax = xData[xData.length - 1];
         
-        // 中心点标记 - 橙色
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(centerMarkerX, centerMarkerY, 6, 0, 2 * Math.PI);
-        ctx.stroke();
+        // 绘制X轴刻度（5个刻度点）
+        for (let i = 0; i <= 4; i++) {
+            const ratio = i / 4;
+            const xPos = heatmapX + ratio * drawWidth;
+            const xValue = xMin + ratio * (xMax - xMin);
+            
+            // 刻度线
+            ctx.beginPath();
+            ctx.moveTo(xPos, heatmapY + drawHeight);
+            ctx.lineTo(xPos, heatmapY + drawHeight + 5);
+            ctx.stroke();
+            
+            // 标签 - 放在专用的底部空间内
+            ctx.textAlign = 'center';
+            ctx.fillText(xValue.toFixed(1), xPos, heatmapY + drawHeight + 18);
+        }
         
-        ctx.fillStyle = '#ff9800';
-        ctx.beginPath();
-        ctx.arc(centerMarkerX, centerMarkerY, 4, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // 中心点白色小点
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(centerMarkerX, centerMarkerY, 1.5, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // 中心点标注文字
-        const centerCoordX = this.vectorData.x[centerX];
-        const centerCoordY = this.vectorData.y[centerY];
-        
-        ctx.font = 'bold 10px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#2c3e50';
-        ctx.lineWidth = 2;
+        // X轴标题 - 放在底部空间的下方
         ctx.textAlign = 'center';
-        
-        const centerLabelText = `中心: ${centerIntensity.toFixed(3)}`;
-        const centerCoordText = `(${centerCoordX.toFixed(2)}, ${centerCoordY.toFixed(2)} ${unit})`;
-        
-        // 计算中心点标签位置（与最大值标签错开）
-        let centerLabelX = centerMarkerX;
-        let centerLabelY = centerMarkerY + 20;
-        
-        // 如果中心点在底部，标签放在上方
-        if (centerMarkerY > startY + drawHeight - 30) {
-            centerLabelY = centerMarkerY - 15;
-        }
-        
-        // 避免与最大值标签重叠
-        if (Math.abs(centerMarkerX - markerX) < 100 && Math.abs(centerMarkerY - markerY) < 50) {
-            centerLabelX += (centerMarkerX > markerX) ? 50 : -50;
-        }
-        
-        // 绘制中心点标注文字（带描边）
-        ctx.strokeText(centerLabelText, centerLabelX, centerLabelY);
-        ctx.fillText(centerLabelText, centerLabelX, centerLabelY);
-        
-        ctx.strokeText(centerCoordText, centerLabelX, centerLabelY + 10);
-        ctx.fillText(centerCoordText, centerLabelX, centerLabelY + 10);
-        
-        // X轴坐标范围标签（底部横轴）
+        ctx.fillStyle = '#374151';
         ctx.font = '12px Arial';
-        ctx.fillStyle = '#5a6c7d';
-        ctx.textAlign = 'center';
-        const xRange = `X: ${this.vectorData.x[0].toFixed(2)} ~ ${this.vectorData.x[this.vectorData.x.length-1].toFixed(2)} ${unit}`;
-        ctx.fillText(xRange, startX + drawWidth / 2, startY + drawHeight + 20);
+        ctx.fillText(`X (${unit})`, heatmapX + drawWidth / 2, heatmapY + drawHeight + 45);
         
-        // Y轴坐标范围标签（左侧纵轴，旋转显示）
-        const yRange = `Y: ${this.vectorData.y[0].toFixed(2)} ~ ${this.vectorData.y[this.vectorData.y.length-1].toFixed(2)} ${unit}`;
+        // Y轴刻度和标签
+        const yData = this.vectorData.y;
+        const yMin = yData[0];
+        const yMax = yData[yData.length - 1];
+        
+        // 绘制Y轴刻度（5个刻度点）
+        ctx.font = '11px Arial';
+        ctx.fillStyle = '#6b7280';
+        for (let i = 0; i <= 4; i++) {
+            const ratio = i / 4;
+            const yPos = heatmapY + drawHeight - ratio * drawHeight;
+            const yValue = yMin + ratio * (yMax - yMin);
+            
+            // 刻度线
+            ctx.beginPath();
+            ctx.moveTo(heatmapX - 5, yPos);
+            ctx.lineTo(heatmapX, yPos);
+            ctx.stroke();
+            
+            // 标签 - 放在专用的左侧空间内
+            ctx.textAlign = 'right';
+            ctx.fillText(yValue.toFixed(1), heatmapX - 10, yPos + 4);
+        }
+        
+        // Y轴标题（旋转90度）- 放在左侧空间内
         ctx.save();
-        ctx.translate(15, startY + drawHeight / 2);
+        ctx.translate(25, heatmapY + drawHeight / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.textAlign = 'center';
-        ctx.fillText(yRange, 0, 0);
+        ctx.fillStyle = '#374151';
+        ctx.font = '12px Arial';
+        ctx.fillText(`Y (${unit})`, 0, 0);
         ctx.restore();
     }
     
@@ -1595,75 +1591,109 @@ class PhotoRecognition {
     }
     
     /**
-     * 绘制美化的色彩标尺
+     * 绘制坐标系统信息框 - 位于右上角的美化信息框，包含强度统计
+     */
+    drawUnitLabels(ctx, heatmapX, heatmapY, drawWidth, drawHeight, labelX, minVal, maxVal) {
+        const unit = this.getCoordinateUnit();
+        
+        // 计算信息框位置 - 向右上移动
+        const boxWidth = 170;
+        const boxHeight = 130; // 增加高度以容纳更多内容
+        const boxX = labelX + 50; // 向右移动更多
+        const boxY = heatmapY - 30; // 向上移动更多
+        
+        // 绘制信息框背景
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+        
+        // 绘制信息框边框
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+        
+        // 绘制内容区域
+        const contentX = boxX + 12;
+        const contentStartY = boxY + 20;
+        
+        // 标题
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('坐标系统', contentX, contentStartY);
+        
+        // 绘制分割线
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(contentX, contentStartY + 4);
+        ctx.lineTo(contentX + boxWidth - 24, contentStartY + 4);
+        ctx.stroke();
+        
+        // 坐标轴信息
+        ctx.fillStyle = '#4b5563';
+        ctx.font = '11px Arial';
+        ctx.fillText(`X轴: 水平方向 (${unit})`, contentX, contentStartY + 22);
+        ctx.fillText(`Y轴: 垂直方向 (${unit})`, contentX, contentStartY + 38);
+        
+        // 尺寸信息
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '10px Arial';
+        ctx.fillText(`尺寸: ${this.vectorData.width} × ${this.vectorData.height} 像素`, contentX, contentStartY + 56);
+        
+        // 强度统计信息 - 和尺寸信息保持相同样式
+        ctx.fillText(`最大值: ${maxVal.toFixed(4)}`, contentX, contentStartY + 75);
+        ctx.fillText(`最小值: ${minVal.toFixed(4)}`, contentX, contentStartY + 90);
+        ctx.fillText(`范围: ${(maxVal - minVal).toFixed(4)}`, contentX, contentStartY + 105);
+    }
+    
+    /**
+     * 绘制优化的色彩标尺和强度标注
      */
     drawColorScale(ctx, x, y, width, height, minVal, maxVal) {
-        // 绘制渐变条 - 蓝白红渐变
+        // 绘制渐变条 - 深橘黄色渐变 (从顶部高值到底部低值)
         const gradient = ctx.createLinearGradient(0, y, 0, y + height);
-        gradient.addColorStop(0, 'rgb(255, 255, 255)'); // 白（高值）
-        gradient.addColorStop(0.5, 'rgb(135, 206, 255)'); // 浅蓝
-        gradient.addColorStop(1, 'rgb(30, 144, 255)'); // 深蓝（低值）
+        gradient.addColorStop(0, 'rgb(140, 70, 20)');   // 深橘黄（高值）
+        gradient.addColorStop(0.3, 'rgb(190, 130, 70)'); // 中橘黄
+        gradient.addColorStop(0.7, 'rgb(220, 200, 160)'); // 浅橘黄
+        gradient.addColorStop(1, 'rgb(255, 255, 255)');   // 白色（低值）
         
         ctx.fillStyle = gradient;
         ctx.fillRect(x, y, width, height);
         
-        // 美化边框
-        ctx.strokeStyle = '#2c3e50';
-        ctx.lineWidth = 2;
+        // 简洁边框
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
         ctx.strokeRect(x, y, width, height);
         
-        // 内阴影效果
-        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x + 1, y + 1, width - 2, height - 2);
+        // 色阶标题
+        ctx.fillStyle = '#374151';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('强度', x + width/2, y - 8);
         
-        // 刻度线和标签
-        ctx.fillStyle = '#2c3e50';
-        ctx.font = 'bold 10px Arial';
+        // 绘制5个刻度点的刻度线和标签
+        ctx.strokeStyle = '#9ca3af';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '10px Arial';
         ctx.textAlign = 'left';
         
-        // 最大值标签
-        ctx.fillText(maxVal.toFixed(3), x + width + 8, y + 5);
+        for (let i = 0; i <= 4; i++) {
+            const ratio = i / 4;
+            const tickY = y + ratio * height;
+            const value = maxVal - ratio * (maxVal - minVal); // 从上到下递减
+            
+            // 刻度线
+            ctx.beginPath();
+            ctx.moveTo(x + width, tickY);
+            ctx.lineTo(x + width + 4, tickY);
+            ctx.stroke();
+            
+            // 数值标签
+            ctx.fillText(value.toFixed(2), x + width + 6, tickY + 3);
+        }
         
-        // 中间值标签
-        const midVal = (maxVal + minVal) / 2;
-        ctx.fillText(midVal.toFixed(3), x + width + 8, y + height/2 + 3);
-        
-        // 最小值标签
-        ctx.fillText(minVal.toFixed(3), x + width + 8, y + height + 3);
-        
-        // 强度标签
-        ctx.font = 'bold 11px Arial';
-        ctx.fillStyle = '#34495e';
-        ctx.textAlign = 'center';
-        
-        // 旋转文字绘制"强度"
-        ctx.save();
-        ctx.translate(x + width + 50, y + height/2); // 从35增加到50，向右移动
-        ctx.rotate(-Math.PI/2);
-        ctx.fillText('强度', 0, 0);
-        ctx.restore();
-        
-        // 刻度线
-        ctx.strokeStyle = '#2c3e50';
-        ctx.lineWidth = 1;
-        // 顶部刻度
-        ctx.beginPath();
-        ctx.moveTo(x + width, y);
-        ctx.lineTo(x + width + 5, y);
-        ctx.stroke();
-        
-        // 中间刻度
-        ctx.beginPath();
-        ctx.moveTo(x + width, y + height/2);
-        ctx.lineTo(x + width + 5, y + height/2);
-        ctx.stroke();
-        
-        // 底部刻度
-        ctx.beginPath();
-        ctx.moveTo(x + width, y + height);
-        ctx.lineTo(x + width + 5, y + height);
-        ctx.stroke();
+        // 统计信息已移至右上角信息框，这里不再显示
     }
     
     /**
