@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PID控制调参工具</title>
+    <!-- 引入Google字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入基础样式 -->
+    <link rel="stylesheet" href="css/style.css?v=1.2">
+    <link rel="stylesheet" href="css/professional-header-footer.css?v=1.1">
+    <link rel="stylesheet" href="css/theme-colors.css?v=1.0">
+    <!-- PID控制专用样式 -->
+    <link rel="stylesheet" href="css/pid-control.css?v=1.0">
+</head>
+<body>
+    <!-- 头部 -->
+    <header class="header">
+        <div class="header-wrapper">
+            <div class="header-container">
+                <div class="logo-section">
+                    <div class="logo-wrapper">
+                        <img src="assets/images/LOGO.avif" alt="Logo" class="logo-image">
+                        <h1 class="app-title">PID控制调参工具</h1>
+                    </div>
+                </div>
+                
+                <nav class="main-nav">
+                    <ul class="nav-menu">
+                        <li class="nav-item">
+                            <a href="index.html" class="nav-link">
+                                <i class="fas fa-calculator"></i>
+                                <span>单一计算</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="compare.html" class="nav-link">
+                                <i class="fas fa-chart-line"></i>
+                                <span>参数比较</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="../matrix_visualization/" class="nav-link">
+                                <i class="fas fa-cube"></i>
+                                <span>模型矩阵可视化</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="validation.html" class="nav-link">
+                                <i class="fas fa-check-circle"></i>
+                                <span>结果验证</span>
+                            </a>
+                        </li>
+                        <li class="nav-item active">
+                            <a href="pid_control.html" class="nav-link">
+                                <i class="fas fa-sliders-h"></i>
+                                <span>PID调参</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                
+                <div class="header-utilities">
+                    <div class="lang-switcher">
+                        <select id="lang-select" class="lang-select" title="选择语言 / Select Language">
+                            <option value="zh-CN">中文</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <!-- 页面标题 -->
+            <div class="page-header">
+                <h2 class="page-title">PID控制参数调优</h2>
+                <p class="page-description">与LabVIEW系统实时交互，优化PID控制参数</p>
+            </div>
+
+            <!-- 控制面板 -->
+            <div class="control-grid">
+                <!-- 左侧：系统监控 -->
+                <div class="control-section">
+                    <div class="section-header">
+                        <h3 class="section-title">系统监控</h3>
+                        <div class="connection-status" id="connection-status">
+                            <span class="status-indicator disconnected"></span>
+                            <span class="status-text">未连接</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 实时图像显示 -->
+                    <div class="image-display-container">
+                        <div class="image-header">
+                            <h4>LabVIEW实时图像</h4>
+                            <div class="image-controls">
+                                <button class="btn-secondary" id="refresh-image">刷新</button>
+                                <button class="btn-secondary" id="auto-refresh-toggle">自动刷新</button>
+                            </div>
+                        </div>
+                        <div class="image-display" id="labview-image">
+                            <div class="image-placeholder">
+                                <i class="fas fa-image"></i>
+                                <p>等待LabVIEW图像数据...</p>
+                            </div>
+                        </div>
+                        <div class="image-info">
+                            <span class="image-timestamp" id="image-timestamp">--</span>
+                            <span class="image-size" id="image-size">--</span>
+                        </div>
+                    </div>
+
+                    <!-- 实时数据监控 -->
+                    <div class="data-monitor">
+                        <h4>实时数据</h4>
+                        <div class="data-grid">
+                            <div class="data-item">
+                                <label>设定值</label>
+                                <span class="data-value" id="setpoint-value">--</span>
+                            </div>
+                            <div class="data-item">
+                                <label>当前值</label>
+                                <span class="data-value" id="current-value">--</span>
+                            </div>
+                            <div class="data-item">
+                                <label>误差</label>
+                                <span class="data-value" id="error-value">--</span>
+                            </div>
+                            <div class="data-item">
+                                <label>输出</label>
+                                <span class="data-value" id="output-value">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：PID参数控制 -->
+                <div class="control-section">
+                    <div class="section-header">
+                        <h3 class="section-title">PID参数设置</h3>
+                        <div class="control-mode" id="control-mode">
+                            <span class="mode-indicator manual"></span>
+                            <span class="mode-text">手动模式</span>
+                        </div>
+                    </div>
+
+                    <!-- PID参数输入 -->
+                    <div class="pid-parameters">
+                        <div class="parameter-group">
+                            <label for="p-value">比例系数 (P)</label>
+                            <div class="input-group">
+                                <input type="number" id="p-value" class="parameter-input" 
+                                       value="1.0" step="0.01" min="0" max="100">
+                                <button class="btn-apply" data-param="p">应用</button>
+                            </div>
+                            <div class="current-value">当前值: <span id="current-p">--</span></div>
+                        </div>
+
+                        <div class="parameter-group">
+                            <label for="i-value">积分系数 (I)</label>
+                            <div class="input-group">
+                                <input type="number" id="i-value" class="parameter-input" 
+                                       value="0.1" step="0.01" min="0" max="10">
+                                <button class="btn-apply" data-param="i">应用</button>
+                            </div>
+                            <div class="current-value">当前值: <span id="current-i">--</span></div>
+                        </div>
+
+                        <div class="parameter-group">
+                            <label for="d-value">微分系数 (D)</label>
+                            <div class="input-group">
+                                <input type="number" id="d-value" class="parameter-input" 
+                                       value="0.01" step="0.001" min="0" max="1">
+                                <button class="btn-apply" data-param="d">应用</button>
+                            </div>
+                            <div class="current-value">当前值: <span id="current-d">--</span></div>
+                        </div>
+                    </div>
+
+                    <!-- 快速操作 -->
+                    <div class="quick-actions">
+                        <div class="action-group">
+                            <button class="btn-primary" id="read-parameters">读取当前参数</button>
+                            <button class="btn-primary" id="apply-all-parameters">应用所有参数</button>
+                        </div>
+                        <div class="action-group">
+                            <button class="btn-secondary" id="reset-parameters">重置为默认</button>
+                            <button class="btn-secondary" id="save-parameters">保存配置</button>
+                        </div>
+                    </div>
+
+                    <!-- 系统状态 -->
+                    <div class="system-status">
+                        <h4>系统状态</h4>
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <label>LabVIEW连接</label>
+                                <span class="status-indicator" id="labview-status">离线</span>
+                            </div>
+                            <div class="status-item">
+                                <label>参数文件</label>
+                                <span class="status-indicator" id="file-status">未找到</span>
+                            </div>
+                            <div class="status-item">
+                                <label>数据更新</label>
+                                <span class="status-indicator" id="data-status">暂停</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作日志 -->
+            <div class="log-section">
+                <div class="section-header">
+                    <h3 class="section-title">操作日志</h3>
+                    <button class="btn-secondary" id="clear-log">清除日志</button>
+                </div>
+                <div class="log-container" id="operation-log">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[2024-01-15 10:30:00]</span>
+                        <span class="log-message">系统初始化完成</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 脚本文件 -->
+    <script src="js/common.js"></script>
+    <script src="js/pid-control.js"></script>
+</body>
+</html>

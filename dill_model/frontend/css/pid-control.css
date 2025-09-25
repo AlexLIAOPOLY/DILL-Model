@@ -1,0 +1,465 @@
+/* PID控制页面专用样式 - 简洁淡色系设计 */
+
+/* 主要颜色变量 */
+:root {
+    --pid-primary: #6b7280;           /* 淡灰色 */
+    --pid-secondary: #9ca3af;         /* 更淡的灰色 */
+    --pid-accent: #93c5fd;            /* 淡蓝色 */
+    --pid-success: #86efac;           /* 淡绿色 */
+    --pid-warning: #fbbf24;           /* 淡黄色 */
+    --pid-error: #fca5a5;             /* 淡红色 */
+    --pid-background: #f8fafc;        /* 极淡的背景色 */
+    --pid-card-bg: #ffffff;           /* 卡片背景 */
+    --pid-border: #e5e7eb;            /* 边框颜色 */
+    --pid-text: #374151;              /* 主文字颜色 */
+    --pid-text-light: #6b7280;        /* 次要文字颜色 */
+}
+
+/* 主内容区域 */
+.main-content {
+    background-color: var(--pid-background);
+    min-height: calc(100vh - 80px);
+    padding: 2rem 0;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* 页面头部 */
+.page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.page-title {
+    font-size: 2.5rem;
+    font-weight: 300;
+    color: var(--pid-text);
+    margin-bottom: 0.5rem;
+}
+
+.page-description {
+    font-size: 1.1rem;
+    color: var(--pid-text-light);
+    margin: 0;
+}
+
+/* 控制网格布局 */
+.control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* 控制区域 */
+.control-section {
+    background: var(--pid-card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--pid-border);
+}
+
+/* 区域头部 */
+.section-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--pid-border);
+}
+
+.section-title {
+    font-size: 1.4rem;
+    font-weight: 400;
+    color: var(--pid-text);
+    margin: 0;
+}
+
+/* 连接状态 */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--pid-error);
+}
+
+.status-indicator.connected {
+    background-color: var(--pid-success);
+}
+
+.status-indicator.disconnected {
+    background-color: var(--pid-error);
+}
+
+.status-text {
+    font-size: 0.9rem;
+    color: var(--pid-text-light);
+}
+
+/* 图像显示容器 */
+.image-display-container {
+    margin-bottom: 2rem;
+}
+
+.image-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.image-header h4 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--pid-text);
+    margin: 0;
+}
+
+.image-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.image-display {
+    width: 100%;
+    height: 300px;
+    border: 2px dashed var(--pid-border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fafafa;
+    margin-bottom: 0.5rem;
+}
+
+.image-placeholder {
+    text-align: center;
+    color: var(--pid-text-light);
+}
+
+.image-placeholder i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--pid-secondary);
+}
+
+.image-placeholder p {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.image-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--pid-text-light);
+}
+
+/* 数据监控 */
+.data-monitor {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.data-monitor h4 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--pid-text);
+    margin: 0 0 1rem 0;
+}
+
+.data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.data-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.data-item label {
+    font-size: 0.9rem;
+    color: var(--pid-text-light);
+    font-weight: 500;
+}
+
+.data-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--pid-text);
+    font-family: 'Courier New', monospace;
+}
+
+/* 控制模式 */
+.control-mode {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mode-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--pid-warning);
+}
+
+.mode-indicator.manual {
+    background-color: var(--pid-warning);
+}
+
+.mode-indicator.auto {
+    background-color: var(--pid-success);
+}
+
+.mode-text {
+    font-size: 0.9rem;
+    color: var(--pid-text-light);
+}
+
+/* PID参数设置 */
+.pid-parameters {
+    margin-bottom: 2rem;
+}
+
+.parameter-group {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid var(--pid-border);
+}
+
+.parameter-group label {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--pid-text);
+    margin-bottom: 0.5rem;
+}
+
+.input-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.parameter-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid var(--pid-border);
+    border-radius: 6px;
+    font-size: 1rem;
+    font-family: 'Courier New', monospace;
+    background-color: white;
+    transition: border-color 0.2s;
+}
+
+.parameter-input:focus {
+    outline: none;
+    border-color: var(--pid-accent);
+    box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.1);
+}
+
+.current-value {
+    font-size: 0.85rem;
+    color: var(--pid-text-light);
+}
+
+.current-value span {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+/* 按钮样式 */
+.btn-primary, .btn-secondary, .btn-apply {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background-color: var(--pid-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #4b5563;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: var(--pid-card-bg);
+    color: var(--pid-text);
+    border: 1px solid var(--pid-border);
+}
+
+.btn-secondary:hover {
+    background-color: #f3f4f6;
+    transform: translateY(-1px);
+}
+
+.btn-apply {
+    background-color: var(--pid-accent);
+    color: white;
+    min-width: 60px;
+}
+
+.btn-apply:hover {
+    background-color: #60a5fa;
+    transform: translateY(-1px);
+}
+
+/* 快速操作 */
+.quick-actions {
+    margin-bottom: 2rem;
+}
+
+.action-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.action-group:last-child {
+    margin-bottom: 0;
+}
+
+/* 系统状态 */
+.system-status {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.system-status h4 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--pid-text);
+    margin: 0 0 1rem 0;
+}
+
+.status-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-item label {
+    font-size: 0.9rem;
+    color: var(--pid-text-light);
+}
+
+.status-item .status-indicator {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background-color: var(--pid-secondary);
+    color: white;
+    width: auto;
+    height: auto;
+}
+
+/* 日志区域 */
+.log-section {
+    background: var(--pid-card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--pid-border);
+}
+
+.log-container {
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #f9fafb;
+    border-radius: 6px;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.log-entry {
+    margin-bottom: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.log-entry:last-child {
+    margin-bottom: 0;
+}
+
+.log-timestamp {
+    color: var(--pid-text-light);
+    font-weight: 600;
+    min-width: 150px;
+}
+
+.log-message {
+    color: var(--pid-text);
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+    .control-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .data-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-group {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0 0.5rem;
+    }
+    
+    .page-title {
+        font-size: 2rem;
+    }
+    
+    .control-section {
+        padding: 1rem;
+    }
+    
+    .input-group {
+        flex-direction: column;
+    }
+    
+    .image-controls {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}

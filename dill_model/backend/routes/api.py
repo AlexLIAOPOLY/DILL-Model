@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..models import DillModel, get_model_by_name
+from ..models import DillModel, get_model_by_name, PIDModel
 from ..utils import validate_input, validate_enhanced_input, validate_car_input, format_response, NumpyEncoder
 import json
 import numpy as np
@@ -5272,4 +5272,228 @@ def apply_smoothing(data, method):
         smoothed = data_array
     
     return smoothed.tolist()
+
+# PID控制相关API端点
+pid_model = PIDModel()
+
+@api.route('/pid/read-parameters', methods=['GET'])
+def read_pid_parameters():
+    """读取PID参数"""
+    try:
+        parameters = pid_model.read_pid_parameters()
+        add_log_entry('success', 'pid', f'成功读取PID参数: P={parameters["p"]:.3f}, I={parameters["i"]:.3f}, D={parameters["d"]:.3f}')
+        
+        return jsonify({
+            'success': True,
+            'parameters': parameters,
+            'timestamp': datetime.datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        add_log_entry('error', 'pid', f'读取PID参数失败: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api.route('/pid/apply-parameter', methods=['POST'])
+def apply_pid_parameter():
+    """应用单个PID参数"""
+    try:
+        data = request.json
+        parameter = data.get('parameter')
+        value = float(data.get('value'))
+        
+        if parameter not in ['p', 'i', 'd']:
+            return jsonify({
+                'success': False,
+                'error': '无效的参数类型'
+            }), 400
+        
+        # 读取当前参数
+        current_params = pid_model.read_pid_parameters()
+        current_params[parameter] = value
+        
+        # 写入更新后的参数
+        success = pid_model.write_pid_parameters(current_params)
+        
+        if success:
+            add_log_entry('success', 'pid', f'成功应用{parameter.upper()}参数: {value}')
+            return jsonify({
+                'success': True,
+                'parameter': parameter,
+                'value': value,
+                'timestamp': datetime.datetime.now().isoformat()
+            })
+        else:
+            raise Exception('写入参数失败')
+            
+    except Exception as e:
+        add_log_entry('error', 'pid', f'应用PID参数失败: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api.route('/pid/apply-all-parameters', methods=['POST'])
+def apply_all_pid_parameters():
+    """应用所有PID参数"""
+    try:
+        data = request.json
+        parameters = data.get('parameters', {})
+        
+        # 验证参数
+        required_params = ['p', 'i', 'd']
+        for param in required_params:
+            if param not in parameters:
+                return jsonify({
+                    'success': False,
+                    'error': f'缺少{param}参数'
+                }), 400
+        
+        # 转换为float并验证
+        clean_params = {}
+        for param in required_params:
+            try:
+                value = float(parameters[param])
+                if value < 0:
+                    return jsonify({
+                        'success': False,
+                        'error': f'{param}参数不能为负数'
+                    }), 400
+                clean_params[param] = value
+            except (ValueError, TypeError):
+                return jsonify({
+                    'success': False,
+                    'error': f'{param}参数格式错误'
+                }), 400
+        
+        # 写入参数
+        success = pid_model.write_pid_parameters(clean_params)
+        
+        if success:
+            add_log_entry('success', 'pid', f'成功应用所有PID参数: P={clean_params["p"]:.3f}, I={clean_params["i"]:.3f}, D={clean_params["d"]:.3f}')
+            return jsonify({
+                'success': True,
+                'parameters': clean_params,
+                'timestamp': datetime.datetime.now().isoformat()
+            })
+        else:
+            raise Exception('写入参数失败')
+            
+    except Exception as e:
+        add_log_entry('error', 'pid', f'应用所有PID参数失败: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api.route('/pid/system-data', methods=['GET'])
+def get_pid_system_data():
+    """获取系统实时数据"""
+    try:
+        system_data = pid_model.get_latest_data()
+        
+        return jsonify({
+            'success': True,
+            'setpoint': system_data['setpoint'],
+            'current': system_data['current'],
+            'error': system_data['error'],
+            'output': system_data['output'],
+            'timestamp': system_data['timestamp']
+        })
+        
+    except Exception as e:
+        add_log_entry('error', 'pid', f'获取系统数据失败: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api.route('/pid/get-image', methods=['GET'])
+def get_pid_image():
+    """获取LabVIEW系统图像"""
+    try:
+        image_data = pid_model.get_latest_image()
+        
+        add_log_entry('info', 'pid', f'成功获取系统图像: {image_data["filename"]}')
+        
+        return jsonify({
+            'success': True,
+            'image_base64': image_data['image_base64'],
+            'filename': image_data['filename'],
+            'size': image_data['size'],
+            'timestamp': image_data['timestamp']
+        })
+        
+    except Exception as e:
+        add_log_entry('error', 'pid', f'获取系统图像失败: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api.route('/pid/status', methods=['GET'])
+def get_pid_status():
+    """获取PID系统状态"""
+    try:
+        status = pid_model.check_connection_status()
+        
+        return jsonify({
+            'success': True,
+            **status
+        })
+        
+    except Exception as e:
+        add_log_entry('error', 'pid', f'获取系统状态失败: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api.route('/pid/save-parameters', methods=['POST'])
+def save_pid_parameters():
+    """保存PID参数配置"""
+    try:
+        data = request.json
+        parameters = data.get('parameters', {})
+        name = data.get('name')
+        
+        success = pid_model.save_parameters_backup(parameters, name)
+        
+        if success:
+            add_log_entry('success', 'pid', f'成功保存PID参数配置')
+            return jsonify({
+                'success': True,
+                'message': '参数配置保存成功',
+                'timestamp': datetime.datetime.now().isoformat()
+            })
+        else:
+            raise Exception('保存配置失败')
+            
+    except Exception as e:
+        add_log_entry('error', 'pid', f'保存PID参数配置失败: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api.route('/pid/parameter-history', methods=['GET'])
+def get_pid_parameter_history():
+    """获取PID参数变更历史"""
+    try:
+        history = pid_model.get_parameter_history()
+        
+        return jsonify({
+            'success': True,
+            'history': history,
+            'count': len(history)
+        })
+        
+    except Exception as e:
+        add_log_entry('error', 'pid', f'获取参数历史失败: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
