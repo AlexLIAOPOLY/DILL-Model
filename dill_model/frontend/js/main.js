@@ -332,15 +332,16 @@ function initCustomVectorControlsState() {
         applyBtn.disabled = !customIntensityData || !customIntensityData.loaded;
     }
     
-    // 检查默认选项并执行相应的逻辑
-    if (methodSelect && methodSelect.value === 'custom') {
-        // 延迟执行，确保DOM完全加载和曝光计算方式选择器也初始化完成
-        setTimeout(() => {
-            if (typeof handleIntensityMethodChange === 'function') {
-                handleIntensityMethodChange();
-                console.log('🔒 页面加载时检测到自定义向量模式，已正确初始化界面状态');
-            }
-            
+    // 延迟执行，确保DOM完全加载和曝光计算方式选择器也初始化完成
+    setTimeout(() => {
+        if (typeof handleIntensityMethodChange === 'function') {
+            handleIntensityMethodChange();
+            const currentMode = methodSelect ? methodSelect.value : 'formula';
+            console.log(`🔒 页面加载时初始化界面状态，当前模式: ${currentMode}`);
+        }
+        
+        // 检查默认选项并执行相应的逻辑
+        if (methodSelect && methodSelect.value === 'custom') {
             // 检查是否同时是多段曝光时间累计模式
             const exposureMethodSelect = document.getElementById('exposure_calculation_method');
             if (exposureMethodSelect && exposureMethodSelect.value === 'cumulative') {
@@ -349,8 +350,8 @@ function initCustomVectorControlsState() {
                     hideAllUnnecessaryElements();
                 }
             }
-        }, 200);
-    }
+        }
+    }, 200);
 }
 
 // 强制清除错误消息显示
@@ -16148,8 +16149,10 @@ function handleIntensityMethodChange() {
         // 清空图表
         clearAllCharts();
         
-        // 显示提示
-        showNotification('已切换到公式计算模式，所有控制框已恢复显示', 'info');
+        // 只在非初始化状态下显示通知
+        if (!window.isPageInitializing) {
+            showNotification('已切换到公式计算模式，所有控制框已恢复显示', 'info');
+        }
         console.log('🔓 已恢复显示三个控制框：曝光时间窗口控制、1D时间动画控制、1D对比度评估控制');
     }
 }
@@ -18220,7 +18223,10 @@ function clearCustomIntensityData() {
     // 更新指定入射光强度显示状态（显示"暂无向量数据"）
     updateSpecifiedIntensityDisplay();
     
-    showNotification('已卸载文件并清除自定义光强数据', 'info');
+    // 只在非初始化状态下显示通知
+    if (!window.isPageInitializing) {
+        showNotification('已卸载文件并清除自定义光强数据', 'info');
+    }
     console.log('🗑️ 自定义光强数据已清除，文件已卸载');
 }
 

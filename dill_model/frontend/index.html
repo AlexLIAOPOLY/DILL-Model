@@ -1053,15 +1053,15 @@
                             </div>
                             <div class="parameter-input">
                                 <select id="intensity_input_method" class="method-select" title="选择光强分布输入方式" aria-label="光强分布输入方式选择">
-                                    <option value="formula">公式计算</option>
-                                    <option value="custom" selected>自定义向量</option>
+                                    <option value="formula" selected>公式计算</option>
+                                    <option value="custom">自定义向量</option>
                                 </select>
                             </div>
                             <div class="parameter-description">选择光强分布的输入方式：公式计算（使用数学公式）或自定义向量（上传文件或手动输入）</div>
                         </div>
 
                         <!-- 自定义光强分布输入区域 -->
-                        <div id="custom-intensity-container" class="custom-intensity-container" style="display:block;">
+                        <div id="custom-intensity-container" class="custom-intensity-container" style="display:none;">
                             <!-- 输入方式选择标签页 -->
                             <div class="custom-input-tabs">
                                 <button class="tab-button active" data-tab="file-upload">文件上传</button>
