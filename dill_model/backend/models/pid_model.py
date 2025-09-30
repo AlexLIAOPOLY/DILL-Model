@@ -58,11 +58,18 @@ class PIDModel:
         if not self.pid_file.exists():
             self.write_pid_parameters(self.default_pid)
         
-        # 创建模拟数据文件
-        self._create_simulation_data()
+        # 只在Output文件夹为空时创建初始模拟文件
+        # 避免每次启动都生成新文件
+        existing_data_files = list(self.data_folder.glob('Data_*.csv'))
+        existing_image_files = list(self.image_folder.glob('img_*.png'))
         
-        # 创建模拟图像
-        self._create_simulation_image()
+        if not existing_data_files:
+            # 创建模拟数据文件
+            self._create_simulation_data()
+        
+        if not existing_image_files:
+            # 创建模拟图像
+            self._create_simulation_image()
     
     def read_pid_parameters(self):
         """从文件读取PID参数
