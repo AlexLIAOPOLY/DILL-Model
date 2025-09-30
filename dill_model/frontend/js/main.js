@@ -2152,19 +2152,15 @@ function getParameterValues() {
         if (intensityMethodSelect && intensityMethodSelect.value === 'custom' && customIntensityData.loaded) {
             console.log('🎯 使用自定义光强分布数据');
             
-            // 检查是否需要进行单位转换
-            let x_data = [...customIntensityData.x]; // 复制数组，避免修改原始数据
+            // 🔥 修复：前端不应该对数据进行单位转换，直接发送原始数据
+            // 后端会根据 original_unit 和 unit_scale 进行正确的单位转换
             const unit_scale = customIntensityData.unit_scale || 1.0;
             
-            // 如果单位不是默认的mm，需要进行转换
-            if (unit_scale !== 1.0) {
-                console.log(`🔄 单位转换: ${customIntensityData.x_unit} -> mm，比例: ×${unit_scale}`);
-                // 对x坐标进行单位转换
-                x_data = x_data.map(x => x * unit_scale);
-            }
+            console.log(`📤 发送自定义数据: 原始单位=${customIntensityData.x_unit}, unit_scale=${unit_scale}`);
+            console.log(`📤 数据范围: [${Math.min(...customIntensityData.x)}, ${Math.max(...customIntensityData.x)}]`);
             
             params.custom_intensity_data = {
-                x: x_data, // 使用可能经过单位转换的坐标
+                x: customIntensityData.x, // 🔥 发送原始数据，不进行转换
                 intensity: customIntensityData.intensity,
                 original_unit: customIntensityData.x_unit,
                 unit_scale: unit_scale,
@@ -2202,9 +2198,9 @@ function getParameterValues() {
             console.log('   - customIntensityData.x点数:', customIntensityData.x.length);
             console.log('   - customIntensityData.intensity点数:', customIntensityData.intensity.length);
             console.log('   - X坐标原始范围:', [Math.min(...customIntensityData.x), Math.max(...customIntensityData.x)], customIntensityData.x_unit);
-            console.log('   - X坐标转换后范围:', [Math.min(...x_data), Math.max(...x_data)], 'mm');
             console.log('   - 光强范围:', [Math.min(...customIntensityData.intensity), Math.max(...customIntensityData.intensity)]);
             console.log('   - 传递给后端的数据:', params.custom_intensity_data);
+            console.log('   - unit_scale:', unit_scale, '(原始单位→mm的转换比例)');
             // === 调试结束 ===
         } else {
             console.log('🔧 未使用自定义光强分布，使用公式计算');
@@ -15736,7 +15732,8 @@ let customIntensityData = {
     loaded: false,
     source: null,
     fileName: null,
-    x_unit: 'mm', // 默认单位为mm
+    x_unit: 'μm', // 默认单位为微米
+    unit_scale: 0.001, // μm到mm的转换比例
     x_range: {min: 0, max: 0},
     auto_detected: false, // 是否已自动检测单位
     outside_range_mode: 'zero', // 默认数据范围外光强为0
@@ -17848,8 +17845,8 @@ function previewManualInput() {
             intensity: data.intensity,
             loaded: true,
             source: 'manual',
-            x_unit: data.x_unit || 'mm',
-            unit_scale: data.unit_scale || 1.0,
+            x_unit: data.x_unit || 'μm',
+            unit_scale: data.unit_scale || 0.001,
             outside_range_mode: outsideRangeMode, // 保存用户选择的数据范围外光强处理方式
             auto_calculated_I_avg: calculateAutoI_avg(data.intensity) // 自动计算平均光强
         };
@@ -17881,7 +17878,7 @@ function previewManualInput() {
             applyBtn.disabled = false;
         }
         
-        showNotification(`预览成功，包含 ${data.x.length} 个数据点，单位: ${data.x_unit || 'mm'}，已应用可用于计算`, 'success');
+        showNotification(`预览成功，包含 ${data.x.length} 个数据点，单位: ${data.x_unit || 'μm'}，已应用可用于计算`, 'success');
         
     } catch (error) {
         console.error('❌ 手动输入解析错误:', error);
@@ -18105,8 +18102,8 @@ function validateIntensityData(x, intensity) {
     // 仅当没有明确设置单位时才自动检测
     if (!customIntensityData.x_unit) {
         // 根据坐标范围推测单位
-        let detected_unit = 'mm'; // 默认单位
-        let unit_scale = 1.0; // 默认比例
+        let detected_unit = 'μm'; // 默认单位
+        let unit_scale = 0.001; // 默认比例
     
         // 基于数据范围的简单推断单位
         if (Math.abs(x_max) <= 10 && Math.abs(x_min) <= 10) {
@@ -18154,7 +18151,8 @@ function clearCustomIntensityData() {
         loaded: false,
         source: null,
         fileName: null,
-        x_unit: 'mm', // 重置为默认单位
+        x_unit: 'μm', // 重置为默认单位
+        unit_scale: 0.001, // μm到mm的转换比例
         x_range: {min: 0, max: 0},
         auto_detected: false,
         outside_range_mode: 'zero', // 重置为默认数据范围外光强模式
@@ -18241,7 +18239,7 @@ function updateDataStatusForPreview(data) {
     if (!statusDiv || !data || !data.x || !data.intensity) return;
     
     const { x, intensity } = data;
-    const unitLabel = data.x_unit || 'mm';
+    const unitLabel = data.x_unit || 'μm';
     const outsideRangeMode = data.outside_range_mode || 'zero';
     
     // 计算统计信息
@@ -19272,6 +19270,8 @@ function updateManualUnitDisplayInStatus(unitType, customFactor = null) {
 }
 
 // 应用手动输入单位设置
+// ⚠️ 注意：此函数仅在用户手动输入数据时调用，设置用户声明的数据单位
+// 此函数不应在数据加载后再次调用，以避免覆盖数据的原始单位信息
 function applyManualUnitSettings() {
     // 获取单位选择元素
     const unitSelect = document.getElementById('manual-data-unit');
@@ -19312,9 +19312,13 @@ function applyManualUnitSettings() {
             break;
     }
     
-    // 更新全局数据对象
-    customIntensityData.x_unit = unit;
-    customIntensityData.unit_scale = factor;
+    // 🔥 修复：应用用户选择的单位设置到数据
+    // 这样用户选择的单位才会真正生效
+    if (customIntensityData.loaded) {
+        customIntensityData.x_unit = unit;
+        customIntensityData.unit_scale = factor;
+        console.log(`✅ 已应用手动输入单位设置到数据: ${unit}, 比例因子: ${factor}`);
+    }
     
     // 更新状态显示中的单位信息（已应用状态）
     const statusDiv = document.getElementById('intensity-data-status');
@@ -19899,7 +19903,9 @@ function getDecimalPlaces(step) {
     return stepStr.length - decimalIndex - 1;
 }
 
-// 应用单位设置
+// 应用单位设置（文件上传模式）
+// ⚠️ 注意：此函数仅在用户上传文件并手动设置单位时调用
+// 此函数不应在数据加载后再次调用，以避免覆盖数据的原始单位信息
 function applyUnitSettings() {
     // 获取单位选择元素
     const unitSelect = document.getElementById('custom-data-unit');
@@ -19940,9 +19946,13 @@ function applyUnitSettings() {
             break;
     }
     
-    // 更新全局数据对象
-    customIntensityData.x_unit = unit;
-    customIntensityData.unit_scale = factor;
+    // 🔥 修复：应用用户选择的单位设置到数据
+    // 这样用户选择的单位才会真正生效
+    if (customIntensityData.loaded) {
+        customIntensityData.x_unit = unit;
+        customIntensityData.unit_scale = factor;
+        console.log(`✅ 已应用单位设置到数据: ${unit}, 比例因子: ${factor}`);
+    }
     
     // 更新状态显示中的单位信息（已应用状态）
     const statusDiv = document.getElementById('intensity-data-status');
@@ -22297,13 +22307,13 @@ function setCustomIntensityData(vectorData) {
         customIntensityData.loaded = true;
         customIntensityData.source = vectorData.method || 'photo-recognition';
         customIntensityData.fileName = `photo_vector_${new Date().getTime()}`;
-        customIntensityData.x_unit = vectorData.parameters?.coordinateUnit || 'mm';
+        customIntensityData.x_unit = vectorData.parameters?.coordinateUnit || 'μm';
         // 根据来源参数推断并记录单位缩放：统一以mm为内部标准
         // 若坐标单位为像素，无法推断尺寸，置为1；若为μm，则缩放到mm；自定义按传入scaleFactor尝试估计
         (function computeUnitScale(){
             try {
                 const params = vectorData.parameters || {};
-                const unit = params.coordinateUnit || 'mm';
+                const unit = params.coordinateUnit || 'μm';
                 let unitScale = 1.0; // x(mm) = x(original) * unitScale
                 if (unit === 'um' || unit === 'μm') {
                     unitScale = 0.001; // μm → mm
