@@ -19671,40 +19671,40 @@ function adjustXCoordinateSliderRange(currentUnit, oldUnit, xCoordSlider, xCoord
     
     switch (currentUnit) {
         case 'nm':
-            // 纳米范围: -50000 到 50000 nm (对应 -50 到 50 μm)
-            minValue = -50000;
-            maxValue = 50000;
+            // 纳米范围: -99999 到 99999 nm
+            minValue = -99999;
+            maxValue = 99999;
             stepValue = 10; // 10 nm 精度
             break;
         case 'μm':
         case 'um':
-            // 微米范围: -50 到 50 μm
-            minValue = -50;
-            maxValue = 50;
+            // 微米范围: -99999 到 99999 μm
+            minValue = -99999;
+            maxValue = 99999;
             stepValue = 0.01; // 0.01 μm 精度
             break;
         case 'mm':
-            // 毫米范围: -0.05 到 0.05 mm (对应 -50 到 50 μm)
-            minValue = -0.05;
-            maxValue = 0.05;
+            // 毫米范围: -99999 到 99999 mm
+            minValue = -99999;
+            maxValue = 99999;
             stepValue = 0.00001; // 0.01 μm 精度
             break;
         case 'pixels':
-            // 像素范围: -1000 到 1000 pixels
-            minValue = -1000;
-            maxValue = 1000;
+            // 像素范围: -99999 到 99999 pixels
+            minValue = -99999;
+            maxValue = 99999;
             stepValue = 1; // 1 pixel 精度
             break;
         case 'custom':
             // 自定义单位，使用较大的范围
-            minValue = -1000;
-            maxValue = 1000;
+            minValue = -99999;
+            maxValue = 99999;
             stepValue = 0.01;
             break;
         default:
             // 默认范围 (μm)
-            minValue = -50;
-            maxValue = 50;
+            minValue = -99999;
+            maxValue = 99999;
             stepValue = 0.01;
     }
 
