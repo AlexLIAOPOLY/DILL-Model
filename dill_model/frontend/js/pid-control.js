@@ -264,20 +264,24 @@ class PIDController {
         
         if (this.autoRefresh) {
             button.textContent = '停止自动刷新';
-            button.style.backgroundColor = '#fca5a5';
+            button.style.background = 'linear-gradient(135deg, #f4a9a8 0%, #e88886 100%)';
+            button.style.color = 'white';
+            button.style.borderColor = '#f4a9a8';
             this.refreshInterval = setInterval(() => {
                 this.refreshImage();
                 this.readSystemData();
             }, 2000); // 每2秒刷新一次
-            this.addLog('自动刷新已启用');
+            this.addLog('自动刷新已启用 (间隔: 2秒)', 'success');
         } else {
             button.textContent = '自动刷新';
-            button.style.backgroundColor = '';
+            button.style.background = '';
+            button.style.color = '';
+            button.style.borderColor = '';
             if (this.refreshInterval) {
                 clearInterval(this.refreshInterval);
                 this.refreshInterval = null;
             }
-            this.addLog('自动刷新已停止');
+            this.addLog('自动刷新已停止', 'info');
         }
     }
 
@@ -309,25 +313,74 @@ class PIDController {
         const imageContainer = document.getElementById('labview-image');
         
         if (imageData.image_url || imageData.image_base64) {
-            const img = document.createElement('img');
-            img.style.maxWidth = '100%';
-            img.style.maxHeight = '100%';
-            img.style.objectFit = 'contain';
+            // 淡出旧图像
+            imageContainer.style.transition = 'opacity 0.3s ease';
+            imageContainer.style.opacity = '0.3';
             
-            if (imageData.image_base64) {
-                img.src = `data:image/png;base64,${imageData.image_base64}`;
-            } else {
-                img.src = imageData.image_url;
-            }
-            
-            imageContainer.innerHTML = '';
-            imageContainer.appendChild(img);
-            
-            // 更新图像信息
-            document.getElementById('image-timestamp').textContent = 
-                imageData.timestamp || new Date().toLocaleString();
-            document.getElementById('image-size').textContent = 
-                imageData.size || '--';
+            setTimeout(() => {
+                const img = document.createElement('img');
+                
+                if (imageData.image_base64) {
+                    img.src = `data:image/png;base64,${imageData.image_base64}`;
+                } else {
+                    img.src = imageData.image_url;
+                }
+                
+                // 图像加载完成后淡入
+                img.onload = () => {
+                    imageContainer.innerHTML = '';
+                    imageContainer.appendChild(img);
+                    imageContainer.style.transition = 'opacity 0.4s ease';
+                    imageContainer.style.opacity = '1';
+                };
+                
+                img.onerror = () => {
+                    imageContainer.innerHTML = '<div class="image-placeholder"><p>图像加载失败</p></div>';
+                    imageContainer.style.opacity = '1';
+                };
+                
+                // 更新图像信息（格式化）
+                const timestamp = imageData.timestamp ? 
+                    new Date(imageData.timestamp).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    }) : 
+                    new Date().toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+                
+                // 格式化文件大小
+                let sizeText = '--';
+                if (imageData.size) {
+                    const sizeMatch = imageData.size.match(/(\d+)/);
+                    if (sizeMatch) {
+                        const bytes = parseInt(sizeMatch[1]);
+                        if (bytes < 1024) {
+                            sizeText = bytes + ' B';
+                        } else if (bytes < 1024 * 1024) {
+                            sizeText = (bytes / 1024).toFixed(1) + ' KB';
+                        } else {
+                            sizeText = (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+                        }
+                    } else {
+                        sizeText = imageData.size;
+                    }
+                }
+                
+                document.getElementById('image-timestamp').textContent = timestamp;
+                document.getElementById('image-size').textContent = sizeText;
+            }, 250);
         }
     }
 
@@ -335,19 +388,50 @@ class PIDController {
      * 更新当前PID值显示
      */
     updateCurrentValues() {
-        document.getElementById('current-p').textContent = this.currentPID.p.toFixed(3);
-        document.getElementById('current-i').textContent = this.currentPID.i.toFixed(3);
-        document.getElementById('current-d').textContent = this.currentPID.d.toFixed(4);
+        const pElem = document.getElementById('current-p');
+        const iElem = document.getElementById('current-i');
+        const dElem = document.getElementById('current-d');
+        
+        // 添加动画效果
+        [pElem, iElem, dElem].forEach(elem => {
+            elem.style.transition = 'all 0.3s ease';
+            elem.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                elem.style.transform = 'scale(1)';
+            }, 300);
+        });
+        
+        pElem.textContent = this.currentPID.p.toFixed(3);
+        iElem.textContent = this.currentPID.i.toFixed(3);
+        dElem.textContent = this.currentPID.d.toFixed(4);
     }
 
     /**
      * 更新系统数据显示
      */
     updateSystemDataDisplay() {
-        document.getElementById('setpoint-value').textContent = this.systemData.setpoint.toFixed(2);
-        document.getElementById('current-value').textContent = this.systemData.current.toFixed(2);
-        document.getElementById('error-value').textContent = this.systemData.error.toFixed(2);
-        document.getElementById('output-value').textContent = this.systemData.output.toFixed(2);
+        // 平滑更新数据
+        this.smoothUpdateValue('setpoint-value', this.systemData.setpoint.toFixed(2));
+        this.smoothUpdateValue('current-value', this.systemData.current.toFixed(2));
+        this.smoothUpdateValue('error-value', this.systemData.error.toFixed(2));
+        this.smoothUpdateValue('output-value', this.systemData.output.toFixed(2));
+    }
+    
+    /**
+     * 平滑更新数值（带动画效果）
+     */
+    smoothUpdateValue(elementId, newValue) {
+        const elem = document.getElementById(elementId);
+        if (elem.textContent !== newValue && newValue !== '--') {
+            elem.style.transition = 'color 0.3s ease';
+            elem.style.color = '#9fc5e8';
+            setTimeout(() => {
+                elem.textContent = newValue;
+                elem.style.color = '';
+            }, 150);
+        } else if (elem.textContent === '--') {
+            elem.textContent = newValue;
+        }
     }
 
     /**
@@ -364,16 +448,20 @@ class PIDController {
             statusIndicator.className = 'status-indicator connected';
             statusText.textContent = '已连接';
             labviewStatus.textContent = '在线';
-            labviewStatus.style.backgroundColor = '#86efac';
+            labviewStatus.style.backgroundColor = '#93d5a8';
+            labviewStatus.style.color = 'white';
             dataStatus.textContent = '正常';
-            dataStatus.style.backgroundColor = '#86efac';
+            dataStatus.style.backgroundColor = '#93d5a8';
+            dataStatus.style.color = 'white';
         } else {
             statusIndicator.className = 'status-indicator disconnected';
             statusText.textContent = '未连接';
             labviewStatus.textContent = '离线';
-            labviewStatus.style.backgroundColor = '#fca5a5';
+            labviewStatus.style.backgroundColor = '#f4a9a8';
+            labviewStatus.style.color = 'white';
             dataStatus.textContent = '暂停';
-            dataStatus.style.backgroundColor = '#fbbf24';
+            dataStatus.style.backgroundColor = '#f6d186';
+            dataStatus.style.color = 'white';
         }
     }
 
@@ -386,11 +474,13 @@ class PIDController {
         const max = parseFloat(input.max) || Infinity;
 
         if (isNaN(value) || value < min || value > max) {
-            input.style.borderColor = '#fca5a5';
-            input.style.backgroundColor = '#fef2f2';
+            input.style.borderColor = '#f4a9a8';
+            input.style.backgroundColor = '#fef5f5';
+            input.style.boxShadow = '0 0 0 3px rgba(244, 169, 168, 0.1)';
         } else {
-            input.style.borderColor = '#e5e7eb';
+            input.style.borderColor = '#9fc5e8';
             input.style.backgroundColor = 'white';
+            input.style.boxShadow = '0 0 0 3px rgba(159, 197, 232, 0.1)';
         }
     }
 
@@ -402,21 +492,34 @@ class PIDController {
         const logEntry = document.createElement('div');
         logEntry.className = 'log-entry';
         
+        // 添加淡入动画
+        logEntry.style.opacity = '0';
+        logEntry.style.transform = 'translateX(-10px)';
+        
         const timestamp = document.createElement('span');
         timestamp.className = 'log-timestamp';
-        timestamp.textContent = `[${new Date().toLocaleString()}]`;
+        timestamp.textContent = `[${new Date().toLocaleString('zh-CN')}]`;
         
         const logMessage = document.createElement('span');
         logMessage.className = 'log-message';
-        logMessage.textContent = message;
         
+        // 添加类型标识
+        let prefix = '';
         if (type === 'error') {
-            logMessage.style.color = '#dc2626';
+            logMessage.style.color = '#f4a9a8';
+            prefix = '✗ ';
         } else if (type === 'success') {
-            logMessage.style.color = '#16a34a';
+            logMessage.style.color = '#93d5a8';
+            prefix = '✓ ';
         } else if (type === 'warning') {
-            logMessage.style.color = '#d97706';
+            logMessage.style.color = '#f6d186';
+            prefix = '⚠ ';
+        } else {
+            logMessage.style.color = '#7c9cbf';
+            prefix = '● ';
         }
+        
+        logMessage.textContent = prefix + message;
         
         logEntry.appendChild(timestamp);
         logEntry.appendChild(logMessage);
@@ -424,10 +527,21 @@ class PIDController {
         // 在顶部插入新日志
         logContainer.insertBefore(logEntry, logContainer.firstChild);
         
+        // 淡入动画
+        setTimeout(() => {
+            logEntry.style.transition = 'all 0.3s ease';
+            logEntry.style.opacity = '1';
+            logEntry.style.transform = 'translateX(0)';
+        }, 10);
+        
         // 限制日志数量
         const logs = logContainer.children;
         if (logs.length > 50) {
-            logContainer.removeChild(logs[logs.length - 1]);
+            const lastLog = logs[logs.length - 1];
+            lastLog.style.opacity = '0';
+            setTimeout(() => {
+                logContainer.removeChild(lastLog);
+            }, 300);
         }
     }
 
@@ -460,14 +574,25 @@ class PIDController {
 
             if (response.ok) {
                 const data = await response.json();
-                document.getElementById('file-status').textContent = 
-                    data.file_exists ? '已找到' : '未找到';
-                document.getElementById('file-status').style.backgroundColor = 
-                    data.file_exists ? '#86efac' : '#fca5a5';
+                const fileStatus = document.getElementById('file-status');
+                
+                fileStatus.textContent = data.file_exists ? '已找到' : '未找到';
+                fileStatus.style.backgroundColor = data.file_exists ? '#93d5a8' : '#f4a9a8';
+                fileStatus.style.color = 'white';
+                
+                // 更新数据文件计数信息
+                if (data.data_files_count !== undefined) {
+                    const hint = `(数据文件: ${data.data_files_count})`;
+                    if (!fileStatus.textContent.includes(hint)) {
+                        fileStatus.setAttribute('title', hint);
+                    }
+                }
             }
         } catch (error) {
-            document.getElementById('file-status').textContent = '检查失败';
-            document.getElementById('file-status').style.backgroundColor = '#fca5a5';
+            const fileStatus = document.getElementById('file-status');
+            fileStatus.textContent = '检查失败';
+            fileStatus.style.backgroundColor = '#f4a9a8';
+            fileStatus.style.color = 'white';
         }
     }
 

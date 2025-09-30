@@ -737,7 +737,7 @@
                         <li class="nav-item">
                             <a href="../matrix_visualization/" class="nav-link" data-i18n="nav_matrix">
                                 <i class="fas fa-cube"></i>
-                                <span>模型矩阵可视化</span>
+                                <span>矩阵可视化</span>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -2595,8 +2595,8 @@ intensity3
                             </div>
                             <div class="parameter-input">
                                 <select id="exposure_calculation_method" class="method-select" title="选择曝光计量计算方式" aria-label="曝光计量计算方式选择">
-                                    <option value="standard">标准模式</option>
-                                    <option value="cumulative" selected>多段曝光时间累积</option>
+                                    <option value="standard" selected>标准模式</option>
+                                    <option value="cumulative">多段曝光时间累积</option>
                                 </select>
                             </div>
                             <div class="parameter-description">选择曝光计量计算方式：标准模式(单一时间)或多段曝光时间累积模式</div>
@@ -2617,7 +2617,7 @@ intensity3
                         </div>
                         
                         <!-- 多段曝光时间累积参数 -->
-                        <div class="parameter-item" id="cumulative_exposure_container" style="display: block;">
+                        <div class="parameter-item" id="cumulative_exposure_container" style="display: none;">
                             <div class="parameter-label">
                                 <span class="parameter-name">多段曝光时间累积设置</span>
                             </div>

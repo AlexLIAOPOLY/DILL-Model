@@ -16063,7 +16063,10 @@ function handleIntensityMethodChange() {
                 }
             }
             
-            showNotification('已切换到自定义向量模式，请上传文件或手动输入光强分布数据。三个控制框已隐藏', 'info');
+            // 只在非初始化状态下显示通知
+            if (!window.isPageInitializing) {
+                showNotification('已切换到自定义向量模式，请上传文件或手动输入光强分布数据。三个控制框已隐藏', 'info');
+            }
             console.log('🔒 已隐藏三个控制框：曝光时间窗口控制、1D时间动画控制、1D对比度评估控制');
         }
 

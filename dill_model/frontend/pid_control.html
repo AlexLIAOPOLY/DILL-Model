@@ -16,58 +16,77 @@
     <link rel="stylesheet" href="css/pid-control.css?v=1.0">
 </head>
 <body>
-    <!-- 头部 -->
-    <header class="header">
-        <div class="header-wrapper">
-            <div class="header-container">
-                <div class="logo-section">
-                    <div class="logo-wrapper">
-                        <img src="assets/images/LOGO.avif" alt="Logo" class="logo-image">
-                        <h1 class="app-title">PID控制调参工具</h1>
+    <!-- 页头 -->
+    <header class="professional-header">
+        <div class="header-main">
+            <div class="header-content">
+                <div class="brand-section">
+                    <!-- 添加新的动态LOGO -->
+                    <div class="dynamic-logo-container">
+                        <div class="dynamic-logo">
+                            <div class="dynamic-logo-circle"></div>
+                            <div class="dynamic-logo-ring"></div>
+                            <div class="dynamic-logo-orbit orbit-1">
+                                <div class="dynamic-logo-particle particle-1"></div>
+                            </div>
+                            <div class="dynamic-logo-orbit orbit-2">
+                                <div class="dynamic-logo-particle particle-2"></div>
+                            </div>
+                            <!-- 第三个轨道由CSS ::after伪元素创建 -->
+                            <div class="dynamic-logo-particle particle-3"></div>
+                        </div>
+                    </div>
+                    <div class="logo-container">
+                        <div class="logo-text">
+                            <div class="logo-title" data-i18n="logo_title">
+                                <span class="logo-highlight">多模型</span>光刻胶计算平台
+                            </div>
+                            <div class="logo-subtitle" data-i18n="logo_subtitle">Multi-Model Photoresist Simulation Platform</div>
+                        </div>
                     </div>
                 </div>
-                
                 <nav class="main-nav">
                     <ul class="nav-menu">
                         <li class="nav-item">
-                            <a href="index.html" class="nav-link">
-                                <i class="fas fa-calculator"></i>
+                            <a href="index.html" class="nav-link" data-i18n="nav_single">
                                 <span>单一计算</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="compare.html" class="nav-link">
-                                <i class="fas fa-chart-line"></i>
+                            <a href="compare.html" class="nav-link" data-i18n="nav_compare">
                                 <span>参数比较</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="../matrix_visualization/" class="nav-link">
-                                <i class="fas fa-cube"></i>
-                                <span>模型矩阵可视化</span>
+                            <a href="../matrix_visualization/" class="nav-link" data-i18n="nav_matrix">
+                                <span>矩阵可视化</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="validation.html" class="nav-link">
-                                <i class="fas fa-check-circle"></i>
+                            <a href="validation.html" class="nav-link" data-i18n="nav_validation">
                                 <span>结果验证</span>
                             </a>
                         </li>
                         <li class="nav-item active">
-                            <a href="pid_control.html" class="nav-link">
-                                <i class="fas fa-sliders-h"></i>
+                            <a href="pid_control.html" class="nav-link" data-i18n="nav_pid">
                                 <span>PID调参</span>
                             </a>
                         </li>
                     </ul>
                 </nav>
-                
                 <div class="header-utilities">
                     <div class="lang-switcher">
-                        <select id="lang-select" class="lang-select" title="选择语言 / Select Language">
+                        <select id="lang-select" class="lang-select" title="选择语言 / Select Language" aria-label="选择语言">
                             <option value="zh-CN">中文</option>
                             <option value="en">English</option>
                         </select>
+                    </div>
+                    <div class="github-link-container">
+                        <a href="https://github.com/AlexLIAOPOLY/DILL-Model" target="_blank" rel="noopener" 
+                           class="github-link" title="访问GitHub仓库" aria-label="访问GitHub仓库">
+                            <i class="fab fa-github"></i>
+                            <span class="github-tooltip">GitHub</span>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -77,12 +96,6 @@
     <!-- 主内容区域 -->
     <main class="main-content">
         <div class="container">
-            <!-- 页面标题 -->
-            <div class="page-header">
-                <h2 class="page-title">PID控制参数调优</h2>
-                <p class="page-description">与LabVIEW系统实时交互，优化PID控制参数</p>
-            </div>
-
             <!-- 控制面板 -->
             <div class="control-grid">
                 <!-- 左侧：系统监控 -->
@@ -98,16 +111,15 @@
                     <!-- 实时图像显示 -->
                     <div class="image-display-container">
                         <div class="image-header">
-                            <h4>LabVIEW实时图像</h4>
+                            <h4>LabVIEW 实时图像</h4>
                             <div class="image-controls">
-                                <button class="btn-secondary" id="refresh-image">刷新</button>
+                                <button class="btn-secondary" id="refresh-image">刷新图像</button>
                                 <button class="btn-secondary" id="auto-refresh-toggle">自动刷新</button>
                             </div>
                         </div>
                         <div class="image-display" id="labview-image">
                             <div class="image-placeholder">
-                                <i class="fas fa-image"></i>
-                                <p>等待LabVIEW图像数据...</p>
+                                <p>等待 LabVIEW 图像数据...</p>
                             </div>
                         </div>
                         <div class="image-info">
@@ -118,22 +130,22 @@
 
                     <!-- 实时数据监控 -->
                     <div class="data-monitor">
-                        <h4>实时数据</h4>
+                        <h4>系统实时数据</h4>
                         <div class="data-grid">
                             <div class="data-item">
-                                <label>设定值</label>
+                                <label>设定值 Setpoint</label>
                                 <span class="data-value" id="setpoint-value">--</span>
                             </div>
                             <div class="data-item">
-                                <label>当前值</label>
+                                <label>当前值 Current</label>
                                 <span class="data-value" id="current-value">--</span>
                             </div>
                             <div class="data-item">
-                                <label>误差</label>
+                                <label>误差 Error</label>
                                 <span class="data-value" id="error-value">--</span>
                             </div>
                             <div class="data-item">
-                                <label>输出</label>
+                                <label>输出 Output</label>
                                 <span class="data-value" id="output-value">--</span>
                             </div>
                         </div>
@@ -153,33 +165,33 @@
                     <!-- PID参数输入 -->
                     <div class="pid-parameters">
                         <div class="parameter-group">
-                            <label for="p-value">比例系数 (P)</label>
+                            <label for="p-value">比例系数 Proportional (P)</label>
                             <div class="input-group">
                                 <input type="number" id="p-value" class="parameter-input" 
-                                       value="1.0" step="0.01" min="0" max="100">
+                                       value="1.0" step="0.01" min="0" max="100" placeholder="输入P值">
                                 <button class="btn-apply" data-param="p">应用</button>
                             </div>
-                            <div class="current-value">当前值: <span id="current-p">--</span></div>
+                            <div class="current-value">当前值 <span id="current-p">0.000</span></div>
                         </div>
 
                         <div class="parameter-group">
-                            <label for="i-value">积分系数 (I)</label>
+                            <label for="i-value">积分系数 Integral (I)</label>
                             <div class="input-group">
                                 <input type="number" id="i-value" class="parameter-input" 
-                                       value="0.1" step="0.01" min="0" max="10">
+                                       value="0.1" step="0.01" min="0" max="10" placeholder="输入I值">
                                 <button class="btn-apply" data-param="i">应用</button>
                             </div>
-                            <div class="current-value">当前值: <span id="current-i">--</span></div>
+                            <div class="current-value">当前值 <span id="current-i">0.000</span></div>
                         </div>
 
                         <div class="parameter-group">
-                            <label for="d-value">微分系数 (D)</label>
+                            <label for="d-value">微分系数 Derivative (D)</label>
                             <div class="input-group">
                                 <input type="number" id="d-value" class="parameter-input" 
-                                       value="0.01" step="0.001" min="0" max="1">
+                                       value="0.01" step="0.001" min="0" max="1" placeholder="输入D值">
                                 <button class="btn-apply" data-param="d">应用</button>
                             </div>
-                            <div class="current-value">当前值: <span id="current-d">--</span></div>
+                            <div class="current-value">当前值 <span id="current-d">0.0000</span></div>
                         </div>
                     </div>
 
@@ -190,26 +202,26 @@
                             <button class="btn-primary" id="apply-all-parameters">应用所有参数</button>
                         </div>
                         <div class="action-group">
-                            <button class="btn-secondary" id="reset-parameters">重置为默认</button>
+                            <button class="btn-secondary" id="reset-parameters">重置默认值</button>
                             <button class="btn-secondary" id="save-parameters">保存配置</button>
                         </div>
                     </div>
 
                     <!-- 系统状态 -->
                     <div class="system-status">
-                        <h4>系统状态</h4>
+                        <h4>系统运行状态</h4>
                         <div class="status-grid">
                             <div class="status-item">
-                                <label>LabVIEW连接</label>
-                                <span class="status-indicator" id="labview-status">离线</span>
+                                <label>LabVIEW 连接</label>
+                                <span class="status-indicator" id="labview-status">检测中</span>
                             </div>
                             <div class="status-item">
-                                <label>参数文件</label>
-                                <span class="status-indicator" id="file-status">未找到</span>
+                                <label>参数文件状态</label>
+                                <span class="status-indicator" id="file-status">检测中</span>
                             </div>
                             <div class="status-item">
-                                <label>数据更新</label>
-                                <span class="status-indicator" id="data-status">暂停</span>
+                                <label>数据流状态</label>
+                                <span class="status-indicator" id="data-status">等待中</span>
                             </div>
                         </div>
                     </div>
@@ -235,5 +247,188 @@
     <!-- 脚本文件 -->
     <script src="js/common.js"></script>
     <script src="js/pid-control.js"></script>
+    
+    <!-- 页脚 -->
+    <footer class="professional-footer">
+        <div class="footer-main">
+            <div class="footer-content">
+                <div class="footer-section company-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-atom"></i>
+                        <span data-i18n="footer_brand">光刻胶建模平台</span>
+                    </div>
+                    <p class="footer-description" data-i18n="footer_desc">
+                        基于先进的数学模型和计算方法，为半导体制造业提供专业的光刻胶建模与仿真解决方案。
+                    </p>
+                    <div class="footer-badges">
+                        <span class="badge" data-i18n="badge_research">科研级</span>
+                        <span class="badge" data-i18n="badge_professional">专业版</span>
+                        <span class="badge" data-i18n="badge_verified">已验证</span>
+                    </div>
+                    
+                    <!-- 添加页脚LOGO区域 - 放在徽章下方 -->
+                    <div class="footer-logos">
+                        <img src="assets/images/LOGO.avif" alt="香港大学校徽" class="footer-university-logo" title="香港大学">
+                        <img src="assets/images/Dept new logo.avif" alt="学院LOGO" class="footer-department-logo" title="机械工程系">
+                    </div>
+                </div>
+                <div class="footer-section links-section">
+                    <h4 class="footer-title" data-i18n="footer_platform">平台功能</h4>
+                    <ul class="footer-links">
+                        <li><a href="index.html" data-i18n="footer_single">单一模型计算</a></li>
+                        <li><a href="compare.html" data-i18n="footer_compare">参数对比分析</a></li>
+                        <li><a href="../matrix_visualization/" data-i18n="footer_matrix">矩阵可视化</a></li>
+                        <li><a href="validation.html" data-i18n="footer_validation">结果验证</a></li>
+                        <li><a href="#" data-i18n="footer_documentation">使用文档</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section models-section">
+                    <h4 class="footer-title" data-i18n="footer_models">支持模型</h4>
+                    <ul class="footer-links">
+                        <li><span class="model-badge dill">Dill</span> <span data-i18n="footer_dill">薄胶模型</span></li>
+                        <li><span class="model-badge enhanced">Enhanced</span> <span data-i18n="footer_enhanced">厚胶模型</span></li>
+                        <li><span class="model-badge car">CAR</span> <span data-i18n="footer_car">化学放大模型</span></li>
+                        <li><span class="model-badge custom">Custom</span> <span data-i18n="footer_custom">自定义模型</span></li>
+                    </ul>
+                </div>
+                <div class="footer-section contact-section">
+                    <h4 class="footer-title" data-i18n="footer_contact">联系我们</h4>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <i class="fas fa-university"></i>
+                            <span data-i18n="footer_university">香港大学</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>mech@hku.hk</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <span>Tel: (852) 3917 2635</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-fax"></i>
+                            <span>Fax: (852) 2858 5415</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-globe-asia"></i>
+                            <a href="https://mech.hku.hk/" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">mech.hku.hk</a>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-code-branch"></i>
+                            <span data-i18n="footer_version">版本 v2.1.0</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fab fa-github"></i>
+                            <a href="https://github.com/AlexLIAOPOLY/DILL-Model" target="_blank" rel="noopener" 
+                               style="color: inherit; text-decoration: none;">GitHub开源</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-bottom-content">
+                <div class="copyright">
+                    <p>&copy; 2025 <strong data-i18n="footer_copyright_org">香港大学光刻胶建模研究中心</strong>. <span data-i18n="footer_rights">保留所有权利</span>.</p>
+                </div>
+                <div class="footer-meta">
+                    <a href="https://mech.hku.hk/blank" target="_blank" rel="noopener" class="footer-link" data-i18n="footer_privacy">隐私政策</a>
+                    <span class="footer-separator">|</span>
+                    <a href="https://mech.hku.hk/safety" target="_blank" rel="noopener" class="footer-link" data-i18n="footer_terms">安全政策</a>
+                    <span class="footer-separator">|</span>
+                    <a href="#" class="footer-link" data-i18n="footer_support">技术支持</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- 动态LOGO交互效果脚本 -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取动态LOGO元素
+        const dynamicLogo = document.querySelector('.dynamic-logo');
+        const dynamicLogoContainer = document.querySelector('.dynamic-logo-container');
+        const dynamicLogoRing = document.querySelector('.dynamic-logo-ring');
+        const dynamicLogoCircle = document.querySelector('.dynamic-logo-circle');
+        
+        if (!dynamicLogo || !dynamicLogoContainer) return;
+        
+        // 添加鼠标移入暂停旋转效果
+        dynamicLogoContainer.addEventListener('mouseenter', function() {
+            if (dynamicLogo) {
+                // 暂停主体旋转
+                dynamicLogo.style.animationPlayState = 'paused';
+                
+                // 暂停轨道和环的旋转
+                document.querySelectorAll('.dynamic-logo-orbit').forEach(orbit => {
+                    orbit.style.animationPlayState = 'paused';
+                });
+                
+                if (dynamicLogoRing) {
+                    dynamicLogoRing.style.animationPlayState = 'paused';
+                }
+            }
+        });
+        
+        // 添加鼠标移出继续旋转效果
+        dynamicLogoContainer.addEventListener('mouseleave', function() {
+            if (dynamicLogo) {
+                // 恢复主体旋转
+                dynamicLogo.style.animationPlayState = 'running';
+                
+                // 恢复轨道和环的旋转
+                document.querySelectorAll('.dynamic-logo-orbit').forEach(orbit => {
+                    orbit.style.animationPlayState = 'running';
+                });
+                
+                if (dynamicLogoRing) {
+                    dynamicLogoRing.style.animationPlayState = 'running';
+                }
+            }
+        });
+        
+        // 添加点击时的增强3D脉冲效果
+        dynamicLogoContainer.addEventListener('click', function() {
+            if (dynamicLogo) {
+                // 防止多次点击触发叠加效果
+                if (dynamicLogo.classList.contains('pulse-effect')) {
+                    return;
+                }
+                
+                // 添加脉冲效果类
+                dynamicLogo.classList.add('pulse-effect');
+                
+                // 获取当前3D状态并保存
+                const currentTransform = getComputedStyle(dynamicLogo).transform;
+                
+                // 重置粒子元素，使其从当前位置开始动画
+                const particles = dynamicLogo.querySelectorAll('.dynamic-logo-particle');
+                particles.forEach((particle, index) => {
+                    // 错开不同粒子的动画开始时间
+                    setTimeout(() => {
+                        particle.style.animation = `particlePulse ${0.6 + index * 0.1}s ease-in-out forwards`;
+                    }, index * 50);
+                });
+                
+                // 在动画结束后移除脉冲效果类
+                setTimeout(() => {
+                    dynamicLogo.classList.remove('pulse-effect');
+                    
+                    // 重置粒子动画
+                    particles.forEach(particle => {
+                        particle.style.animation = '';
+                    });
+                    
+                    // 恢复原始3D状态，确保动画结束后不会跳动
+                    dynamicLogo.style.transform = currentTransform;
+                    setTimeout(() => {
+                        dynamicLogo.style.transform = '';
+                    }, 50);
+                }, 1000);
+            }
+        });
+    });
+    </script>
 </body>
 </html>

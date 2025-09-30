@@ -41,15 +41,15 @@
 }
 
 .header-content {
-    max-width: 1400px;
+    max-width: 1600px; /* 增加最大宽度 */
     margin: 0 auto;
-    padding: 0 2rem;
+    padding: 0 1rem; /* 减小左右padding让内容更靠边 */
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: relative;
     z-index: 2;
-    gap: 3rem; /* 增加各部分间距 */
+    gap: 2rem; /* 减小间距 */
     min-height: 100px; /* 增加最小高度以适应更大的LOGO */
 }
 
@@ -60,6 +60,7 @@
     display: flex;
     align-items: center; /* 确保垂直居中 */
     height: 100%; /* 确保充满父容器高度 */
+    margin-right: auto; /* 让品牌部分靠左，推开其他元素 */
 }
 
 /* 动态LOGO容器样式 */
@@ -1074,12 +1075,13 @@ body[data-lang="en"] .lang-select {
 
 /* 导航区域 - 优化间距 */
 .main-nav {
-    flex: 1;
+    flex: 0 0 auto; /* 改为不占据额外空间 */
     display: flex;
-    justify-content: center;
+    justify-content: flex-start; /* 改为左对齐 */
     align-items: center; /* 确保垂直居中 */
     min-width: 0;
     height: 100%; /* 确保充满父容器高度 */
+    margin-right: 2rem; /* 与右侧按钮保持距离 */
 }
 
 .nav-menu {

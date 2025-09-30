@@ -5276,7 +5276,7 @@ def apply_smoothing(data, method):
 # PID控制相关API端点
 pid_model = PIDModel()
 
-@api.route('/pid/read-parameters', methods=['GET'])
+@api_bp.route('/pid/read-parameters', methods=['GET'])
 def read_pid_parameters():
     """读取PID参数"""
     try:
@@ -5296,7 +5296,7 @@ def read_pid_parameters():
             'error': str(e)
         }), 500
 
-@api.route('/pid/apply-parameter', methods=['POST'])
+@api_bp.route('/pid/apply-parameter', methods=['POST'])
 def apply_pid_parameter():
     """应用单个PID参数"""
     try:
@@ -5335,7 +5335,7 @@ def apply_pid_parameter():
             'error': str(e)
         }), 500
 
-@api.route('/pid/apply-all-parameters', methods=['POST'])
+@api_bp.route('/pid/apply-all-parameters', methods=['POST'])
 def apply_all_pid_parameters():
     """应用所有PID参数"""
     try:
@@ -5388,7 +5388,7 @@ def apply_all_pid_parameters():
             'error': str(e)
         }), 500
 
-@api.route('/pid/system-data', methods=['GET'])
+@api_bp.route('/pid/system-data', methods=['GET'])
 def get_pid_system_data():
     """获取系统实时数据"""
     try:
@@ -5410,7 +5410,7 @@ def get_pid_system_data():
             'error': str(e)
         }), 500
 
-@api.route('/pid/get-image', methods=['GET'])
+@api_bp.route('/pid/get-image', methods=['GET'])
 def get_pid_image():
     """获取LabVIEW系统图像"""
     try:
@@ -5433,7 +5433,7 @@ def get_pid_image():
             'error': str(e)
         }), 500
 
-@api.route('/pid/status', methods=['GET'])
+@api_bp.route('/pid/status', methods=['GET'])
 def get_pid_status():
     """获取PID系统状态"""
     try:
@@ -5451,7 +5451,7 @@ def get_pid_status():
             'error': str(e)
         }), 500
 
-@api.route('/pid/save-parameters', methods=['POST'])
+@api_bp.route('/pid/save-parameters', methods=['POST'])
 def save_pid_parameters():
     """保存PID参数配置"""
     try:
@@ -5478,7 +5478,7 @@ def save_pid_parameters():
             'error': str(e)
         }), 500
 
-@api.route('/pid/parameter-history', methods=['GET'])
+@api_bp.route('/pid/parameter-history', methods=['GET'])
 def get_pid_parameter_history():
     """获取PID参数变更历史"""
     try:
