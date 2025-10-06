@@ -13,7 +13,7 @@ class PhotoRecognition {
         this.grayscaleImageData = null;
         this.vectorData = null;
         this.isProcessing = false;
-        
+
         // 裁剪相关属性
         this.cropData = {
             x: 0,
@@ -27,6 +27,12 @@ class PhotoRecognition {
         this.isResizing = false;
         this.resizeHandle = null;
         this.lastMousePos = { x: 0, y: 0 };
+
+        // 两点标定相关属性
+        this.calibrationPoints = [];
+        this.calibrationMode = false;
+        this.calibrationCanvas = null;
+        this.calibrationCtx = null;
     }
 
     /**
@@ -163,6 +169,40 @@ class PhotoRecognition {
         }
         
         // 标签页切换监听由main.js处理
+
+        // 标定方式切换按钮
+        const methodBtns = document.querySelectorAll('.method-btn');
+        methodBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                methodBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const method = btn.dataset.method;
+                const manualInput = document.getElementById('manual-dimension-input');
+                const twopointCalibration = document.getElementById('twopoint-calibration');
+
+                if (method === 'manual') {
+                    manualInput.style.display = 'grid';
+                    twopointCalibration.style.display = 'none';
+                    this.disableCalibrationMode();
+                } else if (method === 'twopoint') {
+                    manualInput.style.display = 'none';
+                    twopointCalibration.style.display = 'block';
+                    this.enableCalibrationMode();
+                }
+            });
+        });
+
+        // 两点标定相关按钮
+        const applyCalibrationBtn = document.getElementById('apply-calibration-btn');
+        const resetCalibrationBtn = document.getElementById('reset-calibration-btn');
+
+        if (applyCalibrationBtn) {
+            applyCalibrationBtn.addEventListener('click', () => this.applyCalibration());
+        }
+        if (resetCalibrationBtn) {
+            resetCalibrationBtn.addEventListener('click', () => this.resetCalibration());
+        }
     }
 
     /**
@@ -2801,11 +2841,19 @@ class PhotoRecognition {
         
         // 绘制图像
         ctx.putImageData(imageData, 0, 0);
-        
+
         console.log(`📋 Canvas ${canvasId} 已更新:`, {
             原始尺寸: { width: imageData.width, height: imageData.height },
             显示尺寸: { width: displayWidth, height: displayHeight }
         });
+
+        // 如果是原始图片画布，并且标定模式已启用，则更新标定画布
+        if (canvasId === 'original-photo-canvas' && this.calibrationMode) {
+            // 延迟执行以确保canvas已完全渲染
+            setTimeout(() => {
+                this.setupCalibrationCanvas();
+            }, 100);
+        }
     }
 
     /**
@@ -3757,15 +3805,20 @@ ${'-'.repeat(70)}
     
     /**
      * 获取默认缩放因子
+     * 当用户未输入照片尺寸时使用的默认值
+     * @param {string} coordinateUnit - 坐标单位
+     * @returns {number} 默认缩放因子 (单位/像素)
      */
     getDefaultScaleFactor(coordinateUnit) {
         switch (coordinateUnit) {
             case 'mm':
                 return 0.1; // 1像素 = 0.1毫米
-            case 'um':
-                return 100; // 1像素 = 100微米
             case 'cm':
                 return 0.01; // 1像素 = 0.01厘米
+            case 'um':
+                return 100; // 1像素 = 100微米
+            case 'nm':
+                return 100000; // 1像素 = 100000纳米
             case 'm':
                 return 0.0001; // 1像素 = 0.0001米
             case 'pixels':
@@ -3776,13 +3829,24 @@ ${'-'.repeat(70)}
     
     /**
      * 单位转换函数
+     * 将数值从一个单位转换到另一个单位
+     * @param {number} value - 待转换的数值
+     * @param {string} fromUnit - 源单位 (mm/cm/um/m/pixels)
+     * @param {string} toUnit - 目标单位 (mm/cm/um/m/pixels)
+     * @returns {number} 转换后的数值
      */
     convertUnit(value, fromUnit, toUnit) {
         if (fromUnit === toUnit) {
             return value;
         }
-        
-        // 所有单位先转换为毫米
+
+        // 如果源单位或目标单位是pixels，不进行转换（像素是相对单位）
+        if (fromUnit === 'pixels' || toUnit === 'pixels') {
+            console.warn('⚠️ 像素单位不参与物理单位转换');
+            return value;
+        }
+
+        // 所有单位先转换为毫米（作为中间单位）
         let valueInMm;
         switch (fromUnit) {
             case 'mm':
@@ -3794,28 +3858,41 @@ ${'-'.repeat(70)}
             case 'um':
                 valueInMm = value / 1000;
                 break;
+            case 'nm':
+                valueInMm = value / 1000000;
+                break;
             case 'm':
                 valueInMm = value * 1000;
                 break;
             default:
+                console.warn(`⚠️ 未知的源单位: ${fromUnit}，默认按毫米处理`);
                 valueInMm = value;
         }
-        
+
         // 从毫米转换为目标单位
+        let result;
         switch (toUnit) {
             case 'mm':
-                return valueInMm;
+                result = valueInMm;
+                break;
             case 'cm':
-                return valueInMm / 10;
+                result = valueInMm / 10;
+                break;
             case 'um':
-                return valueInMm * 1000;
+                result = valueInMm * 1000;
+                break;
+            case 'nm':
+                result = valueInMm * 1000000;
+                break;
             case 'm':
-                return valueInMm / 1000;
-            case 'pixels':
-                return valueInMm; // 像素单位保持数值不变
+                result = valueInMm / 1000;
+                break;
             default:
-                return valueInMm;
+                console.warn(`⚠️ 未知的目标单位: ${toUnit}，默认返回毫米值`);
+                result = valueInMm;
         }
+
+        return result;
     }
     
     /**
@@ -5591,6 +5668,264 @@ ${'-'.repeat(70)}
         this.originalImageData = null;
         this.grayscaleImageData = null;
         this.vectorData = null;
+        this.cleanupCalibrationCanvas();
+    }
+
+    /**
+     * 启用两点标定模式
+     */
+    enableCalibrationMode() {
+        this.calibrationMode = true;
+        this.calibrationPoints = [];
+        this.updateCalibrationStatus();
+
+        // 检查原始图片是否已加载
+        const originalImageCanvas = document.getElementById('original-photo-canvas');
+        if (originalImageCanvas && originalImageCanvas.width > 0) {
+            // 图片已加载，立即设置标定画布
+            this.setupCalibrationCanvas();
+        } else {
+            console.log('⏳ 等待图片加载后再设置标定画布...');
+        }
+    }
+
+    /**
+     * 禁用两点标定模式
+     */
+    disableCalibrationMode() {
+        this.calibrationMode = false;
+        this.calibrationPoints = [];
+        this.updateCalibrationStatus();
+        this.cleanupCalibrationCanvas();
+    }
+
+    /**
+     * 设置标定画布
+     */
+    setupCalibrationCanvas() {
+        const originalImageCanvas = document.getElementById('original-photo-canvas');
+        const container = document.getElementById('original-canvas-container');
+
+        if (!originalImageCanvas || !container) {
+            console.warn('⚠️ 未找到原始图片画布或容器，无法设置标定画布');
+            return;
+        }
+
+        // 创建透明的标定画布覆盖在原始图片上
+        if (!this.calibrationCanvas) {
+            this.calibrationCanvas = document.createElement('canvas');
+            this.calibrationCanvas.id = 'calibration-canvas';
+            this.calibrationCanvas.style.position = 'absolute';
+            this.calibrationCanvas.style.top = '0';
+            this.calibrationCanvas.style.left = '0';
+            this.calibrationCanvas.style.cursor = 'crosshair';
+            this.calibrationCanvas.style.zIndex = '10';
+            this.calibrationCanvas.style.pointerEvents = 'auto';
+
+            // 插入到容器中
+            container.appendChild(this.calibrationCanvas);
+
+            // 添加点击事件监听（只添加一次）
+            this.calibrationCanvas.addEventListener('click', (e) => this.handleCalibrationClick(e));
+        }
+
+        // 设置画布尺寸与原始图片一致（包括实际像素和显示尺寸）
+        this.calibrationCanvas.width = originalImageCanvas.width;
+        this.calibrationCanvas.height = originalImageCanvas.height;
+        this.calibrationCanvas.style.width = originalImageCanvas.style.width;
+        this.calibrationCanvas.style.height = originalImageCanvas.style.height;
+
+        this.calibrationCtx = this.calibrationCanvas.getContext('2d');
+
+        // 重新绘制已有的标定点
+        this.drawCalibrationPoints();
+
+        console.log('✅ 标定画布已设置:', {
+            宽度: this.calibrationCanvas.width,
+            高度: this.calibrationCanvas.height,
+            显示宽度: this.calibrationCanvas.style.width,
+            显示高度: this.calibrationCanvas.style.height
+        });
+    }
+
+    /**
+     * 清理标定画布
+     */
+    cleanupCalibrationCanvas() {
+        if (this.calibrationCanvas) {
+            this.calibrationCanvas.removeEventListener('click', (e) => this.handleCalibrationClick(e));
+            if (this.calibrationCanvas.parentElement) {
+                this.calibrationCanvas.parentElement.removeChild(this.calibrationCanvas);
+            }
+            this.calibrationCanvas = null;
+            this.calibrationCtx = null;
+        }
+    }
+
+    /**
+     * 处理标定画布点击事件
+     */
+    handleCalibrationClick(e) {
+        if (!this.calibrationMode || this.calibrationPoints.length >= 2) return;
+
+        const rect = this.calibrationCanvas.getBoundingClientRect();
+        const scaleX = this.calibrationCanvas.width / rect.width;
+        const scaleY = this.calibrationCanvas.height / rect.height;
+
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
+        this.calibrationPoints.push({ x, y });
+        this.drawCalibrationPoints();
+        this.updateCalibrationStatus();
+
+        // 如果已经选择了两个点，启用应用按钮
+        if (this.calibrationPoints.length === 2) {
+            const applyBtn = document.getElementById('apply-calibration-btn');
+            if (applyBtn) applyBtn.disabled = false;
+        }
+    }
+
+    /**
+     * 绘制标定点和连线
+     */
+    drawCalibrationPoints() {
+        if (!this.calibrationCtx) return;
+
+        // 清空画布
+        this.calibrationCtx.clearRect(0, 0, this.calibrationCanvas.width, this.calibrationCanvas.height);
+
+        // 绘制点
+        this.calibrationPoints.forEach((point, index) => {
+            this.calibrationCtx.beginPath();
+            this.calibrationCtx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+            this.calibrationCtx.fillStyle = '#374151';
+            this.calibrationCtx.fill();
+            this.calibrationCtx.strokeStyle = '#fff';
+            this.calibrationCtx.lineWidth = 2;
+            this.calibrationCtx.stroke();
+
+            // 绘制点的编号
+            this.calibrationCtx.fillStyle = '#374151';
+            this.calibrationCtx.font = '14px sans-serif';
+            this.calibrationCtx.fillText(`${index + 1}`, point.x + 10, point.y - 10);
+        });
+
+        // 绘制连线
+        if (this.calibrationPoints.length === 2) {
+            this.calibrationCtx.beginPath();
+            this.calibrationCtx.moveTo(this.calibrationPoints[0].x, this.calibrationPoints[0].y);
+            this.calibrationCtx.lineTo(this.calibrationPoints[1].x, this.calibrationPoints[1].y);
+            this.calibrationCtx.strokeStyle = '#374151';
+            this.calibrationCtx.lineWidth = 2;
+            this.calibrationCtx.stroke();
+        }
+    }
+
+    /**
+     * 更新标定状态显示
+     */
+    updateCalibrationStatus() {
+        const statusEl = document.getElementById('calibration-status');
+        if (!statusEl) return;
+
+        if (this.calibrationPoints.length === 0) {
+            statusEl.textContent = '未选择点';
+            statusEl.classList.remove('has-points');
+        } else if (this.calibrationPoints.length === 1) {
+            statusEl.textContent = '已选择第1个点，请选择第2个点';
+            statusEl.classList.add('has-points');
+        } else if (this.calibrationPoints.length === 2) {
+            const distance = this.calculatePixelDistance();
+            statusEl.textContent = `已选择2个点，像素距离: ${distance.toFixed(2)} px`;
+            statusEl.classList.add('has-points');
+        }
+    }
+
+    /**
+     * 计算两点之间的像素距离
+     */
+    calculatePixelDistance() {
+        if (this.calibrationPoints.length !== 2) return 0;
+
+        const dx = this.calibrationPoints[1].x - this.calibrationPoints[0].x;
+        const dy = this.calibrationPoints[1].y - this.calibrationPoints[0].y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * 应用标定
+     */
+    applyCalibration() {
+        if (this.calibrationPoints.length !== 2) {
+            alert('请先在图片上选择两个点');
+            return;
+        }
+
+        const distanceInput = document.getElementById('twopoint-distance');
+        const unitSelect = document.getElementById('twopoint-unit');
+
+        if (!distanceInput || !unitSelect) return;
+
+        const realDistance = parseFloat(distanceInput.value);
+        if (!realDistance || realDistance <= 0) {
+            alert('请输入有效的两点距离');
+            return;
+        }
+
+        const pixelDistance = this.calculatePixelDistance();
+        const unit = unitSelect.value;
+
+        // 计算缩放因子（实际单位/像素）
+        const scaleFactor = realDistance / pixelDistance;
+
+        console.log('📏 两点标定结果:', {
+            点1: this.calibrationPoints[0],
+            点2: this.calibrationPoints[1],
+            像素距离: pixelDistance,
+            实际距离: realDistance,
+            单位: unit,
+            缩放因子: scaleFactor
+        });
+
+        // 将标定结果保存到photo-width和photo-height
+        // 使用图像的实际尺寸
+        const imageData = this.grayscaleImageData || this.originalImageData;
+        if (imageData) {
+            const imageWidthInUnit = imageData.width * scaleFactor;
+            const imageHeightInUnit = imageData.height * scaleFactor;
+
+            const photoWidthInput = document.getElementById('photo-width');
+            const photoHeightInput = document.getElementById('photo-height');
+            const photoUnitSelect = document.getElementById('photo-unit');
+
+            if (photoWidthInput && photoHeightInput && photoUnitSelect) {
+                photoWidthInput.value = imageWidthInUnit.toFixed(3);
+                photoHeightInput.value = imageHeightInUnit.toFixed(3);
+                photoUnitSelect.value = unit;
+
+                // 触发更新
+                this.updateScaleFactorDisplay();
+                this.validateGenerateButton();
+            }
+        }
+
+        alert('标定成功！已自动计算照片尺寸');
+    }
+
+    /**
+     * 重置标定
+     */
+    resetCalibration() {
+        this.calibrationPoints = [];
+        this.drawCalibrationPoints();
+        this.updateCalibrationStatus();
+
+        const applyBtn = document.getElementById('apply-calibration-btn');
+        if (applyBtn) applyBtn.disabled = true;
+
+        const distanceInput = document.getElementById('twopoint-distance');
+        if (distanceInput) distanceInput.value = '';
     }
 }
 

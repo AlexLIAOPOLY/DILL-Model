@@ -102,7 +102,7 @@ class VideoAlignment {
         this.sensitivityValue = null;
         this.distanceInfo = null;
         this.sliderTooltip = null;
-        this.sensitivity = 2.4; // 默认灵敏度
+        this.sensitivity = 0.24; // 默认灵敏度
         
         // 保存光斑功能
         this.savedSpots = []; // 保存的光斑数据
@@ -671,15 +671,19 @@ class VideoAlignment {
 
             const mean = sum / validPixels;
             
-            // 简化的阈值计算：基于灵敏度直接调整
-            // 灵敏度0.1-4.0 → 阈值从maxValue*0.9到mean*0.3
-            const sensitivityNormalized = Math.max(0.1, Math.min(4.0, this.sensitivity));
-            const thresholdRatio = 0.9 - (sensitivityNormalized - 0.1) * 0.6 / 3.9; // 0.9 到 0.3
-            
+            // 精确的阈值计算：基于灵敏度动态调整
+            // 灵敏度0.0-0.6 → 使用非线性映射获得更精确的控制
+            const sensitivityNormalized = Math.max(0.0, Math.min(0.6, this.sensitivity));
+
+            // 使用指数函数使低灵敏度时更严格
+            // sensitivity=0 → ratio≈0.98 (只检测最亮的点)
+            // sensitivity=0.6 → ratio≈0.5 (检测较多光斑)
+            const thresholdRatio = 0.98 - Math.pow(sensitivityNormalized / 0.6, 1.5) * 0.48;
+
             const directThreshold = Math.max(
-                mean * thresholdRatio,
-                maxValue * thresholdRatio,
-                10 // 最小阈值
+                maxValue * thresholdRatio, // 主要基于最大值
+                mean + (maxValue - mean) * thresholdRatio, // 结合均值和最大值的差异
+                15 // 最小阈值
             );
 
             // 简单的历史平滑
@@ -705,6 +709,10 @@ class VideoAlignment {
         // 性能优化：根据处理模式调整扫描密度
         const step = this.fastProcessingMode ? 3 : (this.adaptiveQuality < 0.8 ? 2 : 1);
         const checkRadius = this.fastProcessingMode ? Math.max(3, Math.floor(radius * 0.7)) : radius;
+
+        // 动态计算早期退出限制
+        const normalizedSens = Math.max(0, Math.min(0.6, this.sensitivity)) / 0.6;
+        const earlyExitLimit = Math.max(5, Math.ceil(5 + Math.pow(normalizedSens, 0.8) * 20));
 
         for (let y = checkRadius; y < this.height - checkRadius; y += step) {
             for (let x = checkRadius; x < this.width - checkRadius; x += step) {
@@ -768,20 +776,21 @@ class VideoAlignment {
                     });
                     
                     // 性能优化：早期退出，避免过度搜索
-                    const earlyExitLimit = this.fastProcessingMode ? 15 : 25;
                     if (peaks.length >= earlyExitLimit) {
                         break;
                     }
                 }
             }
-            if (peaks.length >= (this.fastProcessingMode ? 15 : 25)) break;
+            if (peaks.length >= earlyExitLimit) break;
         }
 
         // 按强度排序并返回最强的峰值
         peaks.sort((a, b) => b.intensity - a.intensity);
-        const maxPeaks = this.fastProcessingMode ? 
-            Math.min(15, Math.max(1, Math.floor(this.sensitivity * 3))) :
-            Math.min(20, Math.max(1, Math.floor(this.sensitivity * 5)));
+
+        // 基于新的灵敏度范围(0-0.6)动态计算返回的光斑数量
+        // 使用指数映射: sensitivity=0 → 1个, sensitivity=0.6 → 20个
+        const maxPeaks = Math.max(1, Math.ceil(1 + Math.pow(normalizedSens, 0.8) * 19));
+
         return peaks.slice(0, maxPeaks);
     }
     
@@ -1009,26 +1018,69 @@ class VideoAlignment {
         }
 
         // 找出最强的两个峰值
-        const peak1 = peaks[0];
-        const peak2 = peaks[1];
-        
+        let peak1 = peaks[0];
+        let peak2 = peaks[1];
+
+        // 如果是中心点模式,使用高斯拟合的中心点
+        if (this.mode === 'centroid') {
+            const gaussian1 = this.fitGaussian2D(peak1, 20);
+            const gaussian2 = this.fitGaussian2D(peak2, 20);
+
+            if (gaussian1) {
+                peak1 = {
+                    ...peak1,
+                    x: gaussian1.x0,
+                    y: gaussian1.y0,
+                    gaussianFit: gaussian1
+                };
+            }
+
+            if (gaussian2) {
+                peak2 = {
+                    ...peak2,
+                    x: gaussian2.x0,
+                    y: gaussian2.y0,
+                    gaussianFit: gaussian2
+                };
+            }
+        }
+
         const intensityRatio = peak1.intensity > 0 ? peak2.intensity / peak1.intensity : 0;
         const distance = Math.hypot(peak1.x - peak2.x, peak1.y - peak2.y);
-        
+
         // 改进的对齐判断逻辑
         const isSignificantSecondPeak = intensityRatio > this.secondaryPeakRatio;
         const isSufficientDistance = distance > this.misalignmentDistance;
         // 防止除零错误并改进对齐判断
         const maxSize = Math.max(peak1.size, peak2.size, 1); // 避免除零
         const sizeDifference = Math.abs(peak1.size - peak2.size) / maxSize;
-        
+
         // 多因素综合判断对齐状态
         const aligned = !(isSignificantSecondPeak && isSufficientDistance && sizeDifference < 0.6);
+
+        // 计算主峰位置
+        let mainPeak;
+        if (this.mode === 'centroid') {
+            // 中心点模式:如果对齐,使用高斯拟合的加权中心
+            if (aligned) {
+                const totalIntensity = peak1.intensity + peak2.intensity;
+                mainPeak = {
+                    x: (peak1.x * peak1.intensity + peak2.x * peak2.intensity) / totalIntensity,
+                    y: (peak1.y * peak1.intensity + peak2.y * peak2.intensity) / totalIntensity,
+                    intensity: peak1.intensity
+                };
+            } else {
+                mainPeak = peak1;
+            }
+        } else {
+            // 最亮点模式:使用原始逻辑
+            mainPeak = aligned ? this.calculateWeightedCentroid([peak1, peak2]) : peak1;
+        }
 
         return {
             aligned,
             peaks: [peak1, peak2],
-            mainPeak: aligned ? this.calculateWeightedCentroid([peak1, peak2]) : peak1,
+            mainPeak,
             distance,
             confidence: Math.min(peak1.intensity / 255, 1.0),
             intensityRatio,
@@ -1823,8 +1875,12 @@ class VideoAlignment {
 
     // GPU加速初始化（Apple优化）
     initGPUAcceleration() {
+        console.log('🚀 GPU加速暂时禁用,使用CPU模式');
+        this.useGPUAcceleration = false;
+        return; // 暂时禁用GPU加速
+
         console.log('🚀 开始初始化GPU加速...');
-        
+
         try {
             // 创建离屏WebGL画布用于GPU计算
             this.webglCanvas = document.createElement('canvas');
@@ -1940,21 +1996,23 @@ class VideoAlignment {
             precision mediump float;
             uniform sampler2D u_image;
             uniform vec2 u_textureSize;
-            uniform float u_kernel[25]; // 5x5核
             varying vec2 v_texCoord;
-            
+
             void main() {
                 vec2 onePixel = vec2(1.0) / u_textureSize;
                 vec4 colorSum = vec4(0.0);
-                
-                for (int i = -2; i <= 2; i++) {
-                    for (int j = -2; j <= 2; j++) {
-                        vec2 sampleCoord = v_texCoord + vec2(float(i), float(j)) * onePixel;
-                        int kernelIndex = (i + 2) * 5 + (j + 2);
-                        colorSum += texture2D(u_image, sampleCoord) * u_kernel[kernelIndex];
-                    }
-                }
-                
+
+                // 3x3高斯核权重(手动展开以避免WebGL索引限制)
+                colorSum += texture2D(u_image, v_texCoord + vec2(-1.0, -1.0) * onePixel) * 0.077847;
+                colorSum += texture2D(u_image, v_texCoord + vec2( 0.0, -1.0) * onePixel) * 0.123317;
+                colorSum += texture2D(u_image, v_texCoord + vec2( 1.0, -1.0) * onePixel) * 0.077847;
+                colorSum += texture2D(u_image, v_texCoord + vec2(-1.0,  0.0) * onePixel) * 0.123317;
+                colorSum += texture2D(u_image, v_texCoord + vec2( 0.0,  0.0) * onePixel) * 0.195346;
+                colorSum += texture2D(u_image, v_texCoord + vec2( 1.0,  0.0) * onePixel) * 0.123317;
+                colorSum += texture2D(u_image, v_texCoord + vec2(-1.0,  1.0) * onePixel) * 0.077847;
+                colorSum += texture2D(u_image, v_texCoord + vec2( 0.0,  1.0) * onePixel) * 0.123317;
+                colorSum += texture2D(u_image, v_texCoord + vec2( 1.0,  1.0) * onePixel) * 0.077847;
+
                 gl_FragColor = colorSum;
             }
         `;
@@ -2009,9 +2067,20 @@ class VideoAlignment {
             }
         `;
         
-        this.gaussianShader = this.createShaderProgram(vertexShaderSource, gaussianFragmentSource);
-        this.intensityShader = this.createShaderProgram(vertexShaderSource, intensityFragmentSource);
-        this.peakDetectionShader = this.createShaderProgram(vertexShaderSource, peakDetectionFragmentSource);
+        try {
+            this.gaussianShader = this.createShaderProgram(vertexShaderSource, gaussianFragmentSource);
+            this.intensityShader = this.createShaderProgram(vertexShaderSource, intensityFragmentSource);
+            this.peakDetectionShader = this.createShaderProgram(vertexShaderSource, peakDetectionFragmentSource);
+
+            // 检查是否有任何着色器编译失败
+            if (!this.gaussianShader || !this.intensityShader || !this.peakDetectionShader) {
+                throw new Error('着色器程序编译失败');
+            }
+        } catch (error) {
+            console.error('GPU着色器初始化失败,禁用GPU加速:', error);
+            this.useGPUAcceleration = false;
+            this.gl = null;
+        }
     }
 
     createShaderProgram(vertexSource, fragmentSource) {
@@ -2104,37 +2173,37 @@ class VideoAlignment {
             // 内联Worker代码
             const workerCode = `
                 self.onmessage = function(e) {
-                    const { imageData, threshold, width, height } = e.data;
-                    
+                    const { imageData, threshold, width, height, sensitivity } = e.data;
+
                     // 在Worker中执行峰值检测
-                    const peaks = findLocalMaximaWorker(imageData, threshold, width, height);
-                    
+                    const peaks = findLocalMaximaWorker(imageData, threshold, width, height, sensitivity);
+
                     self.postMessage({ peaks });
                 };
-                
-                function findLocalMaximaWorker(intensityBuffer, threshold, width, height) {
+
+                function findLocalMaximaWorker(intensityBuffer, threshold, width, height, sensitivity) {
                     const peaks = [];
                     const radius = 8;
-                    
+
                     for (let y = radius; y < height - radius; y++) {
                         for (let x = radius; x < width - radius; x++) {
                             const centerIdx = y * width + x;
                             const centerValue = intensityBuffer[centerIdx];
-                            
+
                             if (centerValue < threshold) continue;
-                            
+
                             let isLocalMax = true;
                             for (let dy = -radius; dy <= radius && isLocalMax; dy++) {
                                 for (let dx = -radius; dx <= radius && isLocalMax; dx++) {
                                     if (dx === 0 && dy === 0) continue;
-                                    
+
                                     const neighborIdx = (y + dy) * width + (x + dx);
                                     if (intensityBuffer[neighborIdx] > centerValue) {
                                         isLocalMax = false;
                                     }
                                 }
                             }
-                            
+
                             if (isLocalMax) {
                                 peaks.push({
                                     x: x,
@@ -2144,9 +2213,14 @@ class VideoAlignment {
                             }
                         }
                     }
-                    
+
                     peaks.sort((a, b) => b.intensity - a.intensity);
-                    return peaks.slice(0, 5);
+
+                    // 基于灵敏度动态计算返回的光斑数量(0-0.6范围)
+                    const normalizedSens = Math.max(0, Math.min(0.6, sensitivity)) / 0.6;
+                    const maxPeaks = Math.max(1, Math.ceil(1 + Math.pow(normalizedSens, 0.8) * 19));
+
+                    return peaks.slice(0, maxPeaks);
                 }
             `;
             
@@ -2667,7 +2741,8 @@ class VideoAlignment {
                 imageData: Array.from(this.intensityBuffer),
                 threshold: threshold,
                 width: this.width,
-                height: this.height
+                height: this.height,
+                sensitivity: this.sensitivity
             });
         });
     }

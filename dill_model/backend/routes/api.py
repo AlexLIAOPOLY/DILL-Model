@@ -2954,7 +2954,8 @@ def get_latest_calculation():
         global latest_calculation_result
         
         if latest_calculation_result['timestamp'] is None:
-            return jsonify(format_response(False, message="暂无计算结果，请先在单一计算页面完成计算")), 404
+            # 返回200状态码，而不是404，因为这是正常的"暂无数据"状态
+            return jsonify(format_response(False, message="暂无计算结果，请先在单一计算页面完成计算")), 200
         
         # 返回最近的计算结果
         result_data = {

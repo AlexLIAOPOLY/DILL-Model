@@ -1411,7 +1411,9 @@ intensity3
                                         <div class="image-preview-container">
                                             <div class="image-column">
                                                 <h5>原始图片</h5>
-                                                <canvas id="original-photo-canvas"></canvas>
+                                                <div id="original-canvas-container" class="canvas-container">
+                                                    <canvas id="original-photo-canvas"></canvas>
+                                                </div>
                                             </div>
                                             <div class="image-column">
                                                 <h5>灰度预览</h5>
@@ -1450,7 +1452,18 @@ intensity3
                                         <!-- 照片实际尺寸设置 -->
                                         <div class="photo-dimensions-section">
                                             <h5>照片实际尺寸设置 <span class="tooltip-icon" data-title="输入拍摄照片时对象的实际物理尺寸。系统将根据此信息计算像素与物理单位的比例关系，从而生成准确的物理坐标数据。例如：如果照片中的物体实际宽度为10毫米，请在实际宽度中输入10，并选择毫米单位。">?</span></h5>
-                                            <div class="dimensions-grid">
+
+                                            <!-- 标定方式选择 -->
+                                            <div class="calibration-method-selector">
+                                                <label>标定方式:</label>
+                                                <div class="method-buttons">
+                                                    <button type="button" class="method-btn active" data-method="manual">手动输入尺寸</button>
+                                                    <button type="button" class="method-btn" data-method="twopoint">两点标定</button>
+                                                </div>
+                                            </div>
+
+                                            <!-- 手动输入尺寸 -->
+                                            <div id="manual-dimension-input" class="dimensions-grid">
                                                 <div class="dimension-item">
                                                     <label for="photo-width">实际宽度:</label>
                                                     <input type="number" id="photo-width" value="" min="0.001" step="0.1" class="form-control" placeholder="例如: 10">
@@ -1462,11 +1475,42 @@ intensity3
                                                 <div class="dimension-item">
                                                     <label for="photo-unit">单位:</label>
                                                     <select id="photo-unit" class="form-control dimension-select">
-                                                        <option value="mm">毫米 (mm)</option>
-                                                        <option value="cm">厘米 (cm)</option>
                                                         <option value="um">微米 (μm)</option>
+                                                        <option value="mm">毫米 (mm)</option>
+                                                        <option value="nm">纳米 (nm)</option>
+                                                        <option value="cm">厘米 (cm)</option>
                                                         <option value="m">米 (m)</option>
                                                     </select>
+                                                </div>
+                                            </div>
+
+                                            <!-- 两点标定 -->
+                                            <div id="twopoint-calibration" class="twopoint-calibration" style="display: none;">
+                                                <div class="calibration-instruction">
+                                                    请在原始图片上点击两个点进行标定
+                                                </div>
+                                                <div class="calibration-status" id="calibration-status">
+                                                    未选择点
+                                                </div>
+                                                <div class="calibration-input-group">
+                                                    <div class="dimension-item">
+                                                        <label for="twopoint-distance">两点距离:</label>
+                                                        <input type="number" id="twopoint-distance" value="" min="0.001" step="0.1" class="form-control" placeholder="输入两点实际距离">
+                                                    </div>
+                                                    <div class="dimension-item">
+                                                        <label for="twopoint-unit">单位:</label>
+                                                        <select id="twopoint-unit" class="form-control dimension-select">
+                                                            <option value="um">微米 (μm)</option>
+                                                            <option value="mm">毫米 (mm)</option>
+                                                            <option value="nm">纳米 (nm)</option>
+                                                            <option value="cm">厘米 (cm)</option>
+                                                            <option value="m">米 (m)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="calibration-actions">
+                                                    <button type="button" class="calibration-btn" id="apply-calibration-btn" disabled>应用标定</button>
+                                                    <button type="button" class="calibration-btn reset-btn" id="reset-calibration-btn">重置</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1815,23 +1859,21 @@ intensity3
                                     <div class="sensitivity-control">
                                         <div class="sensitivity-header">
                                             <span class="sensitivity-label">灵敏度</span>
-                                            <input type="number" id="sensitivity-value" class="sensitivity-input" min="0" max="10" step="0.01" value="2.4" title="手动输入灵敏度值">
+                                            <input type="number" id="sensitivity-value" class="sensitivity-input" min="0" max="0.6" step="0.01" value="0.24" title="手动输入灵敏度值">
                                         </div>
                                         <div class="sensitivity-slider-container">
                                             <div class="slider-with-marks">
-                                                <input type="range" id="sensitivity-slider" min="0" max="10" step="0.05" value="2.4" title="拖动调整灵敏度">
+                                                <input type="range" id="sensitivity-slider" min="0" max="0.6" step="0.01" value="0.24" title="拖动调整灵敏度">
                                                 <div class="slider-tooltip" id="slider-tooltip"></div>
                                                 <div class="slider-marks">
-                                                    <span class="mark" style="left: 5%;" data-label="0-1个"></span>
-                                                    <span class="mark" style="left: 15%;" data-label="1-2个"></span>
-                                                    <span class="mark" style="left: 25%;" data-label="2-3个"></span>
-                                                    <span class="mark" style="left: 35%;" data-label="3-5个"></span>
-                                                    <span class="mark" style="left: 45%;" data-label="5-8个"></span>
-                                                    <span class="mark" style="left: 55%;" data-label="8-12个"></span>
-                                                    <span class="mark" style="left: 65%;" data-label="12-18个"></span>
-                                                    <span class="mark" style="left: 75%;" data-label="18-25个"></span>
-                                                    <span class="mark" style="left: 85%;" data-label="25-35个"></span>
-                                                    <span class="mark" style="left: 95%;" data-label="35个以上"></span>
+                                                    <span class="mark" style="left: 0%;" data-label="1个"></span>
+                                                    <span class="mark" style="left: 10%;" data-label="1-2个"></span>
+                                                    <span class="mark" style="left: 20%;" data-label="2-3个"></span>
+                                                    <span class="mark" style="left: 33%;" data-label="3-5个"></span>
+                                                    <span class="mark" style="left: 50%;" data-label="6-9个"></span>
+                                                    <span class="mark" style="left: 67%;" data-label="10-14个"></span>
+                                                    <span class="mark" style="left: 83%;" data-label="15-18个"></span>
+                                                    <span class="mark" style="left: 100%;" data-label="20个"></span>
                                                 </div>
                                             </div>
                                         </div>

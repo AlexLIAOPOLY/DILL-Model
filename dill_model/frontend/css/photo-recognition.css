@@ -544,6 +544,127 @@ html {
     min-height: 20px;
 }
 
+/* 标定方式选择器 */
+.calibration-method-selector {
+    margin-bottom: 16px;
+}
+
+.calibration-method-selector label {
+    display: block;
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.method-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.method-btn {
+    flex: 1;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    color: #6b7280;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.method-btn:hover {
+    border-color: #9ca3af;
+    color: #374151;
+}
+
+.method-btn.active {
+    background: #374151;
+    border-color: #374151;
+    color: #fff;
+}
+
+/* 两点标定区域 */
+.twopoint-calibration {
+    margin-top: 12px;
+}
+
+.calibration-instruction {
+    padding: 10px 12px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    color: #374151;
+    font-size: 13px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.calibration-status {
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.calibration-status.has-points {
+    color: #059669;
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+
+.calibration-input-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.calibration-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.calibration-btn {
+    flex: 1;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#apply-calibration-btn {
+    background: #374151;
+    color: #fff;
+}
+
+#apply-calibration-btn:hover:not(:disabled) {
+    background: #1f2937;
+}
+
+#apply-calibration-btn:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.reset-btn {
+    background: #fff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.reset-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
 /* 裁剪模式切换动画 */
 .image-preview-container {
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
